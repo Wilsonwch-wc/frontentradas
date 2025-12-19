@@ -1,0 +1,433 @@
+.compras-page {
+  padding: 20px;
+}
+
+.compras-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+}
+
+.compras-header h1 {
+  margin: 0;
+  color: #2c3e50;
+}
+
+.compras-header p {
+  margin: 5px 0 0 0;
+  color: #7f8c8d;
+}
+
+/* Búsqueda por código */
+.busqueda-codigo {
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.busqueda-input-group {
+  display: flex;
+  gap: 10px;
+}
+
+.input-busqueda {
+  flex: 1;
+  padding: 12px;
+  border: 2px solid #ddd;
+  border-radius: 6px;
+  font-size: 16px;
+}
+
+.input-busqueda:focus {
+  outline: none;
+  border-color: #3498db;
+}
+
+.btn-buscar {
+  padding: 12px 24px;
+  background: #3498db;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.btn-buscar:hover {
+  background: #2980b9;
+}
+
+/* Filtros */
+.filtros-compras {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.filtros-compras label {
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.select-filtro {
+  padding: 8px 12px;
+  border: 2px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+/* Tabla de compras */
+.compras-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.compras-table thead {
+  background: #34495e;
+  color: white;
+}
+
+.compras-table th {
+  padding: 15px;
+  text-align: left;
+  font-weight: 600;
+}
+
+.compras-table td {
+  padding: 15px;
+  border-bottom: 1px solid #ecf0f1;
+}
+
+.compras-table tbody tr:hover {
+  background: #f8f9fa;
+}
+
+.codigo-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.codigo-text {
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  color: #2c3e50;
+}
+
+.btn-copiar-small {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 4px;
+  opacity: 0.6;
+}
+
+.btn-copiar-small:hover {
+  opacity: 1;
+}
+
+.btn-ver {
+  padding: 6px 12px;
+  background: #3498db;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.btn-ver:hover {
+  background: #2980b9;
+}
+
+/* Badges de estado */
+.badge {
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-block;
+}
+
+.badge-pendiente {
+  background: #f39c12;
+  color: white;
+}
+
+.badge-realizado {
+  background: #27ae60;
+  color: white;
+}
+
+.badge-cancelado {
+  background: #e74c3c;
+  color: white;
+}
+
+.badge-usada {
+  background: #95a5a6;
+  color: white;
+}
+
+.badge-default {
+  background: #bdc3c7;
+  color: #2c3e50;
+}
+
+/* Detalle de compra */
+.detalle-compra {
+  background: white;
+  border-radius: 8px;
+  padding: 30px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.detalle-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 2px solid #ecf0f1;
+}
+
+.detalle-header h2 {
+  margin: 0;
+  color: #2c3e50;
+}
+
+.btn-cerrar {
+  padding: 8px 16px;
+  background: #e74c3c;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.btn-cerrar:hover {
+  background: #c0392b;
+}
+
+.detalle-section {
+  margin-bottom: 30px;
+}
+
+.detalle-section h3 {
+  color: #34495e;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #ecf0f1;
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 15px;
+}
+
+.info-grid > div {
+  padding: 10px;
+  background: #f8f9fa;
+  border-radius: 6px;
+}
+
+.codigo-display {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 5px;
+}
+
+.codigo-display span {
+  font-family: 'Courier New', monospace;
+  font-size: 16px;
+  font-weight: bold;
+  color: #27ae60;
+  background: #ecf0f1;
+  padding: 8px 12px;
+  border-radius: 4px;
+}
+
+.btn-copiar {
+  padding: 6px 12px;
+  background: #3498db;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.btn-copiar:hover {
+  background: #2980b9;
+}
+
+.asientos-list, .mesas-list {
+  display: grid;
+  gap: 10px;
+}
+
+.asiento-item, .mesa-item {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+  padding: 12px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  flex-wrap: wrap;
+}
+
+.asiento-item span, .mesa-item span {
+  font-size: 14px;
+}
+
+.detalle-actions {
+  margin-top: 30px;
+  padding-top: 20px;
+  border-top: 2px solid #ecf0f1;
+  display: flex;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+
+.btn-confirmar {
+  padding: 12px 24px;
+  background: #27ae60;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.btn-confirmar:hover:not(:disabled) {
+  background: #229954;
+}
+
+.btn-confirmar:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-cancelar {
+  padding: 12px 24px;
+  background: #f39c12;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.btn-cancelar:hover:not(:disabled) {
+  background: #e67e22;
+}
+
+.btn-cancelar:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-reenviar {
+  padding: 12px 24px;
+  background: #27ae60;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 600;
+  transition: background 0.3s;
+}
+
+.btn-reenviar:hover:not(:disabled) {
+  background: #229954;
+}
+
+.btn-reenviar:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-eliminar {
+  padding: 12px 24px;
+  background: #e74c3c;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 600;
+  transition: background 0.3s;
+}
+
+.btn-eliminar:hover:not(:disabled) {
+  background: #c0392b;
+}
+
+.btn-eliminar:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-whatsapp-web {
+  padding: 12px 24px;
+  background: #25d366;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 600;
+  transition: background 0.3s;
+}
+
+.btn-whatsapp-web:hover:not(:disabled) {
+  background: #20ba5a;
+}
+
+.btn-whatsapp-web:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.info-message {
+  padding: 15px;
+  background: #d5f4e6;
+  color: #27ae60;
+  border-radius: 6px;
+  font-weight: 600;
+}
+
+.error-message {
+  padding: 15px;
+  background: #fadbd8;
+  color: #e74c3c;
+  border-radius: 6px;
+  margin-bottom: 20px;
+}
+
+.no-compras {
+  text-align: center;
+  padding: 40px;
+  color: #7f8c8d;
+}
+
+.loading {
+  text-align: center;
+  padding: 40px;
+  color: #7f8c8d;
+}
+

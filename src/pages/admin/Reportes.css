@@ -1,0 +1,274 @@
+ .reportes-page .admin-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.reportes-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.estado-evento {
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  background: #f4f5f7;
+  color: #344054;
+}
+
+.estado-evento.habilitado {
+  background: #ecfdf3;
+  color: #027a48;
+  border: 1px solid #a6f4c5;
+}
+
+.estado-evento.finalizado {
+  background: #fff2ea;
+  color: #b54708;
+  border: 1px solid #ffd3a4;
+}
+
+.reportes-filtros {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.reportes-filtros .campo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 260px;
+}
+
+.reportes-filtros label {
+  font-weight: 600;
+  color: #344054;
+}
+
+.reportes-filtros select {
+  padding: 10px 12px;
+  border: 1px solid #d0d5dd;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  background: #fff;
+}
+
+.btn-primario {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.2s ease;
+}
+
+.btn-primario:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-primario:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 25px rgba(37, 99, 235, 0.2);
+}
+
+.mensaje-error {
+  background: #fef3f2;
+  border: 1px solid #fecdca;
+  color: #b42318;
+  padding: 12px 14px;
+  border-radius: 10px;
+}
+
+.loading {
+  padding: 14px;
+  text-align: center;
+}
+
+.resumen-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.card-resumen {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.04);
+}
+
+.card-label {
+  color: #667085;
+  font-size: 0.9rem;
+}
+
+.card-value {
+  font-size: 1.6rem;
+  color: #101828;
+}
+
+.card-sub {
+  color: #98a2b3;
+  font-size: 0.85rem;
+}
+
+.tabla-wrapper {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 12px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
+}
+
+.tabla-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.tabla-sub {
+  color: #98a2b3;
+  font-size: 0.9rem;
+}
+
+.tabla-reportes {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tabla-reportes th,
+.tabla-reportes td {
+  padding: 10px 8px;
+  border-bottom: 1px solid #e5e7eb;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.tabla-reportes th {
+  color: #475467;
+  font-weight: 700;
+  font-size: 0.92rem;
+}
+
+.tabla-reportes tbody tr:hover {
+  background: #f9fafb;
+}
+
+.cliente {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cliente .codigo {
+  color: #98a2b3;
+  font-size: 0.85rem;
+}
+
+.telefono {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.btn-whatsapp {
+  background: #25d366;
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 0.9rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.estado-chip {
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  display: inline-block;
+}
+
+.estado-pendiente {
+  background: #fff8e6;
+  color: #b54708;
+}
+
+.estado-realizado {
+  background: #ecfdf3;
+  color: #027a48;
+}
+
+.estado-usada {
+  background: #e0f2fe;
+  color: #075985;
+}
+
+.estado-cancelado {
+  background: #fef3f2;
+  color: #b42318;
+}
+
+.estado-default {
+  background: #f2f4f7;
+  color: #475467;
+}
+
+.sin-datos {
+  padding: 14px;
+  text-align: center;
+  color: #667085;
+}
+
+.detalle span {
+  display: inline-block;
+  max-width: 360px;
+  white-space: normal;
+}
+
+.centrado {
+  text-align: center;
+  font-weight: 700;
+}
+
+@media (max-width: 1024px) {
+  .tabla-reportes {
+    font-size: 0.95rem;
+  }
+
+  .tabla-reportes th,
+  .tabla-reportes td {
+    padding: 8px 6px;
+  }
+}
+
+@media (max-width: 768px) {
+  .tabla-wrapper {
+    overflow-x: auto;
+  }
+
+  .tabla-reportes {
+    min-width: 900px;
+  }
+}
+
+

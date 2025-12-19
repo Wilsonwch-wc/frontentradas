@@ -1,0 +1,37 @@
+.admin-footer {
+  background: #34495e;
+  color: white;
+  padding: 1rem 2rem;
+  margin-left: 250px;
+  text-align: center;
+  transition: margin-left 0.3s;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.admin-footer-content {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  max-width: 100%;
+}
+
+.admin-footer-version {
+  opacity: 0.7;
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+@media (max-width: 768px) {
+  .admin-footer {
+    margin-left: 0;
+  }
+}
+

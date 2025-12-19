@@ -1,0 +1,111 @@
+.home {
+  min-height: calc(100vh - 200px);
+}
+
+.carrusel-section {
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  background: #000;
+}
+
+.eventos-section {
+  padding: 3rem 0;
+}
+
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+.section-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 2rem;
+  background: linear-gradient(135deg, #D4AF37 0%, #FFD700 50%, #C9A961 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: 0 0 30px rgba(212, 175, 55, 0.3);
+  letter-spacing: 2px;
+}
+
+.eventos-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2.5rem;
+  margin-top: 2rem;
+}
+
+.paginacion {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.pag-btn {
+  background: linear-gradient(135deg, rgba(192, 192, 192, 0.3) 0%, rgba(168, 168, 168, 0.3) 100%);
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  padding: 0.6rem 1rem;
+  border-radius: 8px;
+  font-weight: 600;
+  color: #1a1a1a;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.pag-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.3) 0%, rgba(255, 215, 0, 0.3) 100%);
+  border-color: rgba(212, 175, 55, 0.6);
+  box-shadow: 0 2px 8px rgba(212, 175, 55, 0.3);
+}
+
+.pag-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.pag-pages {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.pag-page {
+  background: white;
+  border: 2px solid rgba(192, 192, 192, 0.5);
+  padding: 0.5rem 0.8rem;
+  border-radius: 8px;
+  color: #1a1a1a;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.pag-page:hover {
+  border-color: rgba(212, 175, 55, 0.6);
+  background: rgba(212, 175, 55, 0.1);
+}
+
+.pag-page.active {
+  border-color: #D4AF37;
+  background: linear-gradient(135deg, #D4AF37 0%, #FFD700 100%);
+  color: #1a1a1a;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(212, 175, 55, 0.4);
+}
+
+@media (max-width: 768px) {
+  .section-title {
+    font-size: 2rem;
+  }
+
+  .eventos-grid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+}
+

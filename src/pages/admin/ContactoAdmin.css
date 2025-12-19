@@ -1,0 +1,100 @@
+.contacto-admin {
+  padding: 24px;
+}
+
+.contacto-admin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.contacto-admin-header h1 {
+  margin: 0;
+  font-size: 24px;
+}
+
+.contacto-admin-header p {
+  margin: 4px 0 0;
+  color: #666;
+}
+
+.contacto-admin-refresh {
+  padding: 10px 14px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.contacto-admin-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+
+.contacto-admin-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.contacto-admin-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.contacto-admin-field span {
+  font-weight: 600;
+  color: #333;
+}
+
+.contacto-admin-field input {
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  font-size: 14px;
+}
+
+.contacto-admin-field.full {
+  grid-column: 1 / -1;
+}
+
+.contacto-admin-actions {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.contacto-admin-save {
+  padding: 12px 20px;
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.contacto-admin-alert {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+}
+
+.contacto-admin-alert.error {
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecdd3;
+}
+
+.contacto-admin-alert.success {
+  background: #ecfdf3;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+

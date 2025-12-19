@@ -1,0 +1,834 @@
+.compra-page {
+  min-height: 100vh;
+  padding: 1rem 0 0 0;
+  background: #f5f7fa;
+  display: flex;
+  flex-direction: column;
+}
+
+.container {
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 2rem;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.btn-volver {
+  background: #ecf0f1;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 25px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-bottom: 1.5rem;
+  margin-left: 0;
+  transition: background 0.3s;
+  color: #2c3e50;
+}
+
+.btn-volver:hover {
+  background: #bdc3c7;
+}
+
+.compra-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #2c3e50;
+  margin-bottom: 1.5rem;
+  margin-left: 0;
+  text-align: left;
+}
+
+.compra-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  width: 100%;
+  padding-left: 0;
+}
+
+.compra-card {
+  background: white;
+  padding: 2rem 2.5rem;
+  border-radius: 15px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.compra-card-evento {
+  padding: 2.5rem 3rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.compra-card-tipos,
+.compra-card-asientos,
+.compra-card-cantidad {
+  padding: 2.5rem 3rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.compra-card-resumen {
+  padding: 2.5rem 3rem;
+  display: flex;
+  flex-direction: column;
+  min-width: 360px;
+}
+
+.compra-card-evento {
+  width: 100%;
+}
+
+.compra-card-resumen {
+  width: 100%;
+  min-width: 0;
+}
+
+.compra-card-resumen h2 {
+  font-size: 1.3rem;
+}
+
+.compra-card h2 {
+  font-size: 1.5rem;
+  color: #2c3e50;
+  margin: 0 0 1.5rem 0;
+  flex-shrink: 0;
+}
+
+.compra-card-evento h2,
+.compra-card-resumen h2 {
+  margin-top: 0;
+  margin-bottom: 2rem;
+}
+
+.evento-resumen {
+  display: flex;
+  flex-direction: row;
+  gap: 2.5rem;
+  align-items: flex-start;
+  width: 100%;
+  justify-content: flex-start;
+  margin-bottom: 0;
+}
+
+.evento-resumen-img {
+  width: 300px;
+  height: 300px;
+  min-width: 300px;
+  object-fit: cover;
+  border-radius: 10px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  align-self: flex-start;
+}
+
+.evento-resumen-info {
+  flex: 1;
+  min-width: 360px;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  justify-content: flex-start;
+  padding-top: 0;
+}
+
+.evento-resumen-info h3 {
+  font-size: 1.5rem;
+  color: #2c3e50;
+  margin: 0 0 0.5rem 0;
+  line-height: 1.3;
+  word-break: normal;
+  overflow-wrap: normal;
+  white-space: normal;
+  font-weight: 700;
+}
+
+.evento-fecha-hora {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0;
+}
+
+.evento-fecha,
+.evento-hora {
+  color: #7f8c8d;
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.evento-resumen-precio {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #27ae60 !important;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.evento-descripcion-resumen {
+  color: #7f8c8d !important;
+  font-size: 1rem;
+  line-height: 1.7;
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #ecf0f1;
+}
+
+.cantidad-selector-wrapper {
+  margin-bottom: 2rem;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid #ecf0f1;
+}
+
+.cantidad-movil {
+  display: none;
+}
+
+.cantidad-titulo {
+  font-size: 1.1rem;
+  color: #2c3e50;
+  margin: 0 0 1rem 0;
+  font-weight: 600;
+}
+
+.cantidad-selector {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.cantidad-btn {
+  background: linear-gradient(135deg, #D4AF37 0%, #FFD700 100%);
+  color: #1a1a1a;
+  border: none;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  font-size: 1.5rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.3s, box-shadow 0.3s;
+  box-shadow: 0 2px 8px rgba(212, 175, 55, 0.3);
+}
+
+.cantidad-btn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(212, 175, 55, 0.5);
+  background: linear-gradient(135deg, #FFD700 0%, #D4AF37 100%);
+}
+
+.cantidad-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #2c3e50;
+  min-width: 60px;
+  text-align: center;
+}
+
+.compra-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.form-group label {
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.form-group input {
+  padding: 0.75rem;
+  border: 2px solid #ecf0f1;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: border-color 0.3s;
+  font-family: inherit;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: #D4AF37;
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.1);
+}
+
+.btn-confirmar-compra {
+  background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+  color: white;
+  border: none;
+  padding: 1rem 2rem;
+  border-radius: 8px;
+  font-size: 1.2rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.3s, box-shadow 0.3s;
+  margin-top: 1rem;
+}
+
+.btn-confirmar-compra:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 20px rgba(39, 174, 96, 0.4);
+}
+
+/* Grid layout */
+.compra-card-evento {
+  width: 100%;
+}
+
+.compra-card-resumen {
+  width: 100%;
+}
+
+.compra-card-contacto {
+  width: 100%;
+}
+
+
+/* Removido compra-resumen ya que ahora cada card es directo */
+
+.resumen-detalle {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  padding: 0.5rem 0;
+  flex: 1;
+  justify-content: flex-start;
+}
+
+.resumen-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.2rem 1.5rem;
+  background: #f8f9fa;
+  border-radius: 10px;
+  transition: background 0.3s;
+  gap: 1rem;
+}
+
+.resumen-item:hover {
+  background: #e9ecef;
+}
+
+.resumen-item span:first-child {
+  font-size: 1.05rem;
+  color: #7f8c8d;
+  flex: 1;
+  text-align: left;
+}
+
+.resumen-item span:last-child {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: #2c3e50;
+  text-align: right;
+  min-width: 100px;
+}
+
+.resumen-subtotal {
+  font-weight: 600;
+  color: #2c3e50 !important;
+  margin-top: 0.5rem;
+}
+
+.resumen-item.resumen-subtotal {
+  background: #e9ecef;
+  font-weight: 600;
+}
+
+.resumen-item.resumen-total {
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.1) 0%, rgba(255, 215, 0, 0.1) 100%);
+  border: 1px solid #D4AF37;
+  margin-top: 0.5rem;
+  padding: 1.2rem 1.2rem;
+  box-shadow: 0 2px 8px rgba(212, 175, 55, 0.2);
+}
+
+.resumen-total span:first-child {
+  font-size: 1.1rem !important;
+  color: #D4AF37 !important;
+  font-weight: 700 !important;
+}
+
+.resumen-total span:last-child {
+  font-size: 1.6rem !important;
+  color: #D4AF37 !important;
+  font-weight: 700 !important;
+}
+
+/* Removido resumen-divider ya que usamos grid */
+
+
+.compra-loading {
+  text-align: center;
+  padding: 4rem;
+  font-size: 1.5rem;
+  color: #7f8c8d;
+}
+
+@media (max-width: 1400px) {
+  .container {
+    padding: 0 3rem;
+  }
+}
+
+@media (max-width: 1200px) {
+  .container {
+    padding: 0 2rem;
+  }
+  
+  .compra-content {
+    gap: 1.5rem;
+  }
+
+  .compra-card-evento,
+  .compra-card-resumen,
+  .compra-card-tipos,
+  .compra-card-asientos,
+  .compra-card-cantidad,
+  .compra-card-contacto {
+    padding: 2rem 2.5rem;
+  }
+
+  .cantidad-selector {
+    gap: 0.75rem;
+    justify-content: center;
+  }
+
+  .cantidad-btn {
+    width: 42px;
+    height: 42px;
+    font-size: 1.3rem;
+  }
+
+  .cantidad-value {
+    font-size: 1.6rem;
+    min-width: 48px;
+  }
+
+  .compra-card-resumen {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .evento-resumen {
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .evento-resumen-img {
+    width: 100%;
+    height: 260px;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 0 1rem;
+  }
+
+  .compra-card-evento,
+  .compra-card-resumen,
+  .compra-card-tipos,
+  .compra-card-asientos,
+  .compra-card-cantidad,
+  .compra-card-contacto {
+    padding: 1.5rem;
+  }
+
+  .evento-resumen {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .evento-resumen-img {
+    width: 100%;
+    height: 220px;
+    min-width: 0;
+  }
+
+  .evento-resumen-info {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 1280px) {
+  .evento-resumen {
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .evento-resumen-img {
+    width: 100%;
+    height: 260px;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 968px) {
+  .compra-content {
+    gap: 1.5rem;
+  }
+
+  .compra-title {
+    font-size: 2rem;
+  }
+  
+  .container {
+    padding: 0 1.5rem;
+  }
+
+  .compra-card-evento,
+  .compra-card-resumen {
+    padding: 2rem;
+  }
+
+  .cantidad-selector-wrapper {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1.5rem;
+  }
+
+  .cantidad-selector {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .cantidad-btn {
+    width: 38px;
+    height: 38px;
+    font-size: 1.2rem;
+  }
+
+  .cantidad-value {
+    font-size: 1.4rem;
+    min-width: 42px;
+  }
+}
+
+@media (max-width: 480px) {
+  .evento-resumen {
+    flex-direction: column;
+  }
+
+  .evento-resumen-img {
+    width: 100%;
+    height: 200px;
+  }
+}
+
+/* Estilos para eventos especiales */
+.tipos-precio-lista {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #ecf0f1;
+}
+
+.tipos-precio-lista h3 {
+  font-size: 1.1rem;
+  color: #2c3e50;
+  margin-bottom: 1rem;
+}
+
+.tipos-precio-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+}
+
+.tipo-precio-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.tipo-precio-color {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.tipo-precio-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+}
+
+.tipo-precio-nombre {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.tipo-precio-valor {
+  font-size: 0.85rem;
+  color: #27ae60;
+  font-weight: 700;
+}
+
+.compra-layout-container {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #ecf0f1;
+}
+
+.compra-layout-container h3 {
+  font-size: 1.1rem;
+  color: #2c3e50;
+  margin-bottom: 0.5rem;
+}
+
+.layout-instructions {
+  font-size: 0.9rem;
+  color: #7f8c8d;
+  margin-bottom: 1rem;
+  line-height: 1.5;
+}
+
+.selecciones-resumen {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-radius: 8px;
+  border: 1px solid #dee2e6;
+}
+
+.selecciones-resumen h4 {
+  font-size: 1.1rem;
+  color: #2c3e50;
+  margin-bottom: 0.75rem;
+  font-weight: 700;
+}
+
+.selecciones-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 200px;
+  overflow-y: auto;
+  margin-bottom: 0.75rem;
+}
+
+.seleccion-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  background: white;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  border: 1px solid #e9ecef;
+  transition: all 0.2s;
+}
+
+.seleccion-item:hover {
+  background: #f8f9fa;
+  border-color: #D4AF37;
+}
+
+.seleccion-nombre {
+  color: #2c3e50;
+  flex: 1;
+  font-weight: 500;
+}
+
+.seleccion-precio {
+  color: #27ae60;
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.seleccion-mesa-completa {
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.1) 0%, rgba(255, 215, 0, 0.1) 100%) !important;
+  border: 2px solid #D4AF37 !important;
+  padding: 1rem !important;
+}
+
+.seleccion-mesa-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+}
+
+.seleccion-mesa-titulo {
+  font-weight: 700 !important;
+  font-size: 1rem !important;
+  color: #D4AF37 !important;
+}
+
+.seleccion-mesa-detalle {
+  font-size: 0.85rem;
+  color: #666;
+  font-weight: 500;
+}
+
+.seleccion-mesa-sillas {
+  font-size: 0.8rem;
+  color: #999;
+  font-style: italic;
+}
+
+.seleccion-precio-mesa {
+  font-size: 1.2rem !important;
+  color: #D4AF37 !important;
+}
+
+.selecciones-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.1) 0%, rgba(255, 215, 0, 0.1) 100%);
+  border-radius: 6px;
+  border: 1px solid #D4AF37;
+  margin-top: 0.5rem;
+  font-weight: 700;
+}
+
+.selecciones-total span:first-child {
+  color: #2c3e50;
+  font-size: 1rem;
+}
+
+.selecciones-total span:last-child {
+  color: #D4AF37;
+  font-size: 1.2rem;
+}
+
+.resumen-selecciones {
+  margin-bottom: 1.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid #ecf0f1;
+}
+
+.resumen-selecciones h3 {
+  font-size: 1rem;
+  color: #2c3e50;
+  margin-bottom: 1rem;
+}
+
+.resumen-selecciones-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.resumen-seleccion-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  background: white;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  border: 1px solid #e9ecef;
+  transition: all 0.2s;
+}
+
+.resumen-seleccion-item:hover {
+  background: #f8f9fa;
+  border-color: #D4AF37;
+}
+
+.resumen-seleccion-nombre {
+  color: #2c3e50;
+  flex: 1;
+  font-weight: 500;
+}
+
+.resumen-seleccion-precio {
+  color: #27ae60;
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.resumen-mesa-completa {
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.1) 0%, rgba(255, 215, 0, 0.1) 100%) !important;
+  border: 2px solid #D4AF37 !important;
+  padding: 1rem !important;
+}
+
+.resumen-mesa-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+}
+
+.resumen-mesa-titulo {
+  font-weight: 700 !important;
+  font-size: 1rem !important;
+  color: #D4AF37 !important;
+}
+
+.resumen-mesa-detalle {
+  font-size: 0.85rem;
+  color: #666;
+  font-weight: 500;
+}
+
+.resumen-mesa-sillas {
+  font-size: 0.8rem;
+  color: #999;
+  font-style: italic;
+}
+
+.resumen-precio-mesa {
+  font-size: 1.2rem !important;
+  color: #D4AF37 !important;
+}
+
+.resumen-cantidad {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  font-size: 1rem;
+}
+
+.resumen-cantidad span:first-child {
+  color: #2c3e50;
+  font-weight: 600;
+}
+
+.resumen-cantidad span:last-child {
+  color: #27ae60;
+  font-weight: 700;
+}
+
+@media (max-width: 768px) {
+  .compra-layout-container canvas {
+    width: 100% !important;
+    height: auto !important;
+  }
+  
+  .tipos-precio-grid {
+    grid-template-columns: 1fr;
+  }
+}
+

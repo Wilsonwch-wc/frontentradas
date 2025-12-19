@@ -1,0 +1,228 @@
+.mis-compras {
+  min-height: calc(100vh - 200px);
+  padding: 3rem 0;
+  background: #f8f9fa;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+.mis-compras-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  text-align: center;
+  color: #2c3e50;
+  margin-bottom: 3rem;
+}
+
+.loading {
+  text-align: center;
+  padding: 3rem;
+  font-size: 1.2rem;
+  color: #7f8c8d;
+}
+
+.error-message {
+  background: #fee;
+  color: #c33;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.no-compras {
+  text-align: center;
+  padding: 4rem 2rem;
+  background: white;
+  border-radius: 15px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.no-compras p {
+  font-size: 1.2rem;
+  color: #7f8c8d;
+  margin-bottom: 2rem;
+}
+
+.btn-ver-eventos {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 1rem 2rem;
+  border-radius: 25px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.btn-ver-eventos:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+}
+
+.compras-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.compra-card {
+  background: white;
+  border-radius: 15px;
+  padding: 2rem;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.compra-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
+
+.compra-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 2px solid #ecf0f1;
+}
+
+.compra-info-principal {
+  flex: 1;
+}
+
+.compra-evento {
+  font-size: 1.8rem;
+  color: #2c3e50;
+  margin: 0 0 0.5rem 0;
+}
+
+.compra-fecha-evento {
+  font-size: 1rem;
+  color: #7f8c8d;
+  margin: 0;
+}
+
+.estado-badge {
+  padding: 0.5rem 1.5rem;
+  border-radius: 25px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.estado-revision {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.estado-verificado {
+  background: #d4edda;
+  color: #155724;
+}
+
+.estado-cancelado {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.estado-usado {
+  background: #d1ecf1;
+  color: #0c5460;
+}
+
+.estado-default {
+  background: #e2e3e5;
+  color: #383d41;
+}
+
+.compra-detalles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+}
+
+.detalle-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.detalle-label {
+  font-weight: 600;
+  color: #667eea;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.detalle-value {
+  color: #2c3e50;
+  font-size: 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.codigo-compra {
+  font-family: 'Courier New', monospace;
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: #667eea;
+  background: #f0f4ff;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  display: inline-block;
+}
+
+.total-precio {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #27ae60;
+}
+
+.asiento-badge,
+.mesa-badge {
+  display: inline-block;
+  background: #ecf0f1;
+  padding: 0.3rem 0.8rem;
+  border-radius: 15px;
+  font-size: 0.9rem;
+  color: #2c3e50;
+  margin-right: 0.5rem;
+}
+
+.mesa-badge {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+@media (max-width: 768px) {
+  .compra-header {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .estado-badge {
+    align-self: flex-start;
+  }
+
+  .compra-detalles {
+    grid-template-columns: 1fr;
+  }
+
+  .mis-compras-title {
+    font-size: 2rem;
+  }
+
+  .compra-evento {
+    font-size: 1.4rem;
+  }
+}
+

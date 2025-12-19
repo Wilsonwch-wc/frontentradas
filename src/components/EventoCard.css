@@ -1,0 +1,131 @@
+.evento-card {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s, box-shadow 0.3s;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.evento-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+}
+
+.evento-card-image-container {
+  position: relative;
+  width: 100%;
+  height: 250px;
+  overflow: hidden;
+}
+
+.evento-card-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s;
+}
+
+.evento-card:hover .evento-card-image {
+  transform: scale(1.1);
+}
+
+.evento-card-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: linear-gradient(135deg, #D4AF37 0%, #FFD700 100%);
+  color: #1a1a1a;
+  padding: 0.4rem 0.8rem;
+  border-radius: 15px;
+  font-weight: 700;
+  font-size: 0.75rem;
+  z-index: 10;
+  box-shadow: 0 2px 8px rgba(212, 175, 55, 0.5);
+  border: 1px solid rgba(255, 215, 0, 0.3);
+}
+
+.evento-card-content {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+}
+
+.evento-card-title {
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem 0;
+  color: #2c3e50;
+}
+
+.evento-card-descripcion {
+  color: #7f8c8d;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  margin: 0 0 1rem 0;
+  flex-grow: 1;
+}
+
+.evento-card-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #ecf0f1;
+}
+
+.evento-card-fecha {
+  font-size: 0.85rem;
+  color: #95a5a6;
+  margin: 0;
+}
+
+.evento-card-precio {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #27ae60;
+  margin: 0;
+}
+
+.evento-card-btn {
+  background: linear-gradient(135deg, #D4AF37 0%, #FFD700 100%);
+  color: #1a1a1a;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 25px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.3s, box-shadow 0.3s;
+  width: 100%;
+  box-shadow: 0 2px 10px rgba(212, 175, 55, 0.3);
+}
+
+.evento-card-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 20px rgba(212, 175, 55, 0.6);
+  background: linear-gradient(135deg, #FFD700 0%, #D4AF37 100%);
+}
+
+@media (max-width: 768px) {
+  .evento-card-image-container {
+    height: 200px;
+  }
+
+  .evento-card-title {
+    font-size: 1.1rem;
+  }
+
+  .evento-card-footer {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+}
+

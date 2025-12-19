@@ -1,0 +1,113 @@
+.dashboard-page .admin-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.dash-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.dash-refresh {
+  background: #0ea5e9;
+  color: #fff;
+  border: none;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.2s ease;
+}
+
+.dash-refresh:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 25px rgba(14, 165, 233, 0.2);
+}
+
+.dash-refresh:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.dash-error {
+  background: #fef3f2;
+  border: 1px solid #fecdca;
+  color: #b42318;
+  padding: 10px 12px;
+  border-radius: 10px;
+}
+
+.dash-loading {
+  padding: 12px;
+  text-align: center;
+}
+
+.dash-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.dash-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+}
+
+.dash-card-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.dash-card-title {
+  font-weight: 700;
+  color: #111827;
+}
+
+.dash-card-sub {
+  color: #6b7280;
+  font-size: 0.85rem;
+}
+
+.dash-card-value {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.dash-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.tone-blue .dash-icon { background: #e0f2fe; color: #0369a1; }
+.tone-indigo .dash-icon { background: #e0e7ff; color: #4338ca; }
+.tone-green .dash-icon { background: #dcfce7; color: #15803d; }
+.tone-amber .dash-icon { background: #fef3c7; color: #b45309; }
+.tone-emerald .dash-icon { background: #d1fae5; color: #047857; }
+.tone-orange .dash-icon { background: #ffedd5; color: #c2410c; }
+.tone-slate .dash-icon { background: #e2e8f0; color: #1e293b; }
+.tone-gray .dash-icon { background: #f3f4f6; color: #374151; }
+
+@media (max-width: 640px) {
+  .dash-card-value {
+    font-size: 1.3rem;
+  }
+}
+
+
