@@ -6,6 +6,7 @@ import Modal from '../../components/Modal.jsx';
 import ModalInput from '../../components/ModalInput.jsx';
 
 const Espacio = () => {
+  const { showAlert, showConfirm } = useAlert();
   const [eventos, setEventos] = useState([]);
   const [eventoSeleccionado, setEventoSeleccionado] = useState(null);
   const [tiposPrecio, setTiposPrecio] = useState([]);
@@ -619,7 +620,7 @@ const Espacio = () => {
           width: m.ancho !== null && m.ancho !== undefined ? m.ancho : 24,
           height: m.alto !== null && m.alto !== undefined ? m.alto : 24,
           numero_mesa: m.numero_mesa,
-          capacidad_sillas: m.capacidad_sillas,
+          capacidad_sillas: m.capacidad_sillas || 4, // Valor por defecto si no tiene capacidad_sillas
           tipo_precio_id: m.tipo_precio_id,
           area_id: m.area_id || null
         }));
@@ -1317,8 +1318,13 @@ const Espacio = () => {
       }
     });
 
-    // Detectar asientos
+    // Detectar SOLO asientos individuales (NO sillas de mesas)
     asientos.forEach(asiento => {
+      // Excluir sillas de mesas (asientos con mesa_id)
+      if (asiento.mesa_id) {
+        return; // No incluir sillas de mesas en la selección
+      }
+      
       const asientoX = asiento.x || 50;
       const asientoY = asiento.y || 50;
       if (asientoX >= minX && asientoX <= maxX && asientoY >= minY && asientoY <= maxY) {
@@ -1905,8 +1911,26 @@ const Espacio = () => {
   };
 
   const limpiarZonaAsientos = () => {
+    // Solo eliminar asientos individuales (sin mesa_id) que fueron generados automáticamente
+    // Las sillas de mesas (con mesa_id) NO deben eliminarse
     setZonaAsientos(null);
-    setAsientos(asientos.filter(a => a.id && a.id < 1000000));
+    setAsientos(asientos.filter(a => {
+      // Mantener todos los asientos que tienen mesa_id (sillas de mesas)
+      if (a.mesa_id) {
+        return true;
+      }
+      // Mantener asientos que no son temporales (ya guardados en BD)
+      if (a.id && typeof a.id === 'number' && a.id < 1000000) {
+        return true;
+      }
+      // Mantener asientos individuales creados manualmente (no de zona automática)
+      // Los asientos de zona automática tienen IDs como "temp_asiento_..."
+      if (typeof a.id === 'string' && a.id.startsWith('temp_asiento_')) {
+        return false; // Eliminar estos (son de zona automática)
+      }
+      // Mantener el resto
+      return true;
+    }));
   };
 
   const eliminarArea = (id) => {
@@ -1978,8 +2002,13 @@ const Espacio = () => {
     const minY = area.y;
     const maxY = area.y + area.height;
 
-    // Detectar asientos dentro del área
+    // Detectar SOLO asientos individuales dentro del área (NO sillas de mesas)
     asientos.forEach(asiento => {
+      // Excluir sillas de mesas (asientos con mesa_id)
+      if (asiento.mesa_id) {
+        return; // No incluir sillas de mesas
+      }
+      
       const asientoX = asiento.x || 50;
       const asientoY = asiento.y || 50;
       if (asientoX >= minX && asientoX <= maxX && asientoY >= minY && asientoY <= maxY) {
@@ -2165,6 +2194,13 @@ const Espacio = () => {
       // Guardar mesas primero
       const mesasGuardadas = [];
       for (const mesa of mesas) {
+        // Validar que la mesa tenga capacidad_sillas válida
+        if (!mesa.capacidad_sillas || mesa.capacidad_sillas < 1) {
+          console.error('Mesa sin capacidad_sillas válida:', mesa);
+          showAlert(`La mesa M${mesa.numero_mesa} no tiene un número válido de sillas. Debe tener al menos 1 silla.`, { type: 'error' });
+          continue; // Saltar esta mesa y continuar con las demás
+        }
+
         // Detectar en qué área está la mesa
         const areaEncontrada = detectarAreaEnPosicion(mesa.x + mesa.width / 2, mesa.y + mesa.height / 2);
         let areaId = null;
@@ -2175,7 +2211,7 @@ const Espacio = () => {
         const response = await api.post('/mesas', {
           evento_id: eventoSeleccionado.id,
           numero_mesa: mesa.numero_mesa,
-          capacidad_sillas: mesa.capacidad_sillas,
+          capacidad_sillas: parseInt(mesa.capacidad_sillas) || 1, // Asegurar que sea un número entero válido
           tipo_precio_id: mesa.tipo_precio_id,
           posicion_x: Math.round(mesa.x),
           posicion_y: Math.round(mesa.y),

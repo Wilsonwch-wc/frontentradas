@@ -29,6 +29,7 @@ const Reportes = () => {
   const [eventos, setEventos] = useState([]);
   const [eventoSeleccionado, setEventoSeleccionado] = useState('');
   const [reporte, setReporte] = useState(null);
+  const [estadisticas, setEstadisticas] = useState(null);
   const [loadingEventos, setLoadingEventos] = useState(true);
   const [loadingReporte, setLoadingReporte] = useState(false);
   const [error, setError] = useState('');
@@ -75,16 +76,28 @@ const Reportes = () => {
     setLoadingReporte(true);
     setError('');
     try {
-      const response = await api.get(`/reportes/evento/${eventoId}`);
-      if (response.data.success) {
-        setReporte(response.data.data);
+      // Cargar reporte y estadísticas en paralelo
+      const [reporteResponse, estadisticasResponse] = await Promise.all([
+        api.get(`/reportes/evento/${eventoId}`),
+        api.get(`/compras/entradas-escaneadas?evento_id=${eventoId}`)
+      ]);
+
+      if (reporteResponse.data.success) {
+        setReporte(reporteResponse.data.data);
       } else {
         setReporte(null);
-        setError(response.data.message || 'No se pudo obtener el reporte');
+        setError(reporteResponse.data.message || 'No se pudo obtener el reporte');
+      }
+
+      if (estadisticasResponse.data.success) {
+        setEstadisticas(estadisticasResponse.data.data.estadisticas);
+      } else {
+        setEstadisticas(null);
       }
     } catch (err) {
       console.error('Error al cargar reporte:', err);
       setReporte(null);
+      setEstadisticas(null);
       setError(err.response?.data?.message || 'Error al obtener el reporte');
     } finally {
       setLoadingReporte(false);
@@ -255,6 +268,138 @@ const Reportes = () => {
                 </span>
               </div>
             </div>
+
+            {/* Estadísticas de ventas y disponibilidad */}
+            {estadisticas && (
+              <div className="estadisticas-ventas">
+                <h3>Estadísticas de Ventas y Disponibilidad</h3>
+                <div className="estadisticas-grid">
+                  {/* Para eventos generales */}
+                  {estadisticas.tipo_evento === 'general' && estadisticas.generales && (
+                    <div className="stat-card-detail">
+                      <h4>Entradas Generales</h4>
+                      <div className="stat-row">
+                        <span>Límite total:</span>
+                        <strong>{estadisticas.generales.limite_total !== null ? estadisticas.generales.limite_total : 'Sin límite'}</strong>
+                      </div>
+                      <div className="stat-row">
+                        <span>Vendidas:</span>
+                        <strong className="text-primary">{estadisticas.generales.vendidas}</strong>
+                      </div>
+                      <div className="stat-row">
+                        <span>Disponibles:</span>
+                        <strong className={estadisticas.generales.disponibles !== null && estadisticas.generales.disponibles < 10 ? 'text-warning' : 'text-success'}>
+                          {estadisticas.generales.disponibles !== null ? estadisticas.generales.disponibles : '-'}
+                        </strong>
+                      </div>
+                      <div className="stat-row">
+                        <span>Escaneadas:</span>
+                        <strong className="text-info">{estadisticas.generales.escaneadas}</strong>
+                      </div>
+                      {estadisticas.generales.limite_total !== null && (
+                        <div className="stat-progress">
+                          <div className="progress-bar">
+                            <div 
+                              className="progress-fill" 
+                              style={{ width: `${Math.min(100, (estadisticas.generales.vendidas / estadisticas.generales.limite_total) * 100)}%` }}
+                            ></div>
+                          </div>
+                          <span className="progress-text">
+                            {Math.round((estadisticas.generales.vendidas / estadisticas.generales.limite_total) * 100)}% vendidas
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Para eventos especiales */}
+                  {estadisticas.tipo_evento === 'especial' && (
+                    <>
+                      {estadisticas.asientos && (
+                        <div className="stat-card-detail">
+                          <h4>Asientos Individuales</h4>
+                          <div className="stat-row">
+                            <span>Total disponibles:</span>
+                            <strong>{estadisticas.asientos.limite_total !== null ? estadisticas.asientos.limite_total : '-'}</strong>
+                          </div>
+                          <div className="stat-row">
+                            <span>Vendidos:</span>
+                            <strong className="text-primary">{estadisticas.asientos.vendidas}</strong>
+                          </div>
+                          <div className="stat-row">
+                            <span>Disponibles:</span>
+                            <strong className={estadisticas.asientos.disponibles !== null && estadisticas.asientos.disponibles < 10 ? 'text-warning' : 'text-success'}>
+                              {estadisticas.asientos.disponibles !== null ? estadisticas.asientos.disponibles : '-'}
+                            </strong>
+                          </div>
+                          <div className="stat-row">
+                            <span>Escaneados:</span>
+                            <strong className="text-info">{estadisticas.asientos.escaneadas}</strong>
+                          </div>
+                        </div>
+                      )}
+
+                      {estadisticas.mesas && (
+                        <>
+                          <div className="stat-card-detail">
+                            <h4>Mesas Completas</h4>
+                            <div className="stat-row">
+                              <span>Total disponibles:</span>
+                              <strong>{estadisticas.mesas.limite_total !== null ? estadisticas.mesas.limite_total : '-'}</strong>
+                            </div>
+                            <div className="stat-row">
+                              <span>Vendidas:</span>
+                              <strong className="text-primary">{estadisticas.mesas.vendidas}</strong>
+                            </div>
+                            <div className="stat-row">
+                              <span>Disponibles:</span>
+                              <strong className={estadisticas.mesas.disponibles !== null && estadisticas.mesas.disponibles < 5 ? 'text-warning' : 'text-success'}>
+                                {estadisticas.mesas.disponibles !== null ? estadisticas.mesas.disponibles : '-'}
+                              </strong>
+                            </div>
+                            <div className="stat-row">
+                              <span>Escaneadas:</span>
+                              <strong className="text-info">{estadisticas.mesas.escaneadas}</strong>
+                            </div>
+                          </div>
+
+                          {estadisticas.mesas.sillas && (
+                            <div className="stat-card-detail">
+                              <h4>Sillas (de Mesas)</h4>
+                              <div className="stat-row">
+                                <span>Total disponibles:</span>
+                                <strong>{estadisticas.mesas.sillas.limite_total !== null ? estadisticas.mesas.sillas.limite_total : '-'}</strong>
+                              </div>
+                              <div className="stat-row">
+                                <span>Vendidas:</span>
+                                <strong className="text-primary">{estadisticas.mesas.sillas.vendidas}</strong>
+                              </div>
+                              <div className="stat-row">
+                                <span>Disponibles:</span>
+                                <strong className={estadisticas.mesas.sillas.disponibles !== null && estadisticas.mesas.sillas.disponibles < 10 ? 'text-warning' : 'text-success'}>
+                                  {estadisticas.mesas.sillas.disponibles !== null ? estadisticas.mesas.sillas.disponibles : '-'}
+                                </strong>
+                              </div>
+                              <div className="stat-row">
+                                <span>Escaneadas:</span>
+                                <strong className="text-info">{estadisticas.mesas.sillas.escaneadas}</strong>
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </>
+                  )}
+
+                  {/* Para eventos mixtos (vista general sin filtro) */}
+                  {estadisticas.tipo_evento === 'mixto' && (
+                    <div className="stat-card-detail">
+                      <p className="text-muted">Selecciona un evento específico para ver estadísticas detalladas</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             <div className="tabla-wrapper">
               <div className="tabla-header">

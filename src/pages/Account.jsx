@@ -93,7 +93,6 @@ const Account = () => {
               Ingresa con tus credenciales de administrador
             </p>
             <p style={{ fontSize: '0.85rem', color: '#95a5a6', marginTop: '0.5rem' }}>
-              Usuario: admin | Contraseña: admin123
             </p>
           </div>
 

@@ -271,4 +271,114 @@
   }
 }
 
+/* Estadísticas de ventas y disponibilidad */
+.estadisticas-ventas {
+  margin-top: 24px;
+  padding: 20px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.estadisticas-ventas h3 {
+  margin: 0 0 20px 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #344054;
+}
+
+.estadisticas-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.stat-card-detail {
+  padding: 16px;
+  background: #f9fafb;
+  border: 1px solid #e4e7ec;
+  border-radius: 10px;
+  transition: box-shadow 0.2s ease;
+}
+
+.stat-card-detail:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.stat-card-detail h4 {
+  margin: 0 0 12px 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #344054;
+  border-bottom: 2px solid #e4e7ec;
+  padding-bottom: 8px;
+}
+
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  font-size: 0.9rem;
+}
+
+.stat-row span:first-child {
+  color: #667085;
+  font-weight: 500;
+}
+
+.stat-row strong {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.text-primary {
+  color: #3b82f6;
+}
+
+.text-success {
+  color: #10b981;
+}
+
+.text-warning {
+  color: #f59e0b;
+}
+
+.text-info {
+  color: #06b6d4;
+}
+
+.text-muted {
+  color: #98a2b3;
+  font-size: 0.9rem;
+}
+
+.stat-progress {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #e4e7ec;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: #e4e7ec;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6, #2563eb);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.progress-text {
+  font-size: 0.85rem;
+  color: #667085;
+  font-weight: 500;
+}
+
 

@@ -163,6 +163,40 @@ const Usuarios = () => {
     }
   };
 
+  const handleBorrarTodosLosDatos = async () => {
+    const confirmado = await showConfirm(
+      '⚠️ ADVERTENCIA: Esta acción eliminará TODOS los datos de la base de datos excepto usuarios y roles.\n\n' +
+      'Esto incluye:\n' +
+      '• Todos los eventos\n' +
+      '• Todas las compras y entradas\n' +
+      '• Todos los clientes\n' +
+      '• Todos los asientos y mesas\n' +
+      '• Todos los pagos y escaneos\n\n' +
+      'Los usuarios y roles NO se eliminarán.\n\n' +
+      '¿Estás completamente seguro de que deseas continuar?',
+      {
+        type: 'warning',
+        title: 'Borrar Todos los Datos',
+        confirmText: 'Sí, borrar todo',
+        cancelText: 'Cancelar'
+      }
+    );
+
+    if (!confirmado) {
+      return;
+    }
+
+    try {
+      const response = await api.delete('/usuarios/datos/todos');
+      if (response.data.success) {
+        showAlert(response.data.message, { type: 'success' });
+      }
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || 'Error al borrar los datos';
+      showAlert(errorMessage, { type: 'error' });
+    }
+  };
+
   return (
     <div className="admin-page">
       <div className="admin-content">
@@ -171,13 +205,39 @@ const Usuarios = () => {
             <h1>Gestión de Usuarios</h1>
             <p>Administra los usuarios del sistema</p>
           </div>
-          <button className="btn-primary" onClick={abrirModalNuevo}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <line x1="12" y1="5" x2="12" y2="19"></line>
-              <line x1="5" y1="12" x2="19" y2="12"></line>
-            </svg>
-            Nuevo Usuario
-          </button>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+            <button
+              className="btn-danger"
+              onClick={handleBorrarTodosLosDatos}
+              style={{
+                backgroundColor: '#dc3545',
+                color: 'white',
+                border: 'none',
+                padding: '10px 20px',
+                borderRadius: '5px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: 'bold',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+              title="Eliminar todos los datos excepto usuarios y roles"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+              </svg>
+              Borrar Datos
+            </button>
+            <button className="btn-primary" onClick={abrirModalNuevo}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              Nuevo Usuario
+            </button>
+          </div>
         </div>
 
         {loading ? (
