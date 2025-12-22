@@ -30,11 +30,11 @@ const headerStyle = {
   marginBottom: '12px'
 };
 
-const Modal = ({ isOpen, onClose, title, children, tools }) => {
+const Modal = ({ isOpen, onClose, title, children, tools, closeOnOverlayClick = true }) => {
   if (!isOpen) return null;
 
   const handleOverlayClick = (e) => {
-    if (e.target === e.currentTarget) {
+    if (e.target === e.currentTarget && closeOnOverlayClick) {
       onClose?.();
     }
   };

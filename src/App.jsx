@@ -48,7 +48,7 @@ function App() {
           {/* Rutas públicas con Header y Footer */}
           <Route path="/" element={<PublicLayout><Home /></PublicLayout>} />
           <Route path="/eventos" element={<PublicLayout><Eventos /></PublicLayout>} />
-          <Route path="/evento/:id" element={<PublicLayout><DetalleEvento /></PublicLayout>} />
+          <Route path="/evento/:slug" element={<PublicLayout><DetalleEvento /></PublicLayout>} />
           <Route path="/contacto" element={<PublicLayout><Contacto /></PublicLayout>} />
           <Route path="/login" element={<PublicLayout><Login /></PublicLayout>} />
           <Route path="/mi-informacion" element={<PublicLayout><MiInformacion /></PublicLayout>} />

@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import AdminHeader from '../../components/admin/AdminHeader';
 import AdminSidebar from '../../components/admin/AdminSidebar';
-import AdminFooter from '../../components/admin/AdminFooter';
 import { useAuth } from '../../context/AuthContext';
 import { Navigate } from 'react-router-dom';
 import './AdminLayout.css';
@@ -40,7 +39,6 @@ const AdminLayout = () => {
       <main className="admin-main">
         <Outlet />
       </main>
-      <AdminFooter />
     </div>
   );
 };

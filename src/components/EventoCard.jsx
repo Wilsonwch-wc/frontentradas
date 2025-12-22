@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { getServerBase } from '../api/base';
+import { generarSlug } from '../utils/slug';
 import './EventoCard.css';
 
 const serverBase = getServerBase();
@@ -21,15 +22,24 @@ const EventoCard = ({ evento }) => {
   };
 
   const formatearImagen = (imagen) => {
-    if (!imagen) return 'https://via.placeholder.com/400x300?text=Sin+Imagen';
+    if (!imagen) {
+      // SVG placeholder como data URI
+      return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxOCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPk5vIGhheSBpbWFnZW48L3RleHQ+PC9zdmc+';
+    }
     if (imagen.startsWith('http')) return imagen;
     return `${serverBase}${imagen}`;
+  };
+
+  const getEventoUrl = () => {
+    // Generar slug desde el título
+    const slug = generarSlug(evento.titulo);
+    return `/evento/${slug}`;
   };
 
   return (
     <div 
       className="evento-card"
-      onClick={() => navigate(`/evento/${evento.id}`)}
+      onClick={() => navigate(getEventoUrl())}
     >
       <div className="evento-card-image-container">
         <img 
@@ -37,7 +47,7 @@ const EventoCard = ({ evento }) => {
           alt={evento.titulo}
           className="evento-card-image"
           onError={(e) => {
-            e.target.src = 'https://via.placeholder.com/400x300?text=Sin+Imagen';
+            e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxOCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPk5vIGhheSBpbWFnZW48L3RleHQ+PC9zdmc+';
           }}
         />
         {evento.es_nuevo === 1 && (

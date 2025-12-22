@@ -13,8 +13,17 @@ export const getServerBase = () => {
     return envServer;
   }
 
-  // Si no hay variable de entorno, usar ruta relativa para producción
-  // Las imágenes/archivos estáticos se servirán desde el mismo dominio
+  // Detectar si estamos en desarrollo local
+  const isLocalhost = window.location.hostname === 'localhost' || 
+                      window.location.hostname === '127.0.0.1' ||
+                      window.location.hostname === '';
+  
+  if (isLocalhost) {
+    // En desarrollo local, usar el backend en puerto 5000
+    return 'http://localhost:5000';
+  }
+
+  // En producción, usar ruta relativa (las imágenes se servirán desde el mismo dominio)
   return '';
 };
 

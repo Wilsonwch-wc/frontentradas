@@ -8,7 +8,7 @@ const serverBase = getServerBase();
 const apiBase = getApiBase();
 
 const DetalleEvento = () => {
-  const { id } = useParams();
+  const { slug } = useParams();
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
   const [evento, setEvento] = useState(null);
@@ -16,12 +16,12 @@ const DetalleEvento = () => {
 
   useEffect(() => {
     cargarEvento();
-  }, [id]);
+  }, [slug]);
 
   const cargarEvento = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${apiBase}/eventos-public/${id}`);
+      const response = await fetch(`${apiBase}/eventos-public/${slug}`);
       const data = await response.json();
       
       if (data.success) {
@@ -52,10 +52,11 @@ const DetalleEvento = () => {
   };
 
   const handleComprar = () => {
+    if (!evento) return;
     if (isAuthenticated()) {
-      navigate(`/compra/${id}`);
+      navigate(`/compra/${evento.id}`);
     } else {
-      navigate('/login', { state: { from: `/compra/${id}` } });
+      navigate('/login', { state: { from: `/compra/${evento.id}` } });
     }
   };
 
@@ -113,11 +114,11 @@ const DetalleEvento = () => {
           <div className="detalle-col-izq">
             <div className="detalle-imagen-container">
               <img 
-                src={evento.imagen || 'https://via.placeholder.com/600x400?text=Sin+Imagen'} 
+                src={evento.imagen || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAwIiBoZWlnaHQ9IjQwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIyMCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPk5vIGhheSBpbWFnZW48L3RleHQ+PC9zdmc+'} 
                 alt={evento.titulo}
                 className="detalle-imagen"
                 onError={(e) => {
-                  e.target.src = 'https://via.placeholder.com/600x400?text=Sin+Imagen';
+                  e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAwIiBoZWlnaHQ9IjQwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIyMCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPk5vIGhheSBpbWFnZW48L3RleHQ+PC9zdmc+';
                 }}
               />
               {evento.es_nuevo === 1 && (

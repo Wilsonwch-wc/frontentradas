@@ -150,6 +150,85 @@ const Compras = () => {
   };
 
 
+  const abrirChatWhatsApp = (telefono) => {
+    if (!telefono) {
+      showAlert('No hay número de teléfono disponible', { type: 'warning' });
+      return;
+    }
+
+    // Limpiar el número (remover espacios, guiones, paréntesis, etc.)
+    const numeroLimpio = telefono.replace(/[\s\-\(\)]/g, '');
+    
+    // Si el número no empieza con el código de país, agregar código por defecto (puedes ajustar según tu país)
+    // Para Bolivia sería +591, pero mejor dejamos que el usuario use el formato completo
+    // Formato: https://wa.me/[código país][número sin el 0 inicial]
+    // Ejemplo: +591 70012345 -> https://wa.me/59170012345
+    
+    const url = `https://wa.me/${numeroLimpio}`;
+    window.open(url, '_blank');
+  };
+
+  const descargarPDFBoleto = async (compraId) => {
+    try {
+      const response = await api.get(`/compras/${compraId}/pdf`, {
+        responseType: 'blob' // Importante para descargar el archivo
+      });
+
+      // Crear un blob del PDF
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      
+      // Crear un enlace temporal y hacer clic para descargar
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `boleto-${compraSeleccionada?.codigo_unico || compraId}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      
+      // Limpiar
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      showAlert('PDF descargado exitosamente', { type: 'success' });
+    } catch (error) {
+      console.error('Error al descargar PDF:', error);
+      const errorMessage = error.response?.data?.message || 'Error al descargar el PDF del boleto';
+      showAlert(errorMessage, { type: 'error' });
+    }
+  };
+
+  const enviarPorEmail = async (compraId, email, nombreCliente) => {
+    if (!email) {
+      showAlert('No se encontró correo electrónico del cliente', { type: 'warning' });
+      return;
+    }
+
+    const confirmado = await showConfirm(`¿Enviar el PDF del boleto por correo electrónico a ${email}?`, { 
+      type: 'info',
+      title: 'Enviar por Email'
+    });
+    if (!confirmado) {
+      return;
+    }
+
+    try {
+      setReenviando(true);
+      const response = await api.post(`/compras/${compraId}/enviar-email`);
+      
+      if (response.data.success) {
+        showAlert(`Boleto enviado exitosamente por correo a ${response.data.email}`, { type: 'success' });
+      } else {
+        showAlert(response.data.message || 'Error al enviar el boleto por correo', { type: 'error' });
+      }
+    } catch (error) {
+      console.error('Error al enviar boleto por email:', error);
+      const errorMessage = error.response?.data?.message || 'Error al enviar el boleto por correo electrónico';
+      showAlert(errorMessage, { type: 'error' });
+    } finally {
+      setReenviando(false);
+    }
+  };
+
   const enviarPorMiWhatsApp = async (compraId, telefono, nombreCliente) => {
     if (!telefono) {
       showAlert('No se encontró número de teléfono del cliente', { type: 'warning' });
@@ -361,8 +440,62 @@ const Compras = () => {
                 <h3>Datos del Cliente</h3>
                 <div className="info-grid">
                   <div><strong>Nombre:</strong> {compraSeleccionada.cliente_nombre}</div>
-                  <div><strong>Email:</strong> {compraSeleccionada.cliente_email || 'N/A'}</div>
-                  <div><strong>Teléfono:</strong> {compraSeleccionada.cliente_telefono || 'N/A'}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                    <strong>Email:</strong> 
+                    <span>{compraSeleccionada.cliente_email || 'N/A'}</span>
+                    {compraSeleccionada.cliente_email && (
+                      <button
+                        onClick={() => enviarPorEmail(
+                          compraSeleccionada.id,
+                          compraSeleccionada.cliente_email,
+                          compraSeleccionada.cliente_nombre
+                        )}
+                        disabled={reenviando || eliminando}
+                        style={{
+                          padding: '6px 12px',
+                          backgroundColor: '#dc2626',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '5px',
+                          cursor: reenviando ? 'not-allowed' : 'pointer',
+                          fontSize: '13px',
+                          fontWeight: 'bold',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '5px',
+                          opacity: reenviando ? 0.6 : 1
+                        }}
+                        title="Enviar boleto por correo electrónico"
+                      >
+                        📧 {reenviando ? 'Enviando...' : 'ENVIAR POR EMAIL'}
+                      </button>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                    <strong>Teléfono:</strong> 
+                    <span>{compraSeleccionada.cliente_telefono || 'N/A'}</span>
+                    {compraSeleccionada.cliente_telefono && (
+                      <button
+                        onClick={() => abrirChatWhatsApp(compraSeleccionada.cliente_telefono)}
+                        style={{
+                          padding: '6px 12px',
+                          backgroundColor: '#25D366',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '5px',
+                          cursor: 'pointer',
+                          fontSize: '13px',
+                          fontWeight: 'bold',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '5px'
+                        }}
+                        title="Abrir chat de WhatsApp con este número"
+                      >
+                        💬 ABRIR CHAT
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -424,17 +557,40 @@ const Compras = () => {
                   </>
                 )}
                 {compraSeleccionada.estado === 'PAGO_REALIZADO' && (
-                  <button
-                    onClick={() => enviarPorMiWhatsApp(
-                      compraSeleccionada.id, 
-                      compraSeleccionada.cliente_telefono,
-                      compraSeleccionada.cliente_nombre
-                    )}
-                    className="btn-whatsapp-web"
-                    disabled={reenviando || eliminando || !compraSeleccionada.cliente_telefono}
-                  >
-                    💬 Enviar por mi WhatsApp
-                  </button>
+                  <>
+                    <button
+                      onClick={() => descargarPDFBoleto(compraSeleccionada.id)}
+                      className="btn-descargar-pdf"
+                      style={{
+                        padding: '10px 20px',
+                        backgroundColor: '#dc2626',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '5px',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        fontWeight: 'bold',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        marginBottom: '10px'
+                      }}
+                      title="Descargar PDF del boleto"
+                    >
+                      📄 GENERAR BOLETOS PDF
+                    </button>
+                    <button
+                      onClick={() => enviarPorMiWhatsApp(
+                        compraSeleccionada.id, 
+                        compraSeleccionada.cliente_telefono,
+                        compraSeleccionada.cliente_nombre
+                      )}
+                      className="btn-whatsapp-web"
+                      disabled={reenviando || eliminando || !compraSeleccionada.cliente_telefono}
+                    >
+                      💬 Enviar por mi WhatsApp
+                    </button>
+                  </>
                 )}
                 <button
                   onClick={() => eliminarCompra(compraSeleccionada.id)}

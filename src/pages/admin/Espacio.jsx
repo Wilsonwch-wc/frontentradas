@@ -3,6 +3,7 @@ import api from '../../api/axios';
 import { useAlert } from '../../context/AlertContext';
 import './Espacio.css';
 import Modal from '../../components/Modal.jsx';
+import ModalInput from '../../components/ModalInput.jsx';
 
 const Espacio = () => {
   const [eventos, setEventos] = useState([]);
@@ -32,6 +33,42 @@ const Espacio = () => {
   
   // Configuración de área
   const [nombreArea, setNombreArea] = useState(''); // Nombre de la nueva área
+  const [mostrarModalNombreArea, setMostrarModalNombreArea] = useState(false); // Controlar modal de nombre de área
+  const [areaPendiente, setAreaPendiente] = useState(null); // Área dibujada esperando nombre
+
+  // Handler para confirmar nombre del área
+  const handleConfirmarNombreArea = (nombre) => {
+    if (areaPendiente && nombre && nombre.trim()) {
+      const nuevaArea = {
+        id: `temp_area_${Date.now()}`,
+        nombre: nombre.trim(),
+        x: areaPendiente.x,
+        y: areaPendiente.y,
+        width: areaPendiente.width,
+        height: areaPendiente.height,
+        color: '#CCCCCC'
+      };
+      setAreas([...areas, nuevaArea]);
+      setNombreArea(nombre.trim());
+      setAreaPendiente(null);
+      setCurrentElement(null);
+      setMostrarModalNombreArea(false); // Cerrar el modal
+      dibujarCanvas(); // Redibujar para mostrar el área
+    } else {
+      // Si cancela, limpiar el preview
+      setAreaPendiente(null);
+      setCurrentElement(null);
+      setMostrarModalNombreArea(false); // Cerrar el modal
+      dibujarCanvas(); // Redibujar para limpiar el preview
+    }
+  };
+
+  const handleCancelarNombreArea = () => {
+    setAreaPendiente(null);
+    setCurrentElement(null);
+    setMostrarModalNombreArea(false); // Cerrar el modal
+    dibujarCanvas(); // Redibujar para limpiar el preview
+  };
   
   // Configuración de generación automática
   const [cantidadAsientos, setCantidadAsientos] = useState(10);
@@ -1834,28 +1871,10 @@ const Espacio = () => {
     if (currentElement && modo === 'area') {
       // Solo pedir el nombre si el área tiene un tamaño mínimo (más de 10 píxeles)
       if (currentElement.width > 10 && currentElement.height > 10) {
-        // Pedir el nombre del área después de dibujarla
-        const nombre = prompt('Ingresa el nombre del área (Ej: PALCO, VIP, Balcón...):');
-        
-        if (nombre && nombre.trim()) {
-          // Confirmar área con el nombre proporcionado
-          const nuevaArea = {
-            id: `temp_area_${Date.now()}`,
-            nombre: nombre.trim(),
-            x: currentElement.x,
-            y: currentElement.y,
-            width: currentElement.width,
-            height: currentElement.height,
-            color: '#CCCCCC'
-          };
-          setAreas([...areas, nuevaArea]);
-          // Actualizar el estado del nombre para mostrar en el input si está visible
-          setNombreArea(nombre.trim());
-          dibujarCanvas(); // Redibujar para mostrar el área
-        } else {
-          // Si el usuario cancela o no proporciona nombre, no guardar el área
-          dibujarCanvas(); // Redibujar para limpiar el preview
-        }
+        // Guardar el área pendiente y mostrar el modal
+        setAreaPendiente(currentElement);
+        setMostrarModalNombreArea(true);
+        dibujarCanvas(); // Redibujar para mantener el preview
       } else {
         // Si el área es muy pequeña, simplemente limpiar el preview sin pedir nombre
         dibujarCanvas(); // Redibujar para limpiar el preview
@@ -2573,6 +2592,7 @@ const Espacio = () => {
           <Modal
             isOpen={mostrarCanvasAmpliado}
             onClose={() => setMostrarCanvasAmpliado(false)}
+            closeOnOverlayClick={!isDrawing}
             title="Dibujo ampliado"
             tools={
               <>
@@ -3236,6 +3256,16 @@ const Espacio = () => {
           </div>
         </div>
       )}
+
+      {/* Modal para ingresar nombre del área */}
+      <ModalInput
+        isOpen={mostrarModalNombreArea}
+        onClose={handleCancelarNombreArea}
+        onConfirm={handleConfirmarNombreArea}
+        title="Nueva Área"
+        message="Ingresa el nombre del área"
+        placeholder="Ej: PALCO, VIP, Balcón..."
+      />
     </div>
   );
 };

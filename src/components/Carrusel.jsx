@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getServerBase } from '../api/base';
+import { generarSlug } from '../utils/slug';
 import './Carrusel.css';
 
 const serverBase = getServerBase();
@@ -42,7 +43,10 @@ const Carrusel = ({ eventos = [] }) => {
   }
 
   const formatearImagen = (imagen) => {
-    if (!imagen) return 'https://via.placeholder.com/1200x600?text=Sin+Imagen';
+    if (!imagen) {
+      // SVG placeholder como data URI
+      return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwMCIgaGVpZ2h0PSI2MDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0iI2RkZCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMjQiIGZpbGw9IiM5OTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5ObyBoYXkgaW1hZ2VuPC90ZXh0Pjwvc3ZnPg==';
+    }
     if (imagen.startsWith('http')) return imagen;
     return `${serverBase}${imagen}`;
   };
@@ -58,7 +62,10 @@ const Carrusel = ({ eventos = [] }) => {
         
         <div 
           className="carrusel-slide"
-          onClick={() => navigate(`/evento/${currentEvento.id}`)}
+          onClick={() => {
+            const slug = generarSlug(currentEvento.titulo);
+            navigate(`/evento/${slug}`);
+          }}
           style={{ cursor: 'pointer' }}
         >
           <div className="carrusel-badge">NUEVO</div>
@@ -67,7 +74,7 @@ const Carrusel = ({ eventos = [] }) => {
             alt={currentEvento.titulo}
             className="carrusel-image"
             onError={(e) => {
-              e.target.src = 'https://via.placeholder.com/1200x600?text=Sin+Imagen';
+              e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwMCIgaGVpZ2h0PSI2MDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0iI2RkZCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMjQiIGZpbGw9IiM5OTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5ObyBoYXkgaW1hZ2VuPC90ZXh0Pjwvc3ZnPg==';
             }}
           />
           <div className="carrusel-content">
