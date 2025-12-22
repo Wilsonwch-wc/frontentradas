@@ -7,18 +7,26 @@ const sanitizeEnv = (value) => {
 
 export const getServerBase = () => {
   const envServer = sanitizeEnv(import.meta.env.VITE_SERVER_BASE);
-  if (envServer) return envServer;
+  if (envServer) {
+    // Si es una ruta relativa (empieza con /), retornarla tal cual
+    if (envServer.startsWith('/')) return envServer;
+    return envServer;
+  }
 
-  const protocol = window.location.protocol || 'http:';
-  const host = window.location.hostname || 'localhost';
-  return `${protocol}//${host}:5000`;
+  // Si no hay variable de entorno, usar ruta relativa para producción
+  // Las imágenes/archivos estáticos se servirán desde el mismo dominio
+  return '';
 };
 
 export const getApiBase = () => {
   const envApi = sanitizeEnv(import.meta.env.VITE_API_BASE);
-  if (envApi) return envApi;
+  if (envApi) {
+    // Si es una ruta relativa (empieza con /), retornarla tal cual
+    if (envApi.startsWith('/')) return envApi;
+    return envApi;
+  }
 
-  const serverBase = getServerBase();
-  return `${serverBase}/api`;
+  // Si no hay variable de entorno, usar ruta relativa
+  return '/api';
 };
 
