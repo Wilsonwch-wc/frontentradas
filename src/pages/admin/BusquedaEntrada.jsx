@@ -92,33 +92,62 @@ const BusquedaEntrada = () => {
   const buscarCodigoEscaneoDesdeCompra = async (compra, index = 0) => {
     let codigoEscaneo = null;
     
+    console.log('🔍 Buscando código de escaneo en compra:', { 
+      compra_id: compra.id, 
+      index,
+      tieneAsientos: !!compra.asientos?.length,
+      tieneMesas: !!compra.mesas?.length,
+      tieneEntradasGenerales: !!compra.entradas_generales?.length
+    });
+    
     // Si tiene asientos y el index corresponde a un asiento
-    if (compra.asientos && compra.asientos.length > index) {
-      const asiento = compra.asientos[index];
+    if (compra.asientos && compra.asientos.length > 0) {
+      const asientoIndex = index < compra.asientos.length ? index : 0;
+      const asiento = compra.asientos[asientoIndex];
       if (asiento.codigo_escaneo) {
         codigoEscaneo = asiento.codigo_escaneo;
+        console.log('✅ Código encontrado en asientos:', codigoEscaneo);
       }
     }
     
     // Si no encontró en asientos, buscar en mesas
     if (!codigoEscaneo && compra.mesas && compra.mesas.length > 0) {
-      const mesa = compra.mesas[index < compra.mesas.length ? index : 0];
+      const mesaIndex = index < compra.mesas.length ? index : 0;
+      const mesa = compra.mesas[mesaIndex];
       if (mesa.codigo_escaneo) {
         codigoEscaneo = mesa.codigo_escaneo;
+        console.log('✅ Código encontrado en mesas:', codigoEscaneo);
       }
     }
     
-    // Si aún no encontró, buscar en entradas generales (necesitaría agregar esto al response)
-    // Por ahora, si no encuentra, usar el primer código disponible
+    // Si no encontró en asientos ni mesas, buscar en entradas generales
+    if (!codigoEscaneo && compra.entradas_generales && compra.entradas_generales.length > 0) {
+      const entradaIndex = index < compra.entradas_generales.length ? index : 0;
+      const entradaGeneral = compra.entradas_generales[entradaIndex];
+      if (entradaGeneral.codigo_escaneo) {
+        codigoEscaneo = entradaGeneral.codigo_escaneo;
+        console.log('✅ Código encontrado en entradas generales:', codigoEscaneo);
+      }
+    }
+    
+    // Si aún no encontró, usar el primer código disponible (fallback)
     if (!codigoEscaneo && compra.asientos && compra.asientos.length > 0) {
       codigoEscaneo = compra.asientos[0].codigo_escaneo;
+      console.log('⚠️ Usando primer asiento como fallback:', codigoEscaneo);
     }
     
     if (!codigoEscaneo && compra.mesas && compra.mesas.length > 0) {
       codigoEscaneo = compra.mesas[0].codigo_escaneo;
+      console.log('⚠️ Usando primera mesa como fallback:', codigoEscaneo);
+    }
+    
+    if (!codigoEscaneo && compra.entradas_generales && compra.entradas_generales.length > 0) {
+      codigoEscaneo = compra.entradas_generales[0].codigo_escaneo;
+      console.log('⚠️ Usando primera entrada general como fallback:', codigoEscaneo);
     }
     
     if (!codigoEscaneo) {
+      console.error('❌ No se encontró código de escaneo en la compra');
       throw new Error('No se encontró código de escaneo en la compra');
     }
     
