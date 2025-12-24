@@ -205,65 +205,105 @@ const BusquedaEntrada = () => {
     }
   };
 
-  const iniciarEscanerQR = async () => {
-    try {
-      setError('');
-      setEscanearQR(true);
-      
-      const html5QrCode = new Html5Qrcode(qrCodeRegionId);
-      html5QrCodeRef.current = html5QrCode;
-
-      await html5QrCode.start(
-        { facingMode: 'environment' }, // Cámara trasera
-        {
-          fps: 10,
-          qrbox: { width: 250, height: 250 }
-        },
-        (decodedText, decodedResult) => {
-          console.log('📷 QR escaneado:', decodedText);
-          
-          // Detener el escáner después de escanear exitosamente
-          detenerEscanerQR();
-          
-          // Procesar el código QR
-          procesarCodigoQR(decodedText).catch(err => {
-            console.error('Error al procesar QR:', err);
-            setError(`❌ ${err.message}`);
-            setEscanearQR(false);
-          });
-        },
-        (errorMessage) => {
-          // Ignorar errores de escaneo continuo
-        }
-      );
-    } catch (err) {
-      console.error('Error al iniciar escáner QR:', err);
-      setError('❌ Error al acceder a la cámara. Por favor, verifica los permisos.');
-      setEscanearQR(false);
-    }
+  const iniciarEscanerQR = () => {
+    setError('');
+    setEscanearQR(true);
+    // La inicialización real se hace en useEffect cuando el elemento está disponible
   };
 
   const detenerEscanerQR = async () => {
     if (html5QrCodeRef.current) {
       try {
-        await html5QrCodeRef.current.stop();
+        await html5QrCodeRef.current.stop().catch(err => {
+          console.warn('Error al detener (puede estar ya detenido):', err);
+        });
         html5QrCodeRef.current.clear();
-        html5QrCodeRef.current = null;
       } catch (err) {
-        console.error('Error al detener escáner:', err);
+        console.error('Error al limpiar escáner:', err);
+      } finally {
+        html5QrCodeRef.current = null;
       }
     }
     setEscanearQR(false);
   };
 
   useEffect(() => {
-    // Limpiar al desmontar
+    // Inicializar escáner cuando escanearQR se active y el elemento esté disponible
+    if (escanearQR && !html5QrCodeRef.current) {
+      const initializeScanner = async () => {
+        try {
+          // Esperar a que el elemento se renderice
+          await new Promise(resolve => setTimeout(resolve, 200));
+          
+          const element = document.getElementById(qrCodeRegionId);
+          if (!element) {
+            setError('❌ No se pudo encontrar el elemento del escáner. Por favor, intenta nuevamente.');
+            setEscanearQR(false);
+            return;
+          }
+
+          const html5QrCode = new Html5Qrcode(qrCodeRegionId);
+          html5QrCodeRef.current = html5QrCode;
+
+          try {
+            await html5QrCode.start(
+              { facingMode: 'environment' }, // Cámara trasera
+              {
+                fps: 10,
+                qrbox: { width: 250, height: 250 },
+                aspectRatio: 1.0
+              },
+              async (decodedText, decodedResult) => {
+                console.log('📷 QR escaneado:', decodedText);
+                
+                // Detener el escáner después de escanear exitosamente
+                await detenerEscanerQR();
+                
+                // Procesar el código QR
+                try {
+                  await procesarCodigoQR(decodedText);
+                } catch (err) {
+                  console.error('Error al procesar QR:', err);
+                  setError(`❌ ${err.message}`);
+                }
+              },
+              (errorMessage) => {
+                // Ignorar errores de escaneo continuo (son normales mientras busca)
+              }
+            );
+          } catch (cameraError) {
+            console.error('Error de cámara:', cameraError);
+            setEscanearQR(false);
+            if (cameraError.message && cameraError.message.includes('NotAllowedError')) {
+              setError('❌ Permisos de cámara denegados. Por favor, permite el acceso a la cámara en la configuración del navegador.');
+            } else if (cameraError.message && cameraError.message.includes('NotFoundError')) {
+              setError('❌ No se encontró ninguna cámara. Por favor, conecta una cámara y vuelve a intentar.');
+            } else if (cameraError.message && cameraError.message.includes('NotReadableError')) {
+              setError('❌ La cámara está siendo usada por otra aplicación. Por favor, cierra otras aplicaciones que usen la cámara.');
+            } else {
+              setError(`❌ Error al acceder a la cámara: ${cameraError.message || 'Error desconocido'}`);
+            }
+            html5QrCodeRef.current = null;
+          }
+        } catch (err) {
+          console.error('Error al inicializar escáner:', err);
+          setError(`❌ ${err.message || 'Error al inicializar el escáner QR'}`);
+          setEscanearQR(false);
+          html5QrCodeRef.current = null;
+        }
+      };
+
+      initializeScanner();
+    }
+
+    // Limpiar al desmontar o cuando escanearQR se desactiva
     return () => {
-      if (html5QrCodeRef.current) {
+      if (!escanearQR && html5QrCodeRef.current) {
         detenerEscanerQR();
       }
     };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [escanearQR]);
 
   return (
     <div className="admin-page busqueda-entrada-page">
@@ -319,10 +359,25 @@ const BusquedaEntrada = () => {
             {/* Área del escáner QR */}
             {escanearQR && (
               <div style={{ marginTop: '20px', textAlign: 'center' }}>
-                <div id={qrCodeRegionId} style={{ width: '100%', maxWidth: '500px', margin: '0 auto' }}></div>
+                <div 
+                  id={qrCodeRegionId} 
+                  style={{ 
+                    width: '100%', 
+                    maxWidth: '500px', 
+                    margin: '0 auto',
+                    minHeight: '300px'
+                  }}
+                ></div>
                 <p style={{ marginTop: '10px', color: '#666' }}>
                   Apunta la cámara hacia el código QR del boleto
                 </p>
+                <button
+                  onClick={detenerEscanerQR}
+                  className="btn-qr"
+                  style={{ marginTop: '10px' }}
+                >
+                  ⏹️ Detener Escaneo
+                </button>
               </div>
             )}
           </div>
