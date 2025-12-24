@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import api from '../../api/axios';
+import { getServerBase } from '../../api/base';
 import './Reportes.css';
 import './AdminLayout.css';
 
@@ -191,6 +192,39 @@ const Reportes = () => {
     return `https://wa.me/${tel}?text=${mensaje}`;
   };
 
+  const exportarReporte = async (formato) => {
+    if (!eventoSeleccionado) {
+      return;
+    }
+
+    try {
+      const response = await api.get(`/reportes/exportar/${eventoSeleccionado}?formato=${formato}`);
+      
+      if (response.data.success && response.data.data?.url) {
+        // El backend devuelve una URL relativa, construir la URL completa
+        const urlRelativa = response.data.data.url;
+        const serverBase = getServerBase();
+        const urlCompleta = serverBase ? `${serverBase}${urlRelativa}` : urlRelativa;
+        
+        const link = document.createElement('a');
+        link.href = urlCompleta;
+        
+        const eventoNombre = reporte?.evento?.titulo || 'reporte';
+        const extension = formato === 'pdf' ? 'pdf' : 'xlsx';
+        link.download = `reporte_${eventoNombre.replace(/[^a-z0-9]/gi, '_')}_${Date.now()}.${extension}`;
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } else {
+        alert('No se pudo generar el reporte. Por favor, intenta nuevamente.');
+      }
+    } catch (err) {
+      console.error('Error al exportar reporte:', err);
+      alert('Error al exportar el reporte. Por favor, intenta nuevamente.');
+    }
+  };
+
   return (
     <div className="admin-page reportes-page">
       <div className="admin-content">
@@ -230,6 +264,52 @@ const Reportes = () => {
           >
             {loadingReporte ? 'Actualizando...' : 'Actualizar'}
           </button>
+          {eventoSeleccionado && reporte && (
+            <>
+              <button
+                className="btn-export-excel"
+                onClick={() => exportarReporte('excel')}
+                disabled={loadingReporte}
+                style={{
+                  padding: '10px 20px',
+                  backgroundColor: '#28a745',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '5px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: 'bold',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+                title="Exportar a Excel"
+              >
+                📊 Excel
+              </button>
+              <button
+                className="btn-export-pdf"
+                onClick={() => exportarReporte('pdf')}
+                disabled={loadingReporte}
+                style={{
+                  padding: '10px 20px',
+                  backgroundColor: '#dc3545',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '5px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: 'bold',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+                title="Exportar a PDF"
+              >
+                📄 PDF
+              </button>
+            </>
+          )}
         </div>
 
         {error && <div className="mensaje-error">{error}</div>}
