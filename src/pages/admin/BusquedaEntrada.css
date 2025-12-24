@@ -91,6 +91,31 @@
   transform: none;
 }
 
+.btn-qr {
+  padding: 15px 30px;
+  background: #3498db;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  white-space: nowrap;
+}
+
+.btn-qr:hover:not(:disabled) {
+  background: #2980b9;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+}
+
+.btn-qr:disabled {
+  background: #95a5a6;
+  cursor: not-allowed;
+  transform: none;
+}
+
 .error-message {
   padding: 12px;
   background: #fee;

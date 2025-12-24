@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { Html5Qrcode } from 'html5-qrcode';
 import api from '../../api/axios';
 import { useAlert } from '../../context/AlertContext';
 import './BusquedaEntrada.css';
@@ -11,6 +12,9 @@ const BusquedaEntrada = () => {
   const [mostrarModal, setMostrarModal] = useState(false);
   const [datosEntrada, setDatosEntrada] = useState(null);
   const [tickeando, setTickeando] = useState(false);
+  const [escanearQR, setEscanearQR] = useState(false);
+  const qrCodeRegionId = 'qr-reader';
+  const html5QrCodeRef = useRef(null);
 
   const tickearEntrada = async () => {
     if (!datosEntrada) return;
@@ -45,27 +49,91 @@ const BusquedaEntrada = () => {
     }
   };
 
-  const buscarEntrada = async () => {
-    const codigoLimpio = codigo.trim();
+  const procesarCodigoQR = async (qrData) => {
+    try {
+      // Intentar parsear como JSON
+      const qrJson = JSON.parse(qrData);
+      console.log('📱 QR parseado:', qrJson);
+      
+      // El QR contiene 'codigo' que es el código único de la compra (ej: "ENT-1766583828542-9705")
+      if (qrJson.codigo) {
+        const index = qrJson.index !== undefined ? qrJson.index : 0;
+        return buscarEntradaPorCodigoUnico(qrJson.codigo, index);
+      }
+      
+      throw new Error('QR no contiene código de compra válido');
+    } catch (parseError) {
+      console.error('Error al parsear QR:', parseError);
+      // Si no es JSON, intentar como código de 5 dígitos directamente
+      if (/^\d{5}$/.test(qrData)) {
+        return buscarEntradaPorCodigoEscaneo(qrData);
+      }
+      throw new Error('QR no válido. Debe ser un código de 5 dígitos o un QR válido de entrada.');
+    }
+  };
+
+  const buscarEntradaPorCodigoUnico = async (codigoUnico, index = 0) => {
+    try {
+      console.log(`🔍 Buscando compra por código único: ${codigoUnico}, index: ${index}`);
+      
+      // Obtener la compra por código único
+      const compraResponse = await api.get(`/compras/codigo/${codigoUnico}`);
+      if (compraResponse.data.success) {
+        const compra = compraResponse.data.data;
+        return buscarCodigoEscaneoDesdeCompra(compra, index);
+      }
+      throw new Error('Compra no encontrada');
+    } catch (error) {
+      console.error('Error al buscar por código único:', error);
+      throw error;
+    }
+  };
+
+  const buscarCodigoEscaneoDesdeCompra = async (compra, index = 0) => {
+    let codigoEscaneo = null;
     
-    if (!codigoLimpio) {
-      setError('Por favor ingresa un código de escaneo');
-      return;
+    // Si tiene asientos y el index corresponde a un asiento
+    if (compra.asientos && compra.asientos.length > index) {
+      const asiento = compra.asientos[index];
+      if (asiento.codigo_escaneo) {
+        codigoEscaneo = asiento.codigo_escaneo;
+      }
     }
-
-    if (!/^\d{5}$/.test(codigoLimpio)) {
-      setError('El código debe ser de 5 dígitos');
-      return;
+    
+    // Si no encontró en asientos, buscar en mesas
+    if (!codigoEscaneo && compra.mesas && compra.mesas.length > 0) {
+      const mesa = compra.mesas[index < compra.mesas.length ? index : 0];
+      if (mesa.codigo_escaneo) {
+        codigoEscaneo = mesa.codigo_escaneo;
+      }
     }
+    
+    // Si aún no encontró, buscar en entradas generales (necesitaría agregar esto al response)
+    // Por ahora, si no encuentra, usar el primer código disponible
+    if (!codigoEscaneo && compra.asientos && compra.asientos.length > 0) {
+      codigoEscaneo = compra.asientos[0].codigo_escaneo;
+    }
+    
+    if (!codigoEscaneo && compra.mesas && compra.mesas.length > 0) {
+      codigoEscaneo = compra.mesas[0].codigo_escaneo;
+    }
+    
+    if (!codigoEscaneo) {
+      throw new Error('No se encontró código de escaneo en la compra');
+    }
+    
+    return buscarEntradaPorCodigoEscaneo(codigoEscaneo);
+  };
 
+  const buscarEntradaPorCodigoEscaneo = async (codigoEscaneo) => {
     setLoading(true);
     setError('');
     setDatosEntrada(null);
 
     try {
-      console.log('🔍 Buscando código:', codigoLimpio);
+      console.log('🔍 Buscando código:', codigoEscaneo);
       const response = await api.post('/compras/buscar-entrada', {
-        codigoEscaneo: codigoLimpio
+        codigoEscaneo: codigoEscaneo.toString().trim()
       });
 
       console.log('✅ Respuesta recibida:', response.data);
@@ -74,6 +142,10 @@ const BusquedaEntrada = () => {
         setDatosEntrada(response.data.data);
         setMostrarModal(true);
         setCodigo(''); // Limpiar input
+        // Detener el escáner QR si está activo
+        if (escanearQR) {
+          detenerEscanerQR();
+        }
       }
     } catch (error) {
       console.error('❌ Error al buscar:', error);
@@ -90,6 +162,22 @@ const BusquedaEntrada = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const buscarEntrada = async () => {
+    const codigoLimpio = codigo.trim();
+    
+    if (!codigoLimpio) {
+      setError('Por favor ingresa un código de escaneo');
+      return;
+    }
+
+    if (!/^\d{5}$/.test(codigoLimpio)) {
+      setError('El código debe ser de 5 dígitos');
+      return;
+    }
+
+    await buscarEntradaPorCodigoEscaneo(codigoLimpio);
   };
 
   const formatearFecha = (fecha) => {
@@ -117,6 +205,66 @@ const BusquedaEntrada = () => {
     }
   };
 
+  const iniciarEscanerQR = async () => {
+    try {
+      setError('');
+      setEscanearQR(true);
+      
+      const html5QrCode = new Html5Qrcode(qrCodeRegionId);
+      html5QrCodeRef.current = html5QrCode;
+
+      await html5QrCode.start(
+        { facingMode: 'environment' }, // Cámara trasera
+        {
+          fps: 10,
+          qrbox: { width: 250, height: 250 }
+        },
+        (decodedText, decodedResult) => {
+          console.log('📷 QR escaneado:', decodedText);
+          
+          // Detener el escáner después de escanear exitosamente
+          detenerEscanerQR();
+          
+          // Procesar el código QR
+          procesarCodigoQR(decodedText).catch(err => {
+            console.error('Error al procesar QR:', err);
+            setError(`❌ ${err.message}`);
+            setEscanearQR(false);
+          });
+        },
+        (errorMessage) => {
+          // Ignorar errores de escaneo continuo
+        }
+      );
+    } catch (err) {
+      console.error('Error al iniciar escáner QR:', err);
+      setError('❌ Error al acceder a la cámara. Por favor, verifica los permisos.');
+      setEscanearQR(false);
+    }
+  };
+
+  const detenerEscanerQR = async () => {
+    if (html5QrCodeRef.current) {
+      try {
+        await html5QrCodeRef.current.stop();
+        html5QrCodeRef.current.clear();
+        html5QrCodeRef.current = null;
+      } catch (err) {
+        console.error('Error al detener escáner:', err);
+      }
+    }
+    setEscanearQR(false);
+  };
+
+  useEffect(() => {
+    // Limpiar al desmontar
+    return () => {
+      if (html5QrCodeRef.current) {
+        detenerEscanerQR();
+      }
+    };
+  }, []);
+
   return (
     <div className="admin-page busqueda-entrada-page">
       <div className="admin-content">
@@ -128,7 +276,7 @@ const BusquedaEntrada = () => {
         <div className="busqueda-container">
           <div className="busqueda-input-section">
             <label className="label-codigo">
-              <strong>Código de Escaneo (5 dígitos):</strong>
+              <strong>Código de Escaneo (5 dígitos) o Escanear QR:</strong>
             </label>
             <div className="input-group-busqueda">
               <input
@@ -143,20 +291,38 @@ const BusquedaEntrada = () => {
                 onKeyPress={handleKeyPress}
                 className="input-codigo"
                 maxLength={5}
-                disabled={loading}
+                disabled={loading || escanearQR}
                 autoFocus
               />
               <button
                 onClick={buscarEntrada}
                 className="btn-buscar"
-                disabled={loading || codigo.trim().length !== 5}
+                disabled={loading || escanearQR || codigo.trim().length !== 5}
               >
                 {loading ? 'Buscando...' : '🔍 Buscar'}
+              </button>
+              <button
+                onClick={escanearQR ? detenerEscanerQR : iniciarEscanerQR}
+                className="btn-qr"
+                disabled={loading}
+                style={{ marginLeft: '10px' }}
+              >
+                {escanearQR ? '⏹️ Detener QR' : '📷 Escanear QR'}
               </button>
             </div>
             {error && (
               <div className="error-message">
                 {error}
+              </div>
+            )}
+            
+            {/* Área del escáner QR */}
+            {escanearQR && (
+              <div style={{ marginTop: '20px', textAlign: 'center' }}>
+                <div id={qrCodeRegionId} style={{ width: '100%', maxWidth: '500px', margin: '0 auto' }}></div>
+                <p style={{ marginTop: '10px', color: '#666' }}>
+                  Apunta la cámara hacia el código QR del boleto
+                </p>
               </div>
             )}
           </div>
