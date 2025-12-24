@@ -21,7 +21,8 @@ const BusquedaEntrada = () => {
         codigoEscaneo: datosEntrada.entrada.codigo_escaneo,
         tipo: datosEntrada.entrada.tipo,
         compra_asiento_id: datosEntrada.entrada.compra_asiento_id,
-        compra_mesa_id: datosEntrada.entrada.compra_mesa_id
+        compra_mesa_id: datosEntrada.entrada.compra_mesa_id,
+        compra_entrada_general_id: datosEntrada.entrada.compra_entrada_general_id
       });
 
       if (response.data.success) {
