@@ -1943,20 +1943,55 @@ const Espacio = () => {
       return;
     }
 
-    // Actualizar asientos seleccionados
-    const asientosSeleccionados = elementosSeleccionados.filter(sel => sel.type === 'asiento');
-    if (asientosSeleccionados.length > 0) {
-      setAsientos(asientos.map(a => {
-        const estaSeleccionado = asientosSeleccionados.some(sel => sel.id === a.id);
-        if (estaSeleccionado) {
+    let elementosActualizados = 0;
+
+    // Separar mesas y asientos seleccionados
+    const mesasSeleccionadas = elementosSeleccionados.filter(sel => sel.type === 'mesa');
+    const asientosIndividualesSeleccionados = elementosSeleccionados.filter(sel => sel.type === 'asiento');
+    const idsMesas = mesasSeleccionadas.map(sel => sel.id);
+    const idsAsientos = asientosIndividualesSeleccionados.map(sel => sel.id);
+
+    // Actualizar mesas seleccionadas
+    if (mesasSeleccionadas.length > 0) {
+      elementosActualizados += mesasSeleccionadas.length;
+      setMesas(prevMesas => prevMesas.map(m => {
+        const estaSeleccionada = idsMesas.includes(m.id);
+        if (estaSeleccionada) {
+          return { ...m, tipo_precio_id: tipoPrecioSeleccionado };
+        }
+        return m;
+      }));
+    }
+
+    // Actualizar asientos: tanto los asociados a mesas seleccionadas como los individuales seleccionados
+    // Combinamos ambas actualizaciones en una sola llamada para evitar conflictos
+    if (mesasSeleccionadas.length > 0 || asientosIndividualesSeleccionados.length > 0) {
+      if (asientosIndividualesSeleccionados.length > 0) {
+        elementosActualizados += asientosIndividualesSeleccionados.length;
+      }
+      
+      setAsientos(prevAsientos => prevAsientos.map(a => {
+        // Si la silla pertenece a una mesa seleccionada, actualizar su precio
+        if (a.mesa_id && idsMesas.includes(a.mesa_id)) {
+          return { ...a, tipo_precio_id: tipoPrecioSeleccionado };
+        }
+        // Si el asiento individual está seleccionado, actualizar su precio
+        if (!a.mesa_id && idsAsientos.includes(a.id)) {
           return { ...a, tipo_precio_id: tipoPrecioSeleccionado };
         }
         return a;
       }));
     }
 
+    // Limpiar selección
+    setElementosSeleccionados([]);
+
     // Redibujar canvas para mostrar nuevos colores
     dibujarCanvas();
+    
+    if (elementosActualizados > 0) {
+      showAlert(`Precio asignado a ${elementosActualizados} elemento(s)`, { type: 'success' });
+    }
   };
 
   const eliminarElementosSeleccionados = async () => {
@@ -2628,7 +2663,7 @@ const Espacio = () => {
           <Modal
             isOpen={mostrarCanvasAmpliado}
             onClose={() => setMostrarCanvasAmpliado(false)}
-            closeOnOverlayClick={!isDrawing}
+            closeOnOverlayClick={false}
             title="Dibujo ampliado"
             tools={
               <>

@@ -294,32 +294,87 @@ const Cartelera = () => {
         if (formData.tipo_evento === 'especial') {
           const tiposValidos = tiposPrecioForm.filter(tp => tp.tipo.trim() && tp.precio);
           
-          // Si estamos editando, eliminar tipos de precio existentes primero
           if (editingEvento) {
+            // Al editar, sincronizar tipos de precio: actualizar existentes y crear nuevos
             try {
-              const tiposExistentes = await api.get(`/tipos-precio/evento/${nuevoEventoId}`);
-              if (tiposExistentes.data.success && tiposExistentes.data.data.length > 0) {
-                for (const tipo of tiposExistentes.data.data) {
-                  await api.delete(`/tipos-precio/${tipo.id}`);
+              const tiposExistentesRes = await api.get(`/tipos-precio/evento/${nuevoEventoId}`);
+              const tiposExistentes = tiposExistentesRes.data.success ? tiposExistentesRes.data.data : [];
+              
+              // Mapear tipos existentes por índice para mantener el orden
+              const tiposProcesados = new Set();
+              
+              // Actualizar o crear tipos de precio según corresponda
+              for (let i = 0; i < tiposValidos.length; i++) {
+                const tipoPrecio = tiposValidos[i];
+                const tipoExistente = tiposExistentes[i]; // Usar índice para mapear (asumiendo orden similar)
+                
+                if (tipoExistente && !tiposProcesados.has(tipoExistente.id)) {
+                  // Actualizar el tipo existente si el nombre o precio cambió
+                  if (tipoExistente.nombre !== tipoPrecio.tipo.trim() || 
+                      parseFloat(tipoExistente.precio) !== parseFloat(tipoPrecio.precio)) {
+                    try {
+                      await api.put(`/tipos-precio/${tipoExistente.id}`, {
+                        nombre: tipoPrecio.tipo.trim(),
+                        precio: parseFloat(tipoPrecio.precio),
+                        activo: true
+                      });
+                    } catch (error) {
+                      console.error('Error al actualizar tipo de precio:', error);
+                    }
+                  }
+                  tiposProcesados.add(tipoExistente.id);
+                } else {
+                  // Crear nuevo tipo de precio
+                  try {
+                    await api.post('/tipos-precio', {
+                      evento_id: nuevoEventoId,
+                      nombre: tipoPrecio.tipo.trim(),
+                      precio: parseFloat(tipoPrecio.precio),
+                      descripcion: null,
+                      activo: true
+                    });
+                  } catch (error) {
+                    console.error('Error al crear tipo de precio:', error);
+                  }
+                }
+              }
+              
+              // Eliminar o desactivar tipos de precio que ya no están en el formulario
+              for (let i = tiposValidos.length; i < tiposExistentes.length; i++) {
+                const tipoExcedente = tiposExistentes[i];
+                if (!tiposProcesados.has(tipoExcedente.id)) {
+                  // Intentar eliminar primero (si no hay asientos)
+                  try {
+                    await api.delete(`/tipos-precio/${tipoExcedente.id}`);
+                  } catch (deleteError) {
+                    // Si falla la eliminación (hay asientos), marcarlo como inactivo
+                    try {
+                      await api.put(`/tipos-precio/${tipoExcedente.id}`, {
+                        activo: false
+                      });
+                    } catch (updateError) {
+                      console.error('Error al desactivar tipo de precio:', updateError);
+                    }
+                  }
                 }
               }
             } catch (error) {
-              console.error('Error al eliminar tipos de precio existentes:', error);
+              console.error('Error al sincronizar tipos de precio:', error);
             }
-          }
-          
-          // Crear los nuevos tipos de precio
-          for (const tipoPrecio of tiposValidos) {
-            try {
-              await api.post('/tipos-precio', {
-                evento_id: nuevoEventoId,
-                nombre: tipoPrecio.tipo.trim(),
-                precio: parseFloat(tipoPrecio.precio),
-                descripcion: null,
-                activo: true
-              });
-            } catch (error) {
-              console.error('Error al crear tipo de precio:', error);
+          } else {
+            // Al crear nuevo evento, simplemente crear los tipos de precio
+            for (const tipoPrecio of tiposValidos) {
+              try {
+                await api.post('/tipos-precio', {
+                  evento_id: nuevoEventoId,
+                  nombre: tipoPrecio.tipo.trim(),
+                  precio: parseFloat(tipoPrecio.precio),
+                  descripcion: null,
+                  activo: true
+                });
+              } catch (error) {
+                console.error('Error al crear tipo de precio:', error);
+              }
             }
           }
         }
