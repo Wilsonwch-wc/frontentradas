@@ -18,6 +18,8 @@ const Espacio = () => {
   const [elementoInfo, setElementoInfo] = useState(null); // Información del elemento seleccionado para mostrar
   const [mostrarModalResumen, setMostrarModalResumen] = useState(false); // Controlar modal de resumen
   const [resumenLayout, setResumenLayout] = useState(null); // Resumen del layout para el modal
+  const [mostrarModalProgreso, setMostrarModalProgreso] = useState(false); // Controlar modal de progreso
+  const [progresoGuardado, setProgresoGuardado] = useState({ mensaje: '', porcentaje: 0, detalles: [] });
   
   // Selección múltiple
   const [elementosSeleccionados, setElementosSeleccionados] = useState([]); // [{type: 'asiento', id}]
@@ -2173,20 +2175,43 @@ const Espacio = () => {
       return;
     }
 
+    // Inicializar progreso
+    setMostrarModalProgreso(true);
+    setProgresoGuardado({ mensaje: 'Iniciando guardado...', porcentaje: 0, detalles: [] });
+
     try {
+      // Renumerar elementos primero para calcular el total
+      const { asientos: asientosRenumerados } = renumerarElementos(0);
+      
+      // Calcular total de pasos para el progreso (aproximado)
+      // Estimamos pasos: evento (1) + mesas + asientos (cada 10) + areas
+      const pasosAsientos = Math.max(1, Math.ceil(asientosRenumerados.length / 10));
+      const totalPasos = 1 + mesas.length + pasosAsientos + areas.length;
+      let pasosProcesados = 0;
+
+      const actualizarProgreso = (mensaje, detalle = null) => {
+        pasosProcesados++;
+        const porcentaje = Math.round((pasosProcesados / totalPasos) * 100);
+        setProgresoGuardado(prev => ({
+          mensaje,
+          porcentaje: Math.min(porcentaje, 99), // Máximo 99% hasta que termine
+          detalles: detalle ? [...prev.detalles.slice(-19), detalle] : prev.detalles // Mantener solo los últimos 20
+        }));
+      };
+      
       // Obtener elementos existentes para eliminarlos antes de guardar los nuevos
+      actualizarProgreso('Obteniendo elementos existentes...');
       const [asientosExistentesRes, mesasExistentesRes] = await Promise.all([
         api.get(`/asientos/evento/${eventoSeleccionado.id}`),
         api.get(`/mesas/evento/${eventoSeleccionado.id}`)
       ]);
 
-      // Renumerar elementos desde 1 (siempre reiniciar contadores)
-      // Pasar 0 como inicial para que empiece desde 1
-      const { asientos: asientosRenumerados } = renumerarElementos(0);
+      // Los elementos ya están renumerados arriba
       
       // NO actualizar el estado todavía - guardar primero, luego recargar
       // Esto evita que las posiciones se pierdan durante el guardado
       // Guardar forma del espacio y escenario en el evento, y bloquear el layout
+      actualizarProgreso('Guardando configuración del evento...');
       await api.put(`/eventos/${eventoSeleccionado.id}`, {
         forma_espacio: forma,
         escenario_x: escenario?.x || null,
@@ -2227,8 +2252,10 @@ const Espacio = () => {
       }
 
       // Guardar mesas primero
+      actualizarProgreso(`Guardando ${mesas.length} mesa(s)...`);
       const mesasGuardadas = [];
-      for (const mesa of mesas) {
+      for (let i = 0; i < mesas.length; i++) {
+        const mesa = mesas[i];
         // Validar que la mesa tenga capacidad_sillas válida
         if (!mesa.capacidad_sillas || mesa.capacidad_sillas < 1) {
           console.error('Mesa sin capacidad_sillas válida:', mesa);
@@ -2257,12 +2284,15 @@ const Espacio = () => {
 
         if (response.data.success) {
           mesasGuardadas.push({ ...mesa, id: response.data.data.id });
+          actualizarProgreso(`Guardando mesa ${i + 1} de ${mesas.length}...`, `✅ Mesa ${mesa.numero_mesa} registrada`);
         }
       }
 
       // Guardar asientos con posiciones y área (usar los renumerados)
       // Ahora todos son nuevos, así que usamos POST
-      for (const asiento of asientosRenumerados) {
+      actualizarProgreso(`Guardando ${asientosRenumerados.length} asiento(s)...`);
+      for (let i = 0; i < asientosRenumerados.length; i++) {
+        const asiento = asientosRenumerados[i];
         // Detectar en qué área está el asiento
         const areaEncontrada = detectarAreaEnPosicion(asiento.x || 50, asiento.y || 50);
         // Solo usar area_id si es un número válido (no un ID temporal)
@@ -2297,9 +2327,16 @@ const Espacio = () => {
           posicion_y: asiento.y ? Math.round(asiento.y) : null,
           area_id: areaId
         });
+        
+        // Actualizar progreso cada 10 asientos o si es el último
+        if ((i + 1) % 10 === 0 || i === asientosRenumerados.length - 1) {
+          const tipoAsiento = asiento.mesa_id ? 'Silla' : 'Asiento';
+          actualizarProgreso(`Guardando asiento ${i + 1} de ${asientosRenumerados.length}...`, `✅ ${tipoAsiento} ${asiento.numero_asiento} registrado`);
+        }
       }
 
       // Guardar áreas
+      actualizarProgreso(`Guardando ${areas.length} área(s)...`);
       // Eliminar áreas existentes que no están en la lista actual
       const areasExistentes = await api.get(`/areas/evento/${eventoSeleccionado.id}`);
       if (areasExistentes.data.success) {
@@ -2313,7 +2350,8 @@ const Espacio = () => {
 
       // Guardar o actualizar áreas y actualizar IDs en el estado local
       const areasActualizadas = [];
-      for (const area of areas) {
+      for (let i = 0; i < areas.length; i++) {
+        const area = areas[i];
         if (!area.id || typeof area.id === 'string' || (typeof area.id === 'number' && area.id > 1000000)) {
           // Es un área nueva
           const response = await api.post('/areas', {
@@ -2327,9 +2365,11 @@ const Espacio = () => {
           });
           if (response.data.success) {
             areasActualizadas.push({ ...area, id: response.data.data.id });
+            actualizarProgreso(`Guardando área ${i + 1} de ${areas.length}...`, `✅ Área "${area.nombre}" registrada`);
           }
         } else {
           // Actualizar área existente
+          actualizarProgreso(`Actualizando área ${i + 1} de ${areas.length}...`);
           await api.put(`/areas/${area.id}`, {
             nombre: area.nombre,
             posicion_x: Math.round(area.x),
@@ -2339,6 +2379,7 @@ const Espacio = () => {
             color: area.color || '#CCCCCC'
           });
           areasActualizadas.push(area);
+          actualizarProgreso(`Área ${i + 1} de ${areas.length} actualizada...`, `✅ Área "${area.nombre}" actualizada`);
         }
       }
       // Actualizar áreas en el estado local con los IDs correctos
@@ -2349,12 +2390,19 @@ const Espacio = () => {
       // IMPORTANTE: Recargar el layout completo desde la base de datos al final
       // Esto asegura que los asientos tengan las posiciones exactas guardadas
       // y que los IDs estén correctamente sincronizados
+      actualizarProgreso('Recargando layout desde la base de datos...');
       await cargarLayout(eventoSeleccionado.id);
       
-      showAlert('Layout guardado exitosamente. El diseño ahora está bloqueado para edición.', { type: 'success' });
+      // Cerrar modal de progreso
+      setProgresoGuardado({ mensaje: '✅ Guardado completado exitosamente', porcentaje: 100, detalles: [] });
+      setTimeout(() => {
+        setMostrarModalProgreso(false);
+        showAlert('Layout guardado exitosamente. El diseño ahora está bloqueado para edición.', { type: 'success' });
+      }, 500);
       // El estado de bloqueo ya se carga desde la BD en cargarLayout
     } catch (error) {
       console.error('Error al guardar layout:', error);
+      setMostrarModalProgreso(false);
       showAlert('Error al guardar el layout: ' + (error.response?.data?.message || error.message), { type: 'error' });
     }
   };
@@ -3163,6 +3211,108 @@ const Espacio = () => {
           </Modal>
         </div>
       </div>
+
+      {/* Modal de Progreso de Guardado */}
+      {mostrarModalProgreso && (
+        <div 
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 3000
+          }}
+        >
+          <div style={{
+            backgroundColor: '#fff',
+            borderRadius: '12px',
+            padding: '30px',
+            maxWidth: '600px',
+            width: '90%',
+            maxHeight: '80vh',
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: '0 10px 40px rgba(0,0,0,0.3)'
+          }}>
+            <h2 style={{ marginTop: 0, marginBottom: '20px', color: '#2c3e50' }}>
+              💾 Guardando Layout
+            </h2>
+            
+            <div style={{ marginBottom: '20px' }}>
+              <div style={{ 
+                backgroundColor: '#e0e0e0', 
+                borderRadius: '10px', 
+                height: '30px', 
+                overflow: 'hidden',
+                position: 'relative'
+              }}>
+                <div style={{
+                  backgroundColor: '#4CAF50',
+                  height: '100%',
+                  width: `${progresoGuardado.porcentaje}%`,
+                  transition: 'width 0.3s ease',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'white',
+                  fontWeight: 'bold',
+                  fontSize: '14px'
+                }}>
+                  {progresoGuardado.porcentaje}%
+                </div>
+              </div>
+            </div>
+
+            <div style={{ 
+              marginBottom: '20px', 
+              minHeight: '30px',
+              fontSize: '16px',
+              color: '#555',
+              fontWeight: '500'
+            }}>
+              {progresoGuardado.mensaje}
+            </div>
+
+            <div style={{
+              maxHeight: '300px',
+              overflowY: 'auto',
+              backgroundColor: '#f5f5f5',
+              borderRadius: '8px',
+              padding: '15px',
+              border: '1px solid #ddd'
+            }}>
+              {progresoGuardado.detalles.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {progresoGuardado.detalles.slice(-20).map((detalle, index) => (
+                    <div 
+                      key={index}
+                      style={{
+                        fontSize: '14px',
+                        color: '#333',
+                        padding: '5px',
+                        backgroundColor: detalle.includes('✅') ? '#e8f5e9' : '#fff',
+                        borderRadius: '4px'
+                      }}
+                    >
+                      {detalle}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ color: '#999', fontStyle: 'italic' }}>
+                  Esperando inicio del guardado...
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal de Resumen del Layout */}
       {mostrarModalResumen && resumenLayout && (
