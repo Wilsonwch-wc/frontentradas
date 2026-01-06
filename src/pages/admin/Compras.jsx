@@ -610,24 +610,58 @@ const Compras = () => {
                 <p>No hay compras registradas</p>
               </div>
             ) : (
-              <table className="compras-table">
-                <thead>
-                  <tr>
-                    <th>Código</th>
-                    <th>Cliente</th>
-                    <th>Evento</th>
-                    <th>Cantidad</th>
-                    <th>Total</th>
-                    <th>Estado</th>
-                    <th>Fecha</th>
-                    <th>Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
+              <>
+                {/* Tabla para desktop */}
+                <table className="compras-table compras-table-desktop">
+                  <thead>
+                    <tr>
+                      <th>Código</th>
+                      <th>Cliente</th>
+                      <th>Evento</th>
+                      <th>Cantidad</th>
+                      <th>Total</th>
+                      <th>Estado</th>
+                      <th>Fecha</th>
+                      <th>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {compras.map((compra) => (
+                      <tr key={compra.id}>
+                        <td>
+                          <div className="codigo-cell">
+                            <span className="codigo-text">{compra.codigo_unico}</span>
+                            <button
+                              onClick={() => copiarCodigo(compra.codigo_unico)}
+                              className="btn-copiar-small"
+                              title="Copiar código"
+                            >
+                              📋
+                            </button>
+                          </div>
+                        </td>
+                        <td>{compra.cliente_nombre}</td>
+                        <td>{compra.evento_titulo}</td>
+                        <td>{compra.cantidad}</td>
+                        <td>${parseFloat(compra.total).toFixed(2)}</td>
+                        <td>{getEstadoBadge(compra.estado)}</td>
+                        <td>{formatearFecha(compra.fecha_compra)}</td>
+                        <td>
+                          <button onClick={() => verDetalle(compra)} className="btn-ver">
+                            Ver Detalle
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                {/* Tarjetas para móvil */}
+                <div className="compras-cards-mobile">
                   {compras.map((compra) => (
-                    <tr key={compra.id}>
-                      <td>
-                        <div className="codigo-cell">
+                    <div key={compra.id} className="compra-card">
+                      <div className="compra-card-header">
+                        <div className="compra-card-codigo">
                           <span className="codigo-text">{compra.codigo_unico}</span>
                           <button
                             onClick={() => copiarCodigo(compra.codigo_unico)}
@@ -637,22 +671,39 @@ const Compras = () => {
                             📋
                           </button>
                         </div>
-                      </td>
-                      <td>{compra.cliente_nombre}</td>
-                      <td>{compra.evento_titulo}</td>
-                      <td>{compra.cantidad}</td>
-                      <td>${parseFloat(compra.total).toFixed(2)}</td>
-                      <td>{getEstadoBadge(compra.estado)}</td>
-                      <td>{formatearFecha(compra.fecha_compra)}</td>
-                      <td>
-                        <button onClick={() => verDetalle(compra)} className="btn-ver">
+                        {getEstadoBadge(compra.estado)}
+                      </div>
+                      <div className="compra-card-body">
+                        <div className="compra-card-row">
+                          <span className="compra-card-label">Cliente:</span>
+                          <span className="compra-card-value">{compra.cliente_nombre}</span>
+                        </div>
+                        <div className="compra-card-row">
+                          <span className="compra-card-label">Evento:</span>
+                          <span className="compra-card-value">{compra.evento_titulo}</span>
+                        </div>
+                        <div className="compra-card-row">
+                          <span className="compra-card-label">Cantidad:</span>
+                          <span className="compra-card-value">{compra.cantidad} entrada(s)</span>
+                        </div>
+                        <div className="compra-card-row">
+                          <span className="compra-card-label">Total:</span>
+                          <span className="compra-card-value compra-card-total">${parseFloat(compra.total).toFixed(2)}</span>
+                        </div>
+                        <div className="compra-card-row">
+                          <span className="compra-card-label">Fecha:</span>
+                          <span className="compra-card-value">{formatearFecha(compra.fecha_compra)}</span>
+                        </div>
+                      </div>
+                      <div className="compra-card-footer">
+                        <button onClick={() => verDetalle(compra)} className="btn-ver btn-ver-mobile">
                           Ver Detalle
                         </button>
-                      </td>
-                    </tr>
+                      </div>
+                    </div>
                   ))}
-                </tbody>
-              </table>
+                </div>
+              </>
             )}
           </div>
         )}

@@ -431,3 +431,214 @@
   color: #7f8c8d;
 }
 
+/* Responsive: Ocultar tabla en móvil, mostrar tarjetas */
+.compras-table-desktop {
+  display: table;
+}
+
+.compras-cards-mobile {
+  display: none;
+}
+
+/* Tarjetas para móvil */
+.compra-card {
+  background: white;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.compra-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #ecf0f1;
+}
+
+.compra-card-codigo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.compra-card-codigo .codigo-text {
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.compra-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.compra-card-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.compra-card-label {
+  font-weight: 600;
+  color: #7f8c8d;
+  font-size: 14px;
+  min-width: 80px;
+  flex-shrink: 0;
+}
+
+.compra-card-value {
+  color: #2c3e50;
+  font-size: 14px;
+  text-align: right;
+  flex: 1;
+  word-break: break-word;
+}
+
+.compra-card-total {
+  font-weight: 700;
+  font-size: 16px;
+  color: #27ae60;
+}
+
+.compra-card-footer {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid #ecf0f1;
+}
+
+.btn-ver-mobile {
+  width: 100%;
+  padding: 10px;
+  font-size: 15px;
+}
+
+/* Media queries para responsividad */
+@media (max-width: 768px) {
+  .compras-page {
+    padding: 12px;
+  }
+
+  .compras-header {
+    flex-direction: column;
+    align-items: flex-start;
+    margin-bottom: 20px;
+  }
+
+  .compras-header h1 {
+    font-size: 24px;
+  }
+
+  .busqueda-codigo {
+    padding: 16px;
+  }
+
+  .busqueda-input-group {
+    flex-direction: column;
+  }
+
+  .input-busqueda {
+    width: 100%;
+    font-size: 14px;
+  }
+
+  .btn-buscar {
+    width: 100%;
+    padding: 12px;
+  }
+
+  .filtros-compras {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .select-filtro {
+    width: 100%;
+  }
+
+  /* Ocultar tabla en móvil */
+  .compras-table-desktop {
+    display: none;
+  }
+
+  /* Mostrar tarjetas en móvil */
+  .compras-cards-mobile {
+    display: block;
+  }
+
+  /* Ajustar detalle de compra en móvil */
+  .detalle-compra {
+    padding: 16px;
+  }
+
+  .detalle-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .detalle-header h2 {
+    font-size: 20px;
+  }
+
+  .info-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .detalle-actions {
+    flex-direction: column;
+  }
+
+  .detalle-actions button {
+    width: 100%;
+  }
+
+  .asiento-item, .mesa-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .compras-header h1 {
+    font-size: 20px;
+  }
+
+  .compra-card {
+    padding: 12px;
+  }
+
+  .compra-card-row {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .compra-card-label {
+    min-width: auto;
+  }
+
+  .compra-card-value {
+    text-align: left;
+  }
+
+  .codigo-display {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .codigo-display span {
+    font-size: 12px;
+    word-break: break-all;
+  }
+}
+
