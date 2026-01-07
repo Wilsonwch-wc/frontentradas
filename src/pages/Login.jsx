@@ -9,8 +9,13 @@ import './Login.css';
 const Login = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [mostrarVerificacion, setMostrarVerificacion] = useState(false);
+  const [mostrarRecuperacion, setMostrarRecuperacion] = useState(false);
+  const [mostrarRestablecer, setMostrarRestablecer] = useState(false);
   const [correoVerificacion, setCorreoVerificacion] = useState('');
   const [codigoVerificacion, setCodigoVerificacion] = useState('');
+  const [codigoRecuperacion, setCodigoRecuperacion] = useState('');
+  const [nuevaPassword, setNuevaPassword] = useState('');
+  const [confirmarNuevaPassword, setConfirmarNuevaPassword] = useState('');
   const [formData, setFormData] = useState({
     nombre: '',
     email: '',
@@ -284,6 +289,298 @@ const Login = () => {
     setError('');
   };
 
+  const handleSolicitarRecuperacion = async (e) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+
+    if (!formData.email) {
+      setError('Por favor ingresa tu correo electrónico');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const response = await api.post('/clientes/solicitar-recuperacion', {
+        correo: formData.email
+      });
+
+      if (response.data.success) {
+        setCorreoVerificacion(formData.email);
+        setMostrarRecuperacion(false);
+        setMostrarRestablecer(true);
+        await showAlert('Código de recuperación enviado. Por favor, revisa tu correo.', {
+          type: 'success',
+          title: 'Código enviado'
+        });
+      } else {
+        setError(response.data.message || 'Error al solicitar recuperación');
+      }
+      setLoading(false);
+    } catch (err) {
+      const errorMessage = err.response?.data?.message || 'Error al solicitar recuperación';
+      setError(errorMessage);
+      setLoading(false);
+    }
+  };
+
+  const handleRestablecerPassword = async (e) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+
+    if (!codigoRecuperacion || codigoRecuperacion.length !== 4) {
+      setError('Por favor ingresa el código de 4 dígitos');
+      setLoading(false);
+      return;
+    }
+
+    if (!nuevaPassword || nuevaPassword.length < 6) {
+      setError('La contraseña debe tener al menos 6 caracteres');
+      setLoading(false);
+      return;
+    }
+
+    if (nuevaPassword !== confirmarNuevaPassword) {
+      setError('Las contraseñas no coinciden');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const response = await api.post('/clientes/restablecer-password', {
+        correo: correoVerificacion,
+        codigo: codigoRecuperacion,
+        nuevaPassword: nuevaPassword
+      });
+
+      if (response.data.success) {
+        await showAlert('Contraseña restablecida exitosamente. Ahora puedes iniciar sesión.', {
+          type: 'success',
+          title: 'Contraseña restablecida'
+        });
+        setMostrarRestablecer(false);
+        setMostrarRecuperacion(false);
+        setCodigoRecuperacion('');
+        setNuevaPassword('');
+        setConfirmarNuevaPassword('');
+        setFormData({ ...formData, password: '' });
+        setIsLogin(true);
+      } else {
+        setError(response.data.message || 'Error al restablecer contraseña');
+        setLoading(false);
+      }
+    } catch (err) {
+      const errorMessage = err.response?.data?.message || 'Error al restablecer la contraseña';
+      setError(errorMessage);
+      setLoading(false);
+    }
+  };
+
+  const handleCambiarCodigoRecuperacion = (e) => {
+    const valor = e.target.value.replace(/\D/g, '').slice(0, 4);
+    setCodigoRecuperacion(valor);
+    setError('');
+  };
+
+  // Si está en modo restablecer contraseña, mostrar formulario de restablecimiento
+  if (mostrarRestablecer) {
+    return (
+      <div className="login-page">
+        <div className="login-container">
+          <div className="login-box">
+            <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+              <div style={{ 
+                width: '60px', 
+                height: '60px', 
+                margin: '0 auto 1rem',
+                background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '2rem'
+              }}>
+                🔒
+              </div>
+            </div>
+            <h1 className="login-title">Restablecer Contraseña</h1>
+            <p className="login-subtitle">
+              Ingresa el código enviado a
+            </p>
+            <p className="login-subtitle" style={{ marginTop: '0.5rem', fontWeight: 'bold', color: '#2563eb' }}>
+              {correoVerificacion}
+            </p>
+            <p className="login-subtitle" style={{ fontSize: '0.85rem', color: '#666', marginTop: '0.5rem' }}>
+              y tu nueva contraseña
+            </p>
+
+            {error && <div className="error-message">{error}</div>}
+
+            <form onSubmit={handleRestablecerPassword} className="login-form">
+              <div className="form-group">
+                <label htmlFor="codigoRecuperacion">Código de Recuperación</label>
+                <input
+                  type="text"
+                  id="codigoRecuperacion"
+                  name="codigoRecuperacion"
+                  value={codigoRecuperacion}
+                  onChange={handleCambiarCodigoRecuperacion}
+                  placeholder="1234"
+                  maxLength={4}
+                  required
+                  style={{
+                    textAlign: 'center',
+                    fontSize: '2rem',
+                    letterSpacing: '0.5rem',
+                    fontWeight: 'bold',
+                    fontFamily: 'monospace'
+                  }}
+                  autoFocus
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="nuevaPassword">Nueva Contraseña</label>
+                <input
+                  type="password"
+                  id="nuevaPassword"
+                  name="nuevaPassword"
+                  value={nuevaPassword}
+                  onChange={(e) => {
+                    setNuevaPassword(e.target.value);
+                    setError('');
+                  }}
+                  placeholder="••••••••"
+                  required
+                  minLength={6}
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="confirmarNuevaPassword">Confirmar Nueva Contraseña</label>
+                <input
+                  type="password"
+                  id="confirmarNuevaPassword"
+                  name="confirmarNuevaPassword"
+                  value={confirmarNuevaPassword}
+                  onChange={(e) => {
+                    setConfirmarNuevaPassword(e.target.value);
+                    setError('');
+                  }}
+                  placeholder="••••••••"
+                  required
+                  minLength={6}
+                />
+              </div>
+
+              <button type="submit" className="btn-submit" disabled={loading || codigoRecuperacion.length !== 4 || nuevaPassword.length < 6 || nuevaPassword !== confirmarNuevaPassword}>
+                {loading ? 'Restableciendo...' : 'Restablecer Contraseña'}
+              </button>
+
+              <div style={{ textAlign: 'center', marginTop: '1rem' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMostrarRestablecer(false);
+                    setMostrarRecuperacion(true);
+                    setCodigoRecuperacion('');
+                    setNuevaPassword('');
+                    setConfirmarNuevaPassword('');
+                    setError('');
+                  }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#666',
+                    cursor: 'pointer',
+                    fontSize: '0.9rem',
+                    padding: '0.5rem'
+                  }}
+                >
+                  ← Volver
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Si está en modo recuperación, mostrar formulario de solicitud
+  if (mostrarRecuperacion) {
+    return (
+      <div className="login-page">
+        <div className="login-container">
+          <div className="login-box">
+            <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+              <div style={{ 
+                width: '60px', 
+                height: '60px', 
+                margin: '0 auto 1rem',
+                background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '2rem'
+              }}>
+                🔒
+              </div>
+            </div>
+            <h1 className="login-title">Recuperar Contraseña</h1>
+            <p className="login-subtitle">
+              Ingresa tu correo electrónico y te enviaremos un código de recuperación
+            </p>
+
+            {error && <div className="error-message">{error}</div>}
+
+            <form onSubmit={handleSolicitarRecuperacion} className="login-form">
+              <div className="form-group">
+                <label htmlFor="emailRecuperacion">Correo Electrónico</label>
+                <input
+                  type="email"
+                  id="emailRecuperacion"
+                  name="emailRecuperacion"
+                  value={formData.email}
+                  onChange={handleChange}
+                  placeholder="correo@ejemplo.com"
+                  required
+                  autoFocus
+                />
+              </div>
+
+              <button type="submit" className="btn-submit" disabled={loading || !formData.email}>
+                {loading ? 'Enviando...' : 'Enviar Código'}
+              </button>
+
+              <div style={{ textAlign: 'center', marginTop: '1rem' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMostrarRecuperacion(false);
+                    setError('');
+                  }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#666',
+                    cursor: 'pointer',
+                    fontSize: '0.9rem',
+                    padding: '0.5rem'
+                  }}
+                >
+                  ← Volver al inicio de sesión
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Si está en modo verificación, mostrar formulario de verificación
   if (mostrarVerificacion) {
     return (
@@ -457,6 +754,28 @@ const Login = () => {
                 placeholder="••••••••"
                 required
               />
+              {isLogin && (
+                <div style={{ textAlign: 'right', marginTop: '0.5rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMostrarRecuperacion(true);
+                      setError('');
+                    }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#2563eb',
+                      cursor: 'pointer',
+                      fontSize: '0.85rem',
+                      textDecoration: 'underline',
+                      padding: 0
+                    }}
+                  >
+                    ¿Olvidaste tu contraseña?
+                  </button>
+                </div>
+              )}
             </div>
 
             {!isLogin && (
