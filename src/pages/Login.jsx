@@ -8,6 +8,9 @@ import './Login.css';
 
 const Login = () => {
   const [isLogin, setIsLogin] = useState(true);
+  const [mostrarVerificacion, setMostrarVerificacion] = useState(false);
+  const [correoVerificacion, setCorreoVerificacion] = useState('');
+  const [codigoVerificacion, setCodigoVerificacion] = useState('');
   const [formData, setFormData] = useState({
     nombre: '',
     email: '',
@@ -16,6 +19,7 @@ const Login = () => {
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [enviandoCodigo, setEnviandoCodigo] = useState(false);
   const { login, isAuthenticated } = useAuth();
   const { showAlert } = useAlert();
   const navigate = useNavigate();
@@ -67,7 +71,18 @@ const Login = () => {
           const from = location.state?.from || '/';
           navigate(from, { replace: true });
         } else {
-          setError(response.data.message || 'Credenciales inválidas');
+          // Verificar si requiere verificación de email
+          if (response.data.requiereVerificacion) {
+            setCorreoVerificacion(formData.email);
+            setMostrarVerificacion(true);
+            setError('');
+            await showAlert('Por favor, verifica tu correo electrónico antes de iniciar sesión.', {
+              type: 'warning',
+              title: 'Verificación requerida'
+            });
+          } else {
+            setError(response.data.message || 'Credenciales inválidas');
+          }
           setLoading(false);
         }
       } else {
@@ -95,23 +110,46 @@ const Login = () => {
         });
 
         if (response.data.success) {
-          const { token, user } = response.data.data;
-          login(user, token);
-          // Mostrar notificación de éxito
-          await showAlert('¡Cuenta creada e iniciada exitosamente!', { 
-            type: 'success',
-            title: 'Bienvenido'
-          });
-          const from = location.state?.from || '/';
-          navigate(from, { replace: true });
+          // Verificar si requiere verificación de email
+          if (response.data.data.requiereVerificacion) {
+            setCorreoVerificacion(formData.email);
+            setMostrarVerificacion(true);
+            setError('');
+            await showAlert('Registro exitoso. Por favor, verifica tu correo electrónico con el código enviado.', {
+              type: 'info',
+              title: 'Verificación requerida'
+            });
+          } else {
+            // Si no requiere verificación (caso antiguo)
+            const { token, user } = response.data.data;
+            login(user, token);
+            await showAlert('¡Cuenta creada e iniciada exitosamente!', { 
+              type: 'success',
+              title: 'Bienvenido'
+            });
+            const from = location.state?.from || '/';
+            navigate(from, { replace: true });
+          }
+          setLoading(false);
         } else {
           setError(response.data.message || 'Error al registrar');
           setLoading(false);
         }
       }
     } catch (err) {
-      const errorMessage = err.response?.data?.message || 'Error al procesar la solicitud';
-      setError(errorMessage);
+      // Verificar si requiere verificación de email (en login)
+      if (err.response?.data?.requiereVerificacion) {
+        setCorreoVerificacion(formData.email);
+        setMostrarVerificacion(true);
+        setError('');
+        await showAlert('Por favor, verifica tu correo electrónico antes de iniciar sesión.', {
+          type: 'warning',
+          title: 'Verificación requerida'
+        });
+      } else {
+        const errorMessage = err.response?.data?.message || 'Error al procesar la solicitud';
+        setError(errorMessage);
+      }
       setLoading(false);
     }
   };
@@ -174,6 +212,162 @@ const Login = () => {
     setError('Error al iniciar sesión con Google');
     setLoading(false);
   };
+
+  const handleVerificarCodigo = async (e) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+
+    if (!codigoVerificacion || codigoVerificacion.length !== 4) {
+      setError('Por favor ingresa un código de 4 dígitos');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const response = await api.post('/clientes/verificar-codigo', {
+        correo: correoVerificacion,
+        codigo: codigoVerificacion
+      });
+
+      if (response.data.success) {
+        const { token, user } = response.data.data;
+        login(user, token);
+        await showAlert('¡Correo verificado exitosamente!', {
+          type: 'success',
+          title: 'Verificación exitosa'
+        });
+        const from = location.state?.from || '/';
+        navigate(from, { replace: true });
+      } else {
+        setError(response.data.message || 'Código inválido');
+        setLoading(false);
+      }
+    } catch (err) {
+      const errorMessage = err.response?.data?.message || 'Error al verificar el código';
+      setError(errorMessage);
+      setLoading(false);
+    }
+  };
+
+  const handleReenviarCodigo = async () => {
+    setEnviandoCodigo(true);
+    setError('');
+
+    try {
+      const response = await api.post('/clientes/reenviar-codigo', {
+        correo: correoVerificacion
+      });
+
+      if (response.data.success) {
+        await showAlert('Código de verificación reenviado. Por favor, revisa tu correo.', {
+          type: 'success',
+          title: 'Código reenviado'
+        });
+      } else {
+        setError(response.data.message || 'Error al reenviar el código');
+      }
+    } catch (err) {
+      const errorMessage = err.response?.data?.message || 'Error al reenviar el código';
+      setError(errorMessage);
+    } finally {
+      setEnviandoCodigo(false);
+    }
+  };
+
+  const handleCambiarCodigo = (e) => {
+    // Solo permitir números y máximo 4 dígitos
+    const valor = e.target.value.replace(/\D/g, '').slice(0, 4);
+    setCodigoVerificacion(valor);
+    setError('');
+  };
+
+  // Si está en modo verificación, mostrar formulario de verificación
+  if (mostrarVerificacion) {
+    return (
+      <div className="login-page">
+        <div className="login-container">
+          <div className="login-box">
+            <h1 className="login-title">Verificar Correo Electrónico</h1>
+            <p className="login-subtitle">
+              Hemos enviado un código de 4 dígitos a <strong>{correoVerificacion}</strong>
+            </p>
+            <p className="login-subtitle" style={{ fontSize: '0.9rem', color: '#666' }}>
+              Por favor, ingresa el código para completar tu registro
+            </p>
+
+            {error && <div className="error-message">{error}</div>}
+
+            <form onSubmit={handleVerificarCodigo} className="login-form">
+              <div className="form-group">
+                <label htmlFor="codigo">Código de Verificación</label>
+                <input
+                  type="text"
+                  id="codigo"
+                  name="codigo"
+                  value={codigoVerificacion}
+                  onChange={handleCambiarCodigo}
+                  placeholder="1234"
+                  maxLength={4}
+                  required
+                  style={{
+                    textAlign: 'center',
+                    fontSize: '2rem',
+                    letterSpacing: '0.5rem',
+                    fontWeight: 'bold',
+                    fontFamily: 'monospace'
+                  }}
+                  autoFocus
+                />
+              </div>
+
+              <button type="submit" className="btn-submit" disabled={loading || codigoVerificacion.length !== 4}>
+                {loading ? 'Verificando...' : 'Verificar Código'}
+              </button>
+
+              <div style={{ textAlign: 'center', marginTop: '1rem' }}>
+                <button
+                  type="button"
+                  onClick={handleReenviarCodigo}
+                  disabled={enviandoCodigo}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#2563eb',
+                    cursor: enviandoCodigo ? 'not-allowed' : 'pointer',
+                    textDecoration: 'underline',
+                    fontSize: '0.9rem'
+                  }}
+                >
+                  {enviandoCodigo ? 'Reenviando...' : '¿No recibiste el código? Reenviar'}
+                </button>
+              </div>
+
+              <div style={{ textAlign: 'center', marginTop: '1rem' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMostrarVerificacion(false);
+                    setCodigoVerificacion('');
+                    setError('');
+                  }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#666',
+                    cursor: 'pointer',
+                    fontSize: '0.9rem'
+                  }}
+                >
+                  ← Volver
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="login-page">
