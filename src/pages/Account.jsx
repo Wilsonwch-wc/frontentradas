@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useAlert } from '../context/AlertContext';
 import api from '../api/axios';
 import './Account.css';
 
@@ -12,6 +13,7 @@ const Account = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { login, isAuthenticated, isAdmin } = useAuth();
+  const { showAlert } = useAlert();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -65,8 +67,14 @@ const Account = () => {
         // Guardar datos del usuario y token
         login(user, token);
         
-        // Usar window.location para forzar la recarga y asegurar la redirección
-        window.location.href = '/admin/dashboard';
+        // Mostrar notificación de éxito
+        showAlert('¡Sesión iniciada exitosamente!', { 
+          type: 'success',
+          title: 'Bienvenido Administrador'
+        }).then(() => {
+          // Redirigir después de que el usuario cierre la notificación
+          navigate('/admin/dashboard', { replace: true });
+        });
       } else {
         setError(response.data.message || 'Credenciales inválidas');
         setLoading(false);

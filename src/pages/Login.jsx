@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../context/AuthContext';
+import { useAlert } from '../context/AlertContext';
 import api from '../api/axios';
 import './Login.css';
 
@@ -16,6 +17,7 @@ const Login = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { login, isAuthenticated } = useAuth();
+  const { showAlert } = useAlert();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -57,6 +59,11 @@ const Login = () => {
         if (response.data.success) {
           const { token, user } = response.data.data;
           login(user, token);
+          // Mostrar notificación de éxito
+          await showAlert('¡Sesión iniciada exitosamente!', { 
+            type: 'success',
+            title: 'Bienvenido'
+          });
           const from = location.state?.from || '/';
           navigate(from, { replace: true });
         } else {
@@ -90,6 +97,11 @@ const Login = () => {
         if (response.data.success) {
           const { token, user } = response.data.data;
           login(user, token);
+          // Mostrar notificación de éxito
+          await showAlert('¡Cuenta creada e iniciada exitosamente!', { 
+            type: 'success',
+            title: 'Bienvenido'
+          });
           const from = location.state?.from || '/';
           navigate(from, { replace: true });
         } else {
@@ -126,6 +138,11 @@ const Login = () => {
         console.log('✅ Login exitoso con Google');
         const { token, user } = apiResponse.data.data;
         login(user, token);
+        // Mostrar notificación de éxito
+        await showAlert('¡Sesión iniciada exitosamente con Google!', { 
+          type: 'success',
+          title: 'Bienvenido'
+        });
         const from = location.state?.from || '/';
         navigate(from, { replace: true });
       } else {

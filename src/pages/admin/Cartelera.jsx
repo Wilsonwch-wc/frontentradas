@@ -213,6 +213,16 @@ const Cartelera = () => {
     e.preventDefault();
     setError('');
 
+    // Verificar que el usuario esté autenticado
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setError('No estás autenticado. Por favor, inicia sesión nuevamente.');
+      setTimeout(() => {
+        window.location.href = '/account';
+      }, 2000);
+      return;
+    }
+
     // Validaciones básicas
     if (!formData.titulo || !formData.descripcion || !formData.hora_inicio) {
       setError('Por favor completa todos los campos requeridos');
@@ -383,7 +393,43 @@ const Cartelera = () => {
         cerrarModal();
       }
     } catch (error) {
-      const errorMessage = error.response?.data?.message || error.message || 'Error al guardar el evento';
+      console.error('Error completo:', error);
+      
+      // Detectar si el error es por respuesta HTML
+      let errorMessage = 'Error al guardar el evento';
+      
+      if (error.response) {
+        const contentType = error.response.headers['content-type'] || '';
+        const responseData = error.response.data;
+        
+        // Si la respuesta es HTML, mostrar mensaje específico
+        if (contentType.includes('text/html') || 
+            (typeof responseData === 'string' && responseData.trim().startsWith('<'))) {
+          if (error.response.status === 401 || error.response.status === 403) {
+            errorMessage = 'Tu sesión ha expirado o no tienes permisos. Por favor, inicia sesión nuevamente.';
+            // Redirigir después de mostrar el error
+            setTimeout(() => {
+              localStorage.removeItem('token');
+              localStorage.removeItem('user');
+              window.location.href = '/account';
+            }, 2000);
+          } else {
+            errorMessage = `Error del servidor (${error.response.status}). Por favor, verifica tu conexión o contacta al administrador.`;
+          }
+        } else if (error.response.data?.message) {
+          errorMessage = error.response.data.message;
+        } else if (error.response.status === 401 || error.response.status === 403) {
+          errorMessage = 'No tienes permisos para realizar esta acción. Por favor, inicia sesión nuevamente.';
+          setTimeout(() => {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.href = '/account';
+          }, 2000);
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       setError(errorMessage);
     }
   };
