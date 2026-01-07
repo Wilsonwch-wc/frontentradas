@@ -109,48 +109,50 @@ const Login = () => {
           password: formData.password
         });
 
-        if (response.data.success) {
-          // Verificar si requiere verificación de email
-          if (response.data.data.requiereVerificacion) {
-            setCorreoVerificacion(formData.email);
-            setMostrarVerificacion(true);
-            setError('');
-            await showAlert('Registro exitoso. Por favor, verifica tu correo electrónico con el código enviado.', {
-              type: 'info',
-              title: 'Verificación requerida'
-            });
-          } else {
-            // Si no requiere verificación (caso antiguo)
-            const { token, user } = response.data.data;
-            login(user, token);
-            await showAlert('¡Cuenta creada e iniciada exitosamente!', { 
-              type: 'success',
-              title: 'Bienvenido'
-            });
-            const from = location.state?.from || '/';
-            navigate(from, { replace: true });
-          }
+      if (response.data && response.data.success) {
+        // Verificar si requiere verificación de email
+        if (response.data.data && response.data.data.requiereVerificacion) {
+          setCorreoVerificacion(formData.email);
+          setMostrarVerificacion(true);
+          setError('');
+          setLoading(false);
+          // No mostrar alerta aquí, solo mostrar el formulario de verificación
+        } else if (response.data.data && response.data.data.token && response.data.data.user) {
+          // Si no requiere verificación (caso antiguo o respuesta con token)
+          const { token, user } = response.data.data;
+          login(user, token);
+          await showAlert('¡Cuenta creada e iniciada exitosamente!', { 
+            type: 'success',
+            title: 'Bienvenido'
+          });
+          const from = location.state?.from || '/';
+          navigate(from, { replace: true });
           setLoading(false);
         } else {
-          setError(response.data.message || 'Error al registrar');
+          console.error('Respuesta inesperada:', response.data);
+          setError('Respuesta inesperada del servidor. Por favor, intenta nuevamente.');
           setLoading(false);
         }
+      } else {
+        setError(response.data?.message || 'Error al registrar');
+        setLoading(false);
+      }
       }
     } catch (err) {
+      console.error('Error en registro/login:', err);
+      
       // Verificar si requiere verificación de email (en login)
       if (err.response?.data?.requiereVerificacion) {
         setCorreoVerificacion(formData.email);
         setMostrarVerificacion(true);
         setError('');
-        await showAlert('Por favor, verifica tu correo electrónico antes de iniciar sesión.', {
-          type: 'warning',
-          title: 'Verificación requerida'
-        });
+        setLoading(false);
+        // No mostrar alerta aquí, solo mostrar el formulario
       } else {
-        const errorMessage = err.response?.data?.message || 'Error al procesar la solicitud';
+        const errorMessage = err.response?.data?.message || err.message || 'Error al procesar la solicitud';
         setError(errorMessage);
+        setLoading(false);
       }
-      setLoading(false);
     }
   };
 
@@ -288,11 +290,29 @@ const Login = () => {
       <div className="login-page">
         <div className="login-container">
           <div className="login-box">
+            <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+              <div style={{ 
+                width: '60px', 
+                height: '60px', 
+                margin: '0 auto 1rem',
+                background: 'linear-gradient(135deg, #D4AF37 0%, #FFD700 100%)',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '2rem'
+              }}>
+                ✉️
+              </div>
+            </div>
             <h1 className="login-title">Verificar Correo Electrónico</h1>
             <p className="login-subtitle">
-              Hemos enviado un código de 4 dígitos a <strong>{correoVerificacion}</strong>
+              Hemos enviado un código de 4 dígitos a
             </p>
-            <p className="login-subtitle" style={{ fontSize: '0.9rem', color: '#666' }}>
+            <p className="login-subtitle" style={{ marginTop: '0.5rem', fontWeight: 'bold', color: '#2563eb' }}>
+              {correoVerificacion}
+            </p>
+            <p className="login-subtitle" style={{ fontSize: '0.85rem', color: '#666', marginTop: '0.5rem' }}>
               Por favor, ingresa el código para completar tu registro
             </p>
 
@@ -325,7 +345,17 @@ const Login = () => {
                 {loading ? 'Verificando...' : 'Verificar Código'}
               </button>
 
-              <div style={{ textAlign: 'center', marginTop: '1rem' }}>
+              <div style={{ 
+                textAlign: 'center', 
+                marginTop: '1.5rem',
+                padding: '1rem',
+                background: '#f0f9ff',
+                borderRadius: '8px',
+                border: '1px solid #bae6fd'
+              }}>
+                <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.85rem', color: '#666' }}>
+                  ¿No recibiste el código?
+                </p>
                 <button
                   type="button"
                   onClick={handleReenviarCodigo}
@@ -336,10 +366,11 @@ const Login = () => {
                     color: '#2563eb',
                     cursor: enviandoCodigo ? 'not-allowed' : 'pointer',
                     textDecoration: 'underline',
-                    fontSize: '0.9rem'
+                    fontSize: '0.9rem',
+                    fontWeight: '600'
                   }}
                 >
-                  {enviandoCodigo ? 'Reenviando...' : '¿No recibiste el código? Reenviar'}
+                  {enviandoCodigo ? 'Reenviando...' : 'Reenviar código'}
                 </button>
               </div>
 
@@ -350,16 +381,18 @@ const Login = () => {
                     setMostrarVerificacion(false);
                     setCodigoVerificacion('');
                     setError('');
+                    setCorreoVerificacion('');
                   }}
                   style={{
                     background: 'none',
                     border: 'none',
                     color: '#666',
                     cursor: 'pointer',
-                    fontSize: '0.9rem'
+                    fontSize: '0.9rem',
+                    padding: '0.5rem'
                   }}
                 >
-                  ← Volver
+                  ← Volver al inicio de sesión
                 </button>
               </div>
             </form>

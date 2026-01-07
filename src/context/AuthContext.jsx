@@ -115,37 +115,72 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     // Verificar si hay una sesión guardada
-    const savedUser = localStorage.getItem('user');
-    const savedToken = localStorage.getItem('token');
-    const loginTime = localStorage.getItem('loginTime');
-    
-    if (savedUser && savedToken) {
-      // Verificar si la sesión ha expirado por tiempo
-      if (loginTime) {
-        const timeSinceLogin = Date.now() - parseInt(loginTime);
-        if (timeSinceLogin > INACTIVITY_TIMEOUT) {
-          // Sesión expirada, limpiar y no verificar token
+    try {
+      const savedUser = localStorage.getItem('user');
+      const savedToken = localStorage.getItem('token');
+      const loginTime = localStorage.getItem('loginTime');
+      
+      // Validar que savedUser no sea "undefined" o "null" como string
+      if (savedUser && savedUser !== 'undefined' && savedUser !== 'null' && savedToken) {
+        try {
+          const parsedUser = JSON.parse(savedUser);
+          
+          // Verificar si la sesión ha expirado por tiempo
+          if (loginTime) {
+            const timeSinceLogin = Date.now() - parseInt(loginTime);
+            if (timeSinceLogin > INACTIVITY_TIMEOUT) {
+              // Sesión expirada, limpiar y no verificar token
+              setUser(null);
+              localStorage.removeItem('user');
+              localStorage.removeItem('token');
+              localStorage.removeItem('loginTime');
+              localStorage.removeItem('lastActivity');
+              setLoading(false);
+              return;
+            }
+          }
+          
+          setUser(parsedUser);
+          // Verificar token con el backend
+          verifyToken();
+        } catch (parseError) {
+          console.error('Error al parsear usuario del localStorage:', parseError);
+          // Limpiar datos inválidos
           setUser(null);
           localStorage.removeItem('user');
           localStorage.removeItem('token');
           localStorage.removeItem('loginTime');
           localStorage.removeItem('lastActivity');
           setLoading(false);
-          return;
         }
+      } else {
+        setLoading(false);
       }
-      
-      setUser(JSON.parse(savedUser));
-      // Verificar token con el backend
-      verifyToken();
-    } else {
+    } catch (error) {
+      console.error('Error al cargar sesión:', error);
+      setUser(null);
+      localStorage.removeItem('user');
+      localStorage.removeItem('token');
+      localStorage.removeItem('loginTime');
+      localStorage.removeItem('lastActivity');
       setLoading(false);
     }
   }, []);
 
   const verifyToken = async () => {
     try {
-      const savedUser = JSON.parse(localStorage.getItem('user') || '{}');
+      const userStr = localStorage.getItem('user');
+      if (!userStr || userStr === 'undefined' || userStr === 'null') {
+        setUser(null);
+        localStorage.removeItem('user');
+        localStorage.removeItem('token');
+        localStorage.removeItem('loginTime');
+        localStorage.removeItem('lastActivity');
+        setLoading(false);
+        return;
+      }
+      
+      const savedUser = JSON.parse(userStr);
       
       // Verificar si es admin o cliente
       if (savedUser.rol) {
