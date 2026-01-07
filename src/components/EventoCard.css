@@ -93,6 +93,15 @@
   margin: 0;
 }
 
+.evento-card-proximamente {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #D4AF37;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
 .evento-card-btn {
   background: linear-gradient(135deg, #D4AF37 0%, #FFD700 100%);
   color: #1a1a1a;

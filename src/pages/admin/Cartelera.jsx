@@ -22,7 +22,8 @@ const Cartelera = () => {
     es_nuevo: false,
     tipo_evento: 'general',
     capacidad_maxima: '',
-    limite_entradas: ''
+    limite_entradas: '',
+    estado: 'activo'
   });
   const [error, setError] = useState('');
   const [imagenPreview, setImagenPreview] = useState('');
@@ -285,7 +286,8 @@ const Cartelera = () => {
         qr_pago_url: qrUrl || null,
         precio: formData.tipo_evento === 'general' ? parseFloat(formData.precio) : 0,
         capacidad_maxima: formData.tipo_evento === 'especial' ? (formData.capacidad_maxima ? parseInt(formData.capacidad_maxima) : null) : null,
-        limite_entradas: formData.tipo_evento === 'general' ? (formData.limite_entradas ? parseInt(formData.limite_entradas) : null) : null
+        limite_entradas: formData.tipo_evento === 'general' ? (formData.limite_entradas ? parseInt(formData.limite_entradas) : null) : null,
+        estado: formData.estado || 'activo'
       };
 
       let response;
@@ -446,7 +448,8 @@ const Cartelera = () => {
       es_nuevo: evento.es_nuevo === 1 || evento.es_nuevo === true,
       tipo_evento: evento.tipo_evento || 'general',
       capacidad_maxima: evento.capacidad_maxima || '',
-      limite_entradas: evento.limite_entradas || ''
+      limite_entradas: evento.limite_entradas || '',
+      estado: evento.estado || 'activo'
     });
     setImagenPreview(evento.imagen ? `${serverBase}${evento.imagen}` : '');
     setImagenFile(null);
@@ -510,7 +513,8 @@ const Cartelera = () => {
       es_nuevo: false,
       tipo_evento: 'general',
       capacidad_maxima: '',
-      limite_entradas: ''
+      limite_entradas: '',
+      estado: 'activo'
     });
     setImagenPreview('');
     setImagenFile(null);
@@ -898,6 +902,20 @@ const Cartelera = () => {
                       />
                       Marcar como nuevo evento
                     </label>
+                  </div>
+
+                  <div className="form-group">
+                    <label>Estado del Evento *</label>
+                    <select
+                      name="estado"
+                      value={formData.estado}
+                      onChange={handleInputChange}
+                      required
+                    >
+                      <option value="activo">Activo (Mostrar precio)</option>
+                      <option value="proximamente">Próximamente (Sin precio)</option>
+                      <option value="finalizado">Finalizado (Oculto)</option>
+                    </select>
                   </div>
                 </div>
 

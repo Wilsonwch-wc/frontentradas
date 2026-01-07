@@ -59,7 +59,11 @@ const EventoCard = ({ evento }) => {
         <h3 className="evento-card-title">{evento.titulo}</h3>
         <div className="evento-card-footer">
           <p className="evento-card-fecha">{formatearFecha(evento.hora_inicio)}</p>
-          <p className="evento-card-precio">${evento.precio.toFixed(2)}</p>
+          {evento.estado === 'proximamente' ? (
+            <p className="evento-card-proximamente">PROXIMAMENTE</p>
+          ) : (
+            <p className="evento-card-precio">${evento.precio?.toFixed(2) || '0.00'}</p>
+          )}
         </div>
         <button className="evento-card-btn">Ver Detalles</button>
       </div>
