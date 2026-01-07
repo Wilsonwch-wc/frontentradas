@@ -264,9 +264,52 @@
   margin-top: 1rem;
 }
 
-.btn-comprar:hover {
+.btn-comprar:hover:not(:disabled) {
   transform: translateY(-2px);
   box-shadow: 0 5px 20px rgba(39, 174, 96, 0.4);
+}
+
+.btn-comprar:disabled,
+.btn-comprar-disabled {
+  background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.btn-comprar:disabled:hover,
+.btn-comprar-disabled:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.detalle-proximamente {
+  padding: 1.5rem;
+  background: linear-gradient(135deg, #fff9e6 0%, #fff4d6 100%);
+  border-radius: 10px;
+  border: 2px solid #D4AF37;
+  text-align: center;
+  margin: 1rem 0;
+}
+
+.proximamente-badge {
+  display: inline-block;
+  background: linear-gradient(135deg, #D4AF37 0%, #FFD700 100%);
+  color: #1a1a1a;
+  padding: 0.6rem 1.5rem;
+  border-radius: 20px;
+  font-weight: 700;
+  font-size: 1.1rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 0.5rem;
+  box-shadow: 0 2px 8px rgba(212, 175, 55, 0.3);
+}
+
+.proximamente-mensaje {
+  color: #7f8c8d;
+  font-size: 0.95rem;
+  margin: 0.5rem 0 0 0;
+  font-style: italic;
 }
 
 @media (max-width: 968px) {

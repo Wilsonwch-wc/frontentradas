@@ -53,12 +53,18 @@ const DetalleEvento = () => {
 
   const handleComprar = () => {
     if (!evento) return;
+    // No permitir comprar si el evento está en estado "proximamente"
+    if (evento.estado === 'proximamente') {
+      return;
+    }
     if (isAuthenticated()) {
       navigate(`/compra/${evento.id}`);
     } else {
       navigate('/login', { state: { from: `/compra/${evento.id}` } });
     }
   };
+
+  const esProximamente = evento?.estado === 'proximamente';
 
   if (loading) {
     return (
@@ -135,8 +141,13 @@ const DetalleEvento = () => {
           <div className="detalle-info">
             <h1 className="detalle-titulo">{evento.titulo}</h1>
             
-            {/* Mostrar precios según el tipo de evento */}
-            {evento.tipo_evento === 'especial' && evento.tipos_precio && evento.tipos_precio.length > 0 ? (
+            {/* Mostrar precios según el tipo de evento, solo si no es "proximamente" */}
+            {esProximamente ? (
+              <div className="detalle-proximamente">
+                <span className="proximamente-badge">PROXIMAMENTE</span>
+                <p className="proximamente-mensaje">Los precios estarán disponibles próximamente</p>
+              </div>
+            ) : evento.tipo_evento === 'especial' && evento.tipos_precio && evento.tipos_precio.length > 0 ? (
               <div className="detalle-precios">
                 <h3 className="precios-titulo">Precios Disponibles</h3>
                 <div className="precios-lista">
@@ -186,8 +197,12 @@ const DetalleEvento = () => {
                 </div>
               </div>
             </div>
-            <button onClick={handleComprar} className="btn-comprar">
-              Comprar Entradas
+            <button 
+              onClick={handleComprar} 
+              className={`btn-comprar ${esProximamente ? 'btn-comprar-disabled' : ''}`}
+              disabled={esProximamente}
+            >
+              {esProximamente ? 'Próximamente Disponible' : 'Comprar Entradas'}
             </button>
           </div>
         </div>

@@ -89,6 +89,19 @@ const Compra = () => {
             height: m.height || 40
           }));
         }
+        // Verificar si el evento está en estado "proximamente"
+        if (eventoData.estado === 'proximamente') {
+          showAlert('Este evento está marcado como "Próximamente". Las entradas aún no están disponibles para la venta.', {
+            type: 'warning',
+            title: 'Evento Próximamente'
+          }).then(() => {
+            // Redirigir al detalle del evento
+            const slug = eventoData.slug || eventoData.titulo?.toLowerCase().replace(/\s+/g, '-');
+            navigate(`/evento/${slug}`);
+          });
+          return;
+        }
+        
         setEvento(eventoData);
         
         // Cargar asientos ocupados (confirmados) para este evento
