@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import api from '../api/axios';
 import './Footer.css';
-import logoImage from '../images/logo2.png';
 
 const iconos = {
   facebook: (
@@ -76,7 +75,10 @@ const Footer = () => {
     <footer className="footer">
       <div className="footer-container">
         <div className="footer-section footer-section-info">
-          <img src={logoImage} alt="PlusTicket" className="footer-logo-image" />
+          <div className="footer-logo-text">
+            <h2>Plus<span style={{ color: '#E74C3C' }}>Tiket</span></h2>
+            <p className="footer-tagline">MAS FACIL IMPOSIBLE</p>
+          </div>
           <div className="footer-info-content">
             <h3>Información</h3>
             <p>Tu plataforma de confianza para adquirir entradas a los mejores eventos culturales y musicales.</p>
@@ -110,7 +112,7 @@ const Footer = () => {
       </div>
 
       <div className="footer-bottom">
-        <p>&copy; 2025 PlusTicket - MAS FACIL IMPOSIBLE. Todos los derechos reservados.</p>
+        <p>&copy; 2025 PlusTiket - MAS FACIL IMPOSIBLE. Todos los derechos reservados.</p>
       </div>
     </footer>
   );

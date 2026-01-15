@@ -16,7 +16,7 @@ const Header = () => {
       <div className="header-container">
         <Link to="/" className="logo">
           <div className="logo-text">
-            <h1>PlusTicket</h1>
+            <h1>Plus<span style={{ color: '#E74C3C' }}>Tiket</span></h1>
             <span className="logo-subtitle">MAS FACIL IMPOSIBLE</span>
           </div>
         </Link>

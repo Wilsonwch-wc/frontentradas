@@ -28,12 +28,7 @@
   gap: 1rem;
 }
 
-.admin-logo-image {
-  height: 60px;
-  width: auto;
-  object-fit: contain;
-  filter: drop-shadow(0 2px 8px rgba(212, 175, 55, 0.5));
-}
+/* Logo de texto en lugar de imagen */
 
 .admin-menu-toggle {
   display: none;

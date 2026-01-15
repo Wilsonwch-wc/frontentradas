@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import logoImage from '../../images/logo2.png';
 import './AdminHeader.css';
 
 const AdminHeader = ({ onMenuToggle, isMenuOpen }) => {
@@ -21,8 +20,9 @@ const AdminHeader = ({ onMenuToggle, isMenuOpen }) => {
               <line x1="3" y1="18" x2="21" y2="18"></line>
             </svg>
           </button>
-          <img src={logoImage} alt="PlusTicket" className="admin-logo-image" />
-          <h1 className="admin-logo">Panel Admin</h1>
+          <h1 className="admin-logo">
+            Plus<span style={{ color: '#E74C3C' }}>Tiket</span> - Panel Admin
+          </h1>
         </div>
         <div className="admin-header-right">
           <div className="admin-user-info">
