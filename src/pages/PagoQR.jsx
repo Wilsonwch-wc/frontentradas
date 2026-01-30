@@ -21,6 +21,7 @@ const PagoQR = () => {
   const [formDataCompra, setFormDataCompra] = useState(null);
   const [codigoCompra, setCodigoCompra] = useState(null);
   const [compraData, setCompraData] = useState(null);
+  const [contactoInfo, setContactoInfo] = useState(null);
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -34,6 +35,16 @@ const PagoQR = () => {
   const cargarDatos = async () => {
     setLoading(true);
     try {
+      // Cargar datos de contacto (para obtener el número de WhatsApp)
+      try {
+        const resContacto = await api.get('/contacto');
+        if (resContacto.data?.success && resContacto.data?.data) {
+          setContactoInfo(resContacto.data.data);
+        }
+      } catch (err) {
+        console.error('Error al cargar contacto:', err);
+      }
+
       // Cargar código de compra desde localStorage
       const codigo = localStorage.getItem('codigoCompra');
       if (codigo) {
@@ -140,7 +151,15 @@ const PagoQR = () => {
   const enviarComprobantePorWhatsApp = () => {
     if (!eventoData || !codigoCompra) return;
 
-    const numeroWhatsApp = import.meta.env.VITE_WHATSAPP || '59162556840';
+    // Obtener número de WhatsApp desde los datos de contacto de la base de datos
+    let numeroWhatsApp = contactoInfo?.whatsapp || contactoInfo?.telefono || import.meta.env.VITE_WHATSAPP || '62556840';
+    // Limpiar el número (quitar espacios, guiones, +)
+    numeroWhatsApp = numeroWhatsApp.toString().replace(/[\s\-\+]/g, '');
+    // Asegurar que tenga el código de país (591 para Bolivia)
+    if (!numeroWhatsApp.startsWith('591')) {
+      numeroWhatsApp = '591' + numeroWhatsApp;
+    }
+    
     const cantidad = compraData?.cantidad || pago?.cantidad || localStorage.getItem('cantidadCompra') || '';
     const totalRaw = compraData?.total || pago?.monto || localStorage.getItem('totalCompra') || '0';
     const total = typeof totalRaw === 'number' ? totalRaw.toFixed(2) : (typeof totalRaw === 'string' ? parseFloat(totalRaw).toFixed(2) : '0.00');
