@@ -347,6 +347,24 @@ const Reportes = () => {
                     : 'Entradas generales'}
                 </span>
               </div>
+              <div className="card-resumen card-qr">
+                <span className="card-label">📱 Pagos QR</span>
+                <strong className="card-value">
+                  Bs. {parseFloat(reporte.resumen?.total_qr || 0).toFixed(2)}
+                </strong>
+                <span className="card-sub">
+                  {reporte.resumen?.pagos_qr || 0} venta(s)
+                </span>
+              </div>
+              <div className="card-resumen card-efectivo">
+                <span className="card-label">💵 Pagos Efectivo</span>
+                <strong className="card-value">
+                  Bs. {parseFloat(reporte.resumen?.total_efectivo || 0).toFixed(2)}
+                </strong>
+                <span className="card-sub">
+                  {reporte.resumen?.pagos_efectivo || 0} venta(s)
+                </span>
+              </div>
             </div>
 
             {/* Estadísticas de ventas y disponibilidad */}
@@ -499,6 +517,7 @@ const Reportes = () => {
                       <th>Detalle</th>
                       <th>Compra</th>
                       <th>Confirmación</th>
+                      <th>Tipo pago</th>
                       <th>Estado</th>
                       <th>Total</th>
                     </tr>
@@ -541,6 +560,15 @@ const Reportes = () => {
                           </td>
                           <td>{formatearFecha(compra.fecha_compra)}</td>
                           <td>{formatearFecha(compra.fecha_confirmacion || compra.fecha_pago)}</td>
+                          <td>
+                            {compra.tipo_pago ? (
+                              <span className={`tipo-pago-badge tipo-pago-${compra.tipo_pago?.toLowerCase()}`}>
+                                {compra.tipo_pago === 'QR' ? '📱 QR' : '💵 Efectivo'}
+                              </span>
+                            ) : (
+                              <span className="tipo-pago-badge tipo-pago-sin">-</span>
+                            )}
+                          </td>
                           <td>{getEstadoBadge(compra.estado)}</td>
                           <td className="centrado">
                             ${parseFloat(compra.total || 0).toFixed(2)}

@@ -126,6 +126,39 @@
   font-size: 0.85rem;
 }
 
+.card-resumen.card-qr {
+  border-left: 4px solid #25d366;
+  background: linear-gradient(135deg, rgba(37, 211, 102, 0.06), transparent);
+}
+
+.card-resumen.card-efectivo {
+  border-left: 4px solid #28a745;
+  background: linear-gradient(135deg, rgba(40, 167, 69, 0.06), transparent);
+}
+
+.tipo-pago-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.tipo-pago-badge.tipo-pago-qr {
+  background: rgba(37, 211, 102, 0.15);
+  color: #1a8c4a;
+}
+
+.tipo-pago-badge.tipo-pago-efectivo {
+  background: rgba(40, 167, 69, 0.15);
+  color: #1e7e34;
+}
+
+.tipo-pago-badge.tipo-pago-sin {
+  background: #f4f5f7;
+  color: #98a2b3;
+}
+
 .tabla-wrapper {
   background: #fff;
   border: 1px solid #e5e7eb;

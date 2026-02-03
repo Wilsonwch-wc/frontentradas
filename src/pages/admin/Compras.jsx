@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../../api/axios';
 import { useAlert } from '../../context/AlertContext';
+import ModalTipoPago from '../../components/ModalTipoPago';
 import './Compras.css';
 
 const Compras = () => {
@@ -15,6 +16,8 @@ const Compras = () => {
   const [confirmando, setConfirmando] = useState(false);
   const [reenviando, setReenviando] = useState(false);
   const [eliminando, setEliminando] = useState(false);
+  const [mostrarModalTipoPago, setMostrarModalTipoPago] = useState(false);
+  const [compraAConfirmar, setCompraAConfirmar] = useState(null);
 
   useEffect(() => {
     cargarCompras();
@@ -80,23 +83,26 @@ const Compras = () => {
     }
   };
 
-  const confirmarPago = async (compraId) => {
-    const confirmado = await showConfirm('¿Estás seguro de confirmar el pago de esta compra?', { 
-      type: 'warning',
-      title: 'Confirmar Pago'
-    });
-    if (!confirmado) {
+  const abrirModalTipoPago = (compraId) => {
+    setCompraAConfirmar(compraId);
+    setMostrarModalTipoPago(true);
+  };
+
+  const confirmarPago = async (compraId, tipoPago) => {
+    if (!tipoPago || !['QR', 'EFECTIVO'].includes(tipoPago)) {
+      showAlert('Debe seleccionar el tipo de pago', { type: 'error' });
       return;
     }
 
     try {
       setConfirmando(true);
-      const response = await api.put(`/compras/${compraId}/confirmar-pago`);
+      const response = await api.put(`/compras/${compraId}/confirmar-pago`, { tipo_pago: tipoPago });
       if (response.data.success) {
         showAlert('Pago confirmado exitosamente', { type: 'success' });
+        setMostrarModalTipoPago(false);
+        setCompraAConfirmar(null);
         cargarCompras();
         if (mostrarDetalle && compraSeleccionada?.id === compraId) {
-          // Actualizar compra seleccionada
           const updated = await api.get(`/compras/codigo/${compraSeleccionada.codigo_unico}`);
           if (updated.data.success) {
             setCompraSeleccionada(updated.data.data);
@@ -110,6 +116,12 @@ const Compras = () => {
       showAlert(error.response?.data?.message || 'Error al confirmar el pago', { type: 'error' });
     } finally {
       setConfirmando(false);
+    }
+  };
+
+  const handleSeleccionarTipoPago = (tipoPago) => {
+    if (compraAConfirmar) {
+      confirmarPago(compraAConfirmar, tipoPago);
     }
   };
 
@@ -541,7 +553,7 @@ const Compras = () => {
                 {compraSeleccionada.estado === 'PAGO_PENDIENTE' && (
                   <>
                     <button
-                      onClick={() => confirmarPago(compraSeleccionada.id)}
+                      onClick={() => abrirModalTipoPago(compraSeleccionada.id)}
                       className="btn-confirmar"
                       disabled={confirmando || eliminando}
                     >
@@ -708,6 +720,19 @@ const Compras = () => {
           </div>
         )}
       </div>
+
+      <ModalTipoPago
+        isOpen={mostrarModalTipoPago}
+        onClose={() => {
+          if (!confirmando) {
+            setMostrarModalTipoPago(false);
+            setCompraAConfirmar(null);
+          }
+        }}
+        onSelect={handleSeleccionarTipoPago}
+        title="Confirmar Pago"
+        disabled={confirmando}
+      />
     </div>
   );
 };
