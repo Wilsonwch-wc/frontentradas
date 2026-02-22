@@ -178,6 +178,14 @@ const Dashboard = () => {
           <div>
             <h1>Panel de Control</h1>
             <p>Vista rápida de la operación.</p>
+            {data?.evento_activo_nombres?.length > 0 && (
+              <p className="dash-evento-activo">
+                Datos del evento activo: <strong>{data.evento_activo_nombres.join(', ')}</strong>
+              </p>
+            )}
+            {data?.eventos_habilitados === 0 && (
+              <p className="dash-evento-activo dash-sin-evento">No hay evento activo; las cifras de ventas están en cero.</p>
+            )}
           </div>
           <button className="dash-refresh" onClick={loadData} disabled={loading}>
             {loading ? 'Actualizando...' : 'Actualizar'}

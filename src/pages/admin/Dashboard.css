@@ -104,6 +104,18 @@
 .tone-slate .dash-icon { background: #e2e8f0; color: #1e293b; }
 .tone-gray .dash-icon { background: #f3f4f6; color: #374151; }
 
+.dash-evento-activo {
+  margin-top: 4px;
+  font-size: 0.9rem;
+  color: #475569;
+}
+.dash-evento-activo strong {
+  color: #0f172a;
+}
+.dash-sin-evento {
+  color: #b45309;
+}
+
 @media (max-width: 640px) {
   .dash-card-value {
     font-size: 1.3rem;
