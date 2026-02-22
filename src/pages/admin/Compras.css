@@ -272,12 +272,12 @@
   background: #2980b9;
 }
 
-.asientos-list, .mesas-list {
+.asientos-list, .mesas-list, .zonas-list {
   display: grid;
   gap: 10px;
 }
 
-.asiento-item, .mesa-item {
+.asiento-item, .mesa-item, .zona-item {
   display: flex;
   gap: 15px;
   align-items: center;
@@ -287,7 +287,7 @@
   flex-wrap: wrap;
 }
 
-.asiento-item span, .mesa-item span {
+.asiento-item span, .mesa-item span, .zona-item span {
   font-size: 14px;
 }
 
@@ -601,7 +601,7 @@
     width: 100%;
   }
 
-  .asiento-item, .mesa-item {
+  .asiento-item, .mesa-item, .zona-item {
     flex-direction: column;
     align-items: flex-start;
     gap: 8px;

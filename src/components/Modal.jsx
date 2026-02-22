@@ -14,23 +14,38 @@ const overlayStyle = {
 const containerStyle = {
   background: '#fff',
   borderRadius: '12px',
-  padding: '12px',
+  padding: '0',
   width: '100%',
-  maxWidth: '1500px',
+  maxWidth: '520px',
   maxHeight: '92vh',
   overflow: 'hidden',
   boxShadow: '0 10px 40px rgba(0,0,0,0.35)',
-  boxSizing: 'border-box'
+  boxSizing: 'border-box',
+  display: 'flex',
+  flexDirection: 'column'
+};
+
+const containerStyleLarge = {
+  ...containerStyle,
+  maxWidth: '98vw',
+  maxHeight: '96vh',
+  width: '98vw',
+  height: '96vh',
+  display: 'flex',
+  flexDirection: 'column'
 };
 
 const headerStyle = {
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
-  marginBottom: '12px'
+  padding: '16px 20px',
+  borderBottom: '1px solid #e5e7eb',
+  flexShrink: 0,
+  background: '#fafafa'
 };
 
-const Modal = ({ isOpen, onClose, title, children, tools, closeOnOverlayClick = true }) => {
+const Modal = ({ isOpen, onClose, title, children, tools, closeOnOverlayClick = true, large = false }) => {
   if (!isOpen) return null;
 
   const handleOverlayClick = (e) => {
@@ -43,22 +58,27 @@ const Modal = ({ isOpen, onClose, title, children, tools, closeOnOverlayClick = 
     display: 'grid',
     gridTemplateColumns: tools ? '250px minmax(0, 1fr)' : '1fr',
     gap: '8px',
-    alignItems: 'stretch'
+    alignItems: 'stretch',
+    flex: 1,
+    minHeight: 0,
+    overflow: 'hidden',
+    ...(large && { minHeight: 'calc(96vh - 80px)' })
   };
 
   return (
     <div style={overlayStyle} onClick={handleOverlayClick}>
-      <div style={containerStyle}>
+      <div style={large ? containerStyleLarge : containerStyle}>
         <div style={headerStyle}>
-          <h3 style={{ margin: 0 }}>{title}</h3>
+          <h3 style={{ margin: 0, fontSize: '1.25rem' }}>{title}</h3>
           <button
             onClick={onClose}
             style={{
-              padding: '8px 10px',
-              borderRadius: '6px',
+              padding: '8px 14px',
+              borderRadius: '8px',
               border: '1px solid #d1d5db',
               cursor: 'pointer',
-              background: '#f9fafb'
+              background: '#fff',
+              fontWeight: 500
             }}
           >
             Cerrar
@@ -67,7 +87,7 @@ const Modal = ({ isOpen, onClose, title, children, tools, closeOnOverlayClick = 
         <div style={contentLayoutStyle}>
           {tools && (
             <div className="modal-tools" style={{
-              overflowY: 'hidden',
+              overflowY: 'auto',
               borderRight: '1px solid #e5e7eb',
               paddingRight: '8px',
               paddingLeft: '4px'
@@ -75,7 +95,7 @@ const Modal = ({ isOpen, onClose, title, children, tools, closeOnOverlayClick = 
               {tools}
             </div>
           )}
-          <div style={{ overflow: 'auto' }}>{children}</div>
+          <div className="modal-body" style={{ overflowY: 'auto', minHeight: 0, flex: 1 }}>{children}</div>
         </div>
       </div>
     </div>

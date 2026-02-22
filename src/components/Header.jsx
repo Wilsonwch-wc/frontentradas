@@ -27,6 +27,17 @@ const Header = () => {
           {isAuthenticated() && !user?.rol && (
             <Link to="/mis-compras" className="nav-link">Mis Compras</Link>
           )}
+          {isAuthenticated() && (user?.rol === 'admin' || user?.rol === 'seguridad') && (
+            <Link to="/admin/dashboard" className="nav-link" style={{ 
+              background: '#D4AF37', 
+              color: '#000', 
+              padding: '0.5rem 1rem', 
+              borderRadius: '4px',
+              fontWeight: 'bold'
+            }}>
+              Ir al Panel
+            </Link>
+          )}
           {isAuthenticated() ? (
             <div className="nav-user-section">
               {user?.foto_perfil && (

@@ -12,7 +12,7 @@ const apiBase = getApiBase();
 const Compra = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, isAdmin } = useAuth();
   const { showAlert } = useAlert();
   const [evento, setEvento] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -28,8 +28,15 @@ const Compra = () => {
   const [asientosOcupados, setAsientosOcupados] = useState([]); // IDs de asientos ocupados/confirmados
   const [mesasOcupadas, setMesasOcupadas] = useState([]); // IDs de mesas ocupadas/confirmadas
   const [enviando, setEnviando] = useState(false); // Estado para prevenir doble envío
+  const [esRegaloAdmin, setEsRegaloAdmin] = useState(false);
+  const [esOfertaAdmin, setEsOfertaAdmin] = useState(false);
+  const [precioEspecial, setPrecioEspecial] = useState('');
+  const [codigoCupon, setCodigoCupon] = useState('');
+  const [cuponValidado, setCuponValidado] = useState(null);
+  const [validandoCupon, setValidandoCupon] = useState(false);
   const canvasRef = useRef(null);
   const escalaRef = useRef({ sx: 1, sy: 1, ox: 0, oy: 0, minX: 0, minY: 0, worldW: 1000, worldH: 1000 });
+  const [mostrarNumerosAsientos, setMostrarNumerosAsientos] = useState(true);
 
   useEffect(() => {
     // Verificar autenticación
@@ -46,7 +53,7 @@ const Compra = () => {
     if (evento && evento.tipo_evento === 'especial' && canvasRef.current) {
       dibujarCanvas();
     }
-  }, [evento, selecciones, asientosOcupados, mesasOcupadas]);
+  }, [evento, selecciones, asientosOcupados, mesasOcupadas, mostrarNumerosAsientos]);
 
   const cargarEvento = async () => {
     try {
@@ -365,12 +372,13 @@ const Compra = () => {
           ctx.strokeRect(mesaX, mesaY, mesaWidth, mesaHeight);
         }
         
-        // Dibujar texto de la mesa (igual que admin)
-        ctx.fillStyle = '#fff';
-        ctx.font = 'bold 12px Arial';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(`M${mesa.numero_mesa}`, mesaX + mesaWidth / 2, mesaY + mesaHeight / 2);
+        if (mostrarNumerosAsientos) {
+          ctx.fillStyle = '#FFD700';
+          ctx.font = 'bold 11px Arial';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(`M${mesa.numero_mesa}`, mesaX + mesaWidth / 2, mesaY + mesaHeight / 2);
+        }
       });
     }
 
@@ -391,81 +399,118 @@ const Compra = () => {
         // Color de la silla: rojo si está ocupada (individual o por mesa), color normal si no
         const colorSilla = sillaOcupada ? '#e74c3c' : (tipoPrecio?.color || '#2196F3');
         
-        // Dibujar silla 12x12 con offset -6 (igual que admin)
+        // Dibujar silla 8x8 (más pequeña)
         ctx.fillStyle = colorSilla;
-        ctx.fillRect(sillaX - 6, sillaY - 6, 12, 12);
+        ctx.fillRect(sillaX - 4, sillaY - 4, 8, 8);
         ctx.strokeStyle = estaSeleccionada ? '#FFD700' : (sillaOcupada ? '#c0392b' : '#333');
         ctx.lineWidth = estaSeleccionada ? 2 : (sillaOcupada ? 2 : 1);
-        ctx.strokeRect(sillaX - 6, sillaY - 6, 12, 12);
+        ctx.strokeRect(sillaX - 4, sillaY - 4, 8, 8);
         
-        // Dibujar número de la silla (ligeramente más pequeño para despejar espacio)
-        ctx.fillStyle = '#fff';
-        ctx.font = 'bold 7px Arial';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        let numeroSilla = '';
-        if (silla.numero_asiento) {
-          if (silla.numero_asiento.includes('-')) {
-            const parteSilla = silla.numero_asiento.split('-')[1];
-            numeroSilla = parteSilla.replace('S', '');
-          } else {
-            // Quitar prefijos de letra (ej. "A141" -> "141") para mesas
-            numeroSilla = silla.numero_asiento.replace(/^[A-Za-z]+/, '');
+        if (mostrarNumerosAsientos) {
+          ctx.fillStyle = '#0d0d0d';
+          ctx.font = 'bold 10px Arial';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          let numeroSilla = '';
+          if (silla.numero_asiento) {
+            if (silla.numero_asiento.includes('-')) {
+              const parteSilla = silla.numero_asiento.split('-')[1];
+              numeroSilla = parteSilla.replace('S', '');
+            } else {
+              numeroSilla = silla.numero_asiento.replace(/^[A-Za-z]+/, '');
+            }
           }
+          ctx.fillText(numeroSilla || '', sillaX, sillaY);
         }
-        ctx.fillText(numeroSilla || '', sillaX, sillaY);
         
         // Si está ocupada (individual o por mesa), dibujar una X
         if (sillaOcupada) {
           ctx.strokeStyle = '#fff';
           ctx.lineWidth = 1.5;
           ctx.beginPath();
-          ctx.moveTo(sillaX - 4, sillaY - 4);
-          ctx.lineTo(sillaX + 4, sillaY + 4);
-          ctx.moveTo(sillaX + 4, sillaY - 4);
-          ctx.lineTo(sillaX - 4, sillaY + 4);
+          ctx.moveTo(sillaX - 3, sillaY - 3);
+          ctx.lineTo(sillaX + 3, sillaY + 3);
+          ctx.moveTo(sillaX + 3, sillaY - 3);
+          ctx.lineTo(sillaX - 3, sillaY + 3);
           ctx.stroke();
         }
       });
     }
     
-    // Dibujar asientos individuales (exactamente como en admin)
+    // Dibujar asientos individuales (cuadrados) - excluir personas
     if (evento.asientos && Array.isArray(evento.asientos)) {
-      const asientosIndividuales = evento.asientos.filter(a => !a.mesa_id);
-      asientosIndividuales.forEach(asiento => {
-        // Usar posicion_x y posicion_y (igual que admin)
+      const asientosSillas = evento.asientos.filter(a => !a.mesa_id && !String(a.numero_asiento || '').startsWith('P'));
+      asientosSillas.forEach(asiento => {
         const asientoX = asiento.posicion_x !== null && asiento.posicion_x !== undefined ? asiento.posicion_x : 50;
         const asientoY = asiento.posicion_y !== null && asiento.posicion_y !== undefined ? asiento.posicion_y : 50;
         const tipoPrecio = evento.tipos_precio?.find(tp => tp.id === asiento.tipo_precio_id);
         const estaSeleccionado = selecciones.some(sel => sel.type === 'asiento' && sel.id === asiento.id);
         const estaOcupado = asientosOcupados.includes(asiento.id);
-        
-        // Color del asiento: rojo si está ocupado, color normal si no
         const colorAsiento = estaOcupado ? '#e74c3c' : (tipoPrecio?.color || '#2196F3');
         
-        // Dibujar asiento 16x16 con offset -8 (igual que admin)
         ctx.fillStyle = colorAsiento;
-        ctx.fillRect(asientoX - 8, asientoY - 8, 16, 16);
+        ctx.fillRect(asientoX - 5, asientoY - 5, 10, 10);
         ctx.strokeStyle = estaSeleccionado ? '#FFD700' : (estaOcupado ? '#c0392b' : '#333');
         ctx.lineWidth = estaSeleccionado ? 3 : (estaOcupado ? 2 : 1);
-        ctx.strokeRect(asientoX - 8, asientoY - 8, 16, 16);
+        ctx.strokeRect(asientoX - 5, asientoY - 5, 10, 10);
         
-        // Dibujar número del asiento (igual que admin)
-        ctx.fillStyle = '#fff';
-        ctx.font = 'bold 9px Arial';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(asiento.numero_asiento || '', asientoX, asientoY);
+        if (mostrarNumerosAsientos) {
+          ctx.fillStyle = '#0d0d0d';
+          ctx.font = 'bold 11px Arial';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(asiento.numero_asiento || '', asientoX, asientoY);
+        }
         
-        // Si está ocupado, dibujar una X
         if (estaOcupado) {
           ctx.strokeStyle = '#fff';
           ctx.lineWidth = 2;
           ctx.beginPath();
-          ctx.moveTo(asientoX - 5, asientoY - 5);
-          ctx.lineTo(asientoX + 5, asientoY + 5);
-          ctx.moveTo(asientoX + 5, asientoY - 5);
-          ctx.lineTo(asientoX - 5, asientoY + 5);
+          ctx.moveTo(asientoX - 3, asientoY - 3);
+          ctx.lineTo(asientoX + 3, asientoY + 3);
+          ctx.moveTo(asientoX + 3, asientoY - 3);
+          ctx.lineTo(asientoX - 3, asientoY + 3);
+          ctx.stroke();
+        }
+      });
+    }
+
+    // Dibujar personas (espacio pie) como círculos
+    if (evento.asientos && Array.isArray(evento.asientos)) {
+      const personas = evento.asientos.filter(a => !a.mesa_id && String(a.numero_asiento || '').startsWith('P'));
+      personas.forEach(persona => {
+        const px = persona.posicion_x !== null && persona.posicion_x !== undefined ? persona.posicion_x : 50;
+        const py = persona.posicion_y !== null && persona.posicion_y !== undefined ? persona.posicion_y : 50;
+        const tipoPrecio = evento.tipos_precio?.find(tp => tp.id === persona.tipo_precio_id);
+        const estaSeleccionado = selecciones.some(sel => sel.type === 'asiento' && sel.id === persona.id);
+        const estaOcupado = asientosOcupados.includes(persona.id);
+        const colorPersona = estaOcupado ? '#e74c3c' : (tipoPrecio?.color || '#4CAF50');
+        const radio = 5;
+        
+        ctx.fillStyle = colorPersona;
+        ctx.beginPath();
+        ctx.arc(px, py, radio, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.strokeStyle = estaSeleccionado ? '#FFD700' : (estaOcupado ? '#c0392b' : '#333');
+        ctx.lineWidth = estaSeleccionado ? 3 : (estaOcupado ? 2 : 1);
+        ctx.stroke();
+        
+        if (mostrarNumerosAsientos) {
+          ctx.fillStyle = '#0d0d0d';
+          ctx.font = 'bold 11px Arial';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(persona.numero_asiento || '', px, py);
+        }
+        
+        if (estaOcupado) {
+          ctx.strokeStyle = '#fff';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(px - 5, py - 5);
+          ctx.lineTo(px + 5, py + 5);
+          ctx.moveTo(px + 5, py - 5);
+          ctx.lineTo(px - 5, py + 5);
           ctx.stroke();
         }
       });
@@ -637,7 +682,7 @@ const Compra = () => {
         if (asientoX === null || asientoY === null) continue;
         
         // Radio de detección (más pequeño para sillas de mesas)
-        const tamañoAsiento = asiento.mesa_id ? 6 : 8;
+        const tamañoAsiento = asiento.mesa_id ? 5 : 6;
         const distancia = Math.sqrt(Math.pow(x - asientoX, 2) + Math.pow(y - asientoY, 2));
         
         if (distancia <= tamañoAsiento) {
@@ -803,6 +848,32 @@ const Compra = () => {
         // Pero podrías tener una lógica diferente aquí si es necesario
       }
 
+      // Enviar al backend: total SIN descuento cuando hay cupón (el backend aplica el descuento una vez).
+      // Si enviamos el total ya con descuento, el backend lo descontaría de nuevo y quedaría mal (ej. 972 en vez de 1080).
+      let totalParaBackend = totalConDescuento || 0;
+      if (cuponValidado && !esRegaloAdmin && !esOfertaAdmin) {
+        totalParaBackend = total; // total = subtotal sin descuento; el backend aplicará el cupón
+      }
+
+      let totalFinal = totalConDescuento || 0;
+      let tipoVenta = 'NORMAL';
+      let precioOriginal = null;
+      if (isAdmin && isAdmin()) {
+        if (esRegaloAdmin) {
+          totalFinal = 0;
+          tipoVenta = 'REGALO_ADMIN';
+        } else if (esOfertaAdmin && precioEspecial !== '' && !isNaN(parseFloat(precioEspecial))) {
+          totalFinal = parseFloat(precioEspecial) * cantidadReal;
+          precioOriginal = total;
+          tipoVenta = 'OFERTA_ADMIN';
+        }
+      }
+
+      if (esRegaloAdmin) totalParaBackend = 0;
+      else if (esOfertaAdmin && precioEspecial !== '' && !isNaN(parseFloat(precioEspecial))) {
+        totalParaBackend = parseFloat(precioEspecial) * cantidadReal;
+      }
+
       // Crear compra en el backend
       const compraResponse = await api.post('/compras', {
         evento_id: parseInt(id),
@@ -810,7 +881,10 @@ const Compra = () => {
         cliente_email: formData.email || null,
         cliente_telefono: formData.telefono || null,
         cantidad: cantidadReal,
-        total: total || 0,
+        total: totalParaBackend,
+        tipo_venta: tipoVenta,
+        precio_original: precioOriginal,
+        codigo_cupon: cuponValidado ? codigoCupon.trim() : null,
         asientos: asientosParaBackend,
         mesas: mesasParaBackend
       });
@@ -823,7 +897,7 @@ const Compra = () => {
         localStorage.setItem('compraId', compra.id.toString());
         localStorage.setItem('eventoCompra', JSON.stringify(evento));
         localStorage.setItem('cantidadCompra', cantidadReal.toString());
-        localStorage.setItem('totalCompra', total.toFixed(2));
+        localStorage.setItem('totalCompra', (compra.total != null ? compra.total : totalFinal).toString());
         localStorage.setItem('formDataCompra', JSON.stringify(formData));
         if (evento.tipo_evento === 'especial') {
           localStorage.setItem('seleccionesCompra', JSON.stringify(selecciones));
@@ -865,6 +939,40 @@ const Compra = () => {
     );
   }
 
+  // Función para validar cupón
+  const handleValidarCupon = async () => {
+    if (!codigoCupon.trim()) {
+      showAlert('Por favor ingresa un código de cupón', { type: 'warning' });
+      return;
+    }
+
+    const emailParaValidar = formData.email?.trim() || user?.correo || user?.email || '';
+    if (!emailParaValidar) {
+      showAlert('Completa tu correo electrónico antes de validar el cupón, para verificar si ya lo utilizaste.', { type: 'warning' });
+      return;
+    }
+
+    setValidandoCupon(true);
+    try {
+      const response = await api.post('/cupones/validar', {
+        codigo: codigoCupon.trim(),
+        evento_id: parseInt(id),
+        cliente_email: emailParaValidar
+      });
+
+      if (response.data.success) {
+        setCuponValidado(response.data.data);
+        showAlert(`Cupón válido: ${response.data.data.porcentaje_descuento}% de descuento`, { type: 'success' });
+      }
+    } catch (error) {
+      const message = error.response?.data?.message || 'Error al validar el cupón';
+      showAlert(message, { type: 'error' });
+      setCuponValidado(null);
+    } finally {
+      setValidandoCupon(false);
+    }
+  };
+
   // Calcular total
   let total = 0;
   if (evento.tipo_evento === 'especial') {
@@ -884,6 +992,35 @@ const Compra = () => {
     }, 0);
   } else {
     total = evento.precio * cantidad;
+  }
+
+  // Aplicar descuento del cupón si está validado
+  let totalConDescuento = total;
+  let descuentoCupon = 0;
+  if (cuponValidado && !esRegaloAdmin && !esOfertaAdmin) {
+    descuentoCupon = (total * cuponValidado.porcentaje_descuento) / 100;
+    totalConDescuento = total - descuentoCupon;
+    if (totalConDescuento < 0) {
+      totalConDescuento = 0;
+      descuentoCupon = total;
+    }
+  }
+
+  // Cantidad de entradas (para precio especial: precio × cantidad)
+  let cantidadEntradas = cantidad;
+  if (evento.tipo_evento === 'especial' && selecciones.length > 0) {
+    const mesasCompletasSel = selecciones.filter((s) => s.type === 'mesa_completa');
+    const idsMesasCompletas = mesasCompletasSel.map((m) => m.mesa_id);
+    let cantidadMesas = 0;
+    mesasCompletasSel.forEach((mesa) => {
+      cantidadMesas += mesa.cantidad_sillas || 0;
+    });
+    const asientosIndividuales = selecciones.filter((s) => {
+      if (s.type !== 'asiento') return false;
+      const asientoData = evento.asientos?.find((a) => a.id === s.id);
+      return asientoData && !idsMesasCompletas.includes(asientoData.mesa_id);
+    });
+    cantidadEntradas = cantidadMesas + asientosIndividuales.length;
   }
 
   const formatearFecha = (fechaString) => {
@@ -963,6 +1100,22 @@ const Compra = () => {
                 Haz clic en un asiento para seleccionarlo.
               </p>
               <div className="leyenda-asientos" style={{ marginBottom: '15px', display: 'flex', gap: '20px', flexWrap: 'wrap', alignItems: 'center' }}>
+                <button
+                  type="button"
+                  onClick={() => setMostrarNumerosAsientos(!mostrarNumerosAsientos)}
+                  style={{
+                    padding: '6px 10px',
+                    fontSize: '12px',
+                    backgroundColor: mostrarNumerosAsientos ? '#607D8B' : '#4CAF50',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontWeight: 'bold'
+                  }}
+                >
+                  {mostrarNumerosAsientos ? '🙈 Ocultar números' : '👁️ Mostrar números'}
+                </button>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <div style={{ width: '20px', height: '20px', backgroundColor: '#2196F3', border: '1px solid #333', borderRadius: '3px' }}></div>
                   <span>Disponible</span>
@@ -1010,7 +1163,7 @@ const Compra = () => {
                         const { x: asientoX, y: asientoY } = obtenerPosicionAsiento(asiento, mesasMap);
                         if (asientoX === null || asientoY === null) continue;
                         
-                        const tamañoAsiento = asiento.mesa_id ? 6 : 8;
+                        const tamañoAsiento = asiento.mesa_id ? 5 : 6;
                         const distancia = Math.sqrt(Math.pow(x - asientoX, 2) + Math.pow(y - asientoY, 2));
                         
                         if (distancia <= tamañoAsiento && asientosOcupados.includes(asiento.id)) {
@@ -1150,8 +1303,107 @@ const Compra = () => {
                 />
               </div>
 
+              {/* Campo de cupón de descuento */}
+              {!esRegaloAdmin && !esOfertaAdmin && (
+                <div className="form-group">
+                  <label htmlFor="codigoCupon">Código de Cupón (Opcional)</label>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <input
+                      type="text"
+                      id="codigoCupon"
+                      name="codigoCupon"
+                      value={codigoCupon}
+                      onChange={(e) => {
+                        setCodigoCupon(e.target.value.toUpperCase());
+                        setCuponValidado(null);
+                      }}
+                      placeholder="Ingresa el código del cupón"
+                      style={{ flex: 1 }}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleValidarCupon}
+                      disabled={validandoCupon || !codigoCupon.trim()}
+                      style={{
+                        padding: '0.75rem 1.5rem',
+                        background: '#667eea',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '5px',
+                        cursor: validandoCupon || !codigoCupon.trim() ? 'not-allowed' : 'pointer',
+                        opacity: validandoCupon || !codigoCupon.trim() ? 0.6 : 1
+                      }}
+                    >
+                      {validandoCupon ? 'Validando...' : 'Validar'}
+                    </button>
+                  </div>
+                  {cuponValidado && (
+                    <div style={{
+                      marginTop: '0.5rem',
+                      padding: '0.75rem',
+                      background: '#d4edda',
+                      color: '#155724',
+                      borderRadius: '5px',
+                      fontSize: '0.9rem'
+                    }}>
+                      ✓ Cupón válido: {cuponValidado.porcentaje_descuento}% de descuento aplicado
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {isAdmin && isAdmin() && (
+                <div className="form-group compra-admin-opciones">
+                  <label style={{ display: 'block', marginBottom: '10px', fontWeight: '600' }}>Opciones de administrador</label>
+                  <div className="admin-opcion">
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={esRegaloAdmin}
+                        onChange={(e) => {
+                          setEsRegaloAdmin(e.target.checked);
+                          if (e.target.checked) setEsOfertaAdmin(false);
+                        }}
+                      />
+                      <span> Entrada gratis (regalo del administrador)</span>
+                    </label>
+                  </div>
+                  <div className="admin-opcion">
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={esOfertaAdmin}
+                        onChange={(e) => {
+                          setEsOfertaAdmin(e.target.checked);
+                          if (e.target.checked) setEsRegaloAdmin(false);
+                        }}
+                      />
+                      <span> Precio especial (oferta)</span>
+                    </label>
+                    {esOfertaAdmin && (
+                      <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+                          <span>Precio original total: ${total.toFixed(2)}</span>
+                          <span>Precio por entrada: </span>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            placeholder="Ej: 20"
+                            value={precioEspecial}
+                            onChange={(e) => setPrecioEspecial(e.target.value)}
+                            style={{ width: '100px', padding: '6px' }}
+                          />
+                          <span>Bs. × {cantidadEntradas} = ${(precioEspecial && !isNaN(parseFloat(precioEspecial)) ? parseFloat(precioEspecial) * cantidadEntradas : 0).toFixed(2)}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               <button type="submit" className="btn-confirmar-compra" disabled={enviando}>
-                {enviando ? 'Procesando...' : `Confirmar Compra - $${total.toFixed(2)}`}
+                {enviando ? 'Procesando...' : (esRegaloAdmin ? 'Confirmar Compra - Gratis' : `Confirmar Compra - $${(esOfertaAdmin && precioEspecial && !isNaN(parseFloat(precioEspecial)) ? parseFloat(precioEspecial) * cantidadEntradas : totalConDescuento).toFixed(2)}`)}
               </button>
             </form>
           </div>
@@ -1207,10 +1459,48 @@ const Compra = () => {
               </div>
             )}
             <div className="resumen-detalle">
-              <div className="resumen-item resumen-total">
-                <span>Total a Pagar</span>
-                <span>${total.toFixed(2)}</span>
-              </div>
+              {cuponValidado && !esRegaloAdmin && !esOfertaAdmin && (
+                <>
+                  <div className="resumen-item resumen-item-anterior">
+                    <span>Total anterior (sin descuento)</span>
+                    <span>${total.toFixed(2)}</span>
+                  </div>
+                  <div className="resumen-item" style={{ color: '#28a745' }}>
+                    <span>Descuento ({cuponValidado.porcentaje_descuento}%)</span>
+                    <span>-${descuentoCupon.toFixed(2)}</span>
+                  </div>
+                  <div className="resumen-item resumen-total resumen-total-con-descuento">
+                    <span>Total con descuento (a pagar)</span>
+                    <span className="resumen-total-monto">${totalConDescuento.toFixed(2)}</span>
+                  </div>
+                </>
+              )}
+              {!cuponValidado && !esRegaloAdmin && !esOfertaAdmin && (
+                <div className="resumen-item resumen-total">
+                  <span>Total a pagar</span>
+                  <span className="resumen-total-monto">${totalConDescuento.toFixed(2)}</span>
+                </div>
+              )}
+              {isAdmin && isAdmin() && (esRegaloAdmin || (esOfertaAdmin && precioEspecial !== '')) && (
+                <div className="resumen-item">
+                  <span>Precio original</span>
+                  <span>${total.toFixed(2)}</span>
+                </div>
+              )}
+              {(esRegaloAdmin || esOfertaAdmin) && (
+                <div className="resumen-item resumen-total">
+                  <span>Total a pagar</span>
+                  <span>
+                    {esRegaloAdmin ? (
+                      <span style={{ color: '#28a745', fontWeight: 700 }}>Gratis</span>
+                    ) : esOfertaAdmin && precioEspecial !== '' && !isNaN(parseFloat(precioEspecial)) ? (
+                      <span style={{ fontWeight: 700 }}>${(parseFloat(precioEspecial) * cantidadEntradas).toFixed(2)} <small style={{ fontWeight: 400, color: '#666' }}>({cantidadEntradas} × ${parseFloat(precioEspecial).toFixed(2)})</small></span>
+                    ) : (
+                      `$${totalConDescuento.toFixed(2)}`
+                    )}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </div>

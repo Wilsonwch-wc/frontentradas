@@ -136,6 +136,11 @@
   background: linear-gradient(135deg, rgba(40, 167, 69, 0.06), transparent);
 }
 
+.card-resumen.card-zonas-generales {
+  border-left: 4px solid #8b5cf6;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.06), transparent);
+}
+
 .tipo-pago-badge {
   display: inline-block;
   padding: 4px 10px;
@@ -155,6 +160,29 @@
 }
 
 .tipo-pago-badge.tipo-pago-sin {
+  background: #f4f5f7;
+  color: #98a2b3;
+}
+
+.tipo-venta-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.tipo-venta-badge.tipo-venta-regalo {
+  background: rgba(40, 167, 69, 0.15);
+  color: #1e7e34;
+}
+
+.tipo-venta-badge.tipo-venta-oferta {
+  background: rgba(255, 193, 7, 0.2);
+  color: #b38600;
+}
+
+.tipo-venta-badge.tipo-venta-normal {
   background: #f4f5f7;
   color: #98a2b3;
 }

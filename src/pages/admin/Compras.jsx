@@ -88,7 +88,7 @@ const Compras = () => {
     setMostrarModalTipoPago(true);
   };
 
-  const confirmarPago = async (compraId, tipoPago) => {
+  const confirmarPago = async (compraId, tipoPago, tipoVenta, precioOriginal) => {
     if (!tipoPago || !['QR', 'EFECTIVO'].includes(tipoPago)) {
       showAlert('Debe seleccionar el tipo de pago', { type: 'error' });
       return;
@@ -96,7 +96,10 @@ const Compras = () => {
 
     try {
       setConfirmando(true);
-      const response = await api.put(`/compras/${compraId}/confirmar-pago`, { tipo_pago: tipoPago });
+      const body = { tipo_pago: tipoPago };
+      if (tipoVenta) body.tipo_venta = tipoVenta;
+      if (precioOriginal != null) body.precio_original = precioOriginal;
+      const response = await api.put(`/compras/${compraId}/confirmar-pago`, body);
       if (response.data.success) {
         showAlert('Pago confirmado exitosamente', { type: 'success' });
         setMostrarModalTipoPago(false);
@@ -119,9 +122,11 @@ const Compras = () => {
     }
   };
 
-  const handleSeleccionarTipoPago = (tipoPago) => {
+  const handleSeleccionarTipoPago = (payload) => {
     if (compraAConfirmar) {
-      confirmarPago(compraAConfirmar, tipoPago);
+      const tipoPago = typeof payload === 'string' ? payload : payload.tipoPago;
+      const extras = typeof payload === 'object' ? payload : {};
+      confirmarPago(compraAConfirmar, tipoPago, extras.tipo_venta, extras.precio_original);
     }
   };
 
@@ -440,10 +445,41 @@ const Compras = () => {
                     </div>
                   </div>
                   <div><strong>Estado:</strong> {getEstadoBadge(compraSeleccionada.estado)}</div>
+                  {(compraSeleccionada.tipo_venta === 'REGALO_ADMIN' || compraSeleccionada.tipo_venta === 'OFERTA_ADMIN') && (
+                    <div>
+                      <strong>Tipo venta:</strong>{' '}
+                      {compraSeleccionada.tipo_venta === 'REGALO_ADMIN' ? '🎁 Regalo Admin' : '🏷️ Oferta'}
+                    </div>
+                  )}
                   <div><strong>Evento:</strong> {compraSeleccionada.evento_titulo}</div>
                   <div><strong>Fecha del Evento:</strong> {formatearFecha(compraSeleccionada.evento_fecha)}</div>
                   <div><strong>Cantidad:</strong> {compraSeleccionada.cantidad} entrada(s)</div>
-                  <div><strong>Total:</strong> ${parseFloat(compraSeleccionada.total).toFixed(2)} BOB</div>
+                  <div>
+                    <strong>Total{compraSeleccionada.cupon_id ? ' (con cupón)' : ''}:</strong>{' '}
+                    {compraSeleccionada.tipo_venta === 'REGALO_ADMIN' ? (
+                      <span style={{ color: '#28a745', fontWeight: 600 }}>Gratis (Regalo Admin)</span>
+                    ) : compraSeleccionada.tipo_venta === 'OFERTA_ADMIN' && compraSeleccionada.precio_original ? (
+                      <span>${parseFloat(compraSeleccionada.total).toFixed(2)} BOB <small>(orig. ${parseFloat(compraSeleccionada.precio_original).toFixed(2)})</small></span>
+                    ) : compraSeleccionada.cupon_id && (compraSeleccionada.descuento_cupon != null || compraSeleccionada.precio_original != null) ? (
+                      <span>
+                        <span style={{ display: 'block', marginBottom: 4 }}>
+                          <strong>Precio sin cupón:</strong> ${parseFloat(compraSeleccionada.precio_original || (parseFloat(compraSeleccionada.total || 0) + parseFloat(compraSeleccionada.descuento_cupon || 0))).toFixed(2)} BOB
+                        </span>
+                        {parseFloat(compraSeleccionada.descuento_cupon || 0) > 0 && (
+                          <span style={{ display: 'block', marginBottom: 4, color: '#0d9488' }}>
+                            <strong>Descuento cupón:</strong> -${parseFloat(compraSeleccionada.descuento_cupon).toFixed(2)} BOB
+                          </span>
+                        )}
+                        <span style={{ color: '#16a34a', fontWeight: 700, fontSize: '1.1em' }}>
+                          Total a verificar (pago): ${parseFloat(compraSeleccionada.total || 0).toFixed(2)} BOB
+                        </span>
+                      </span>
+                    ) : (
+                      <span style={{ color: '#16a34a', fontWeight: 700 }}>
+                        ${parseFloat(compraSeleccionada.total || 0).toFixed(2)} BOB
+                      </span>
+                    )}
+                  </div>
                   <div><strong>Fecha de Compra:</strong> {formatearFecha(compraSeleccionada.fecha_compra)}</div>
                 </div>
               </div>
@@ -543,6 +579,22 @@ const Compras = () => {
                         <span><strong>Cantidad de Sillas:</strong> {mesa.cantidad_sillas}</span>
                         <span><strong>Precio Total:</strong> ${parseFloat(mesa.precio_total).toFixed(2)}</span>
                         <span className={`badge badge-${mesa.estado.toLowerCase()}`}>{mesa.estado}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {compraSeleccionada.areas_personas && compraSeleccionada.areas_personas.length > 0 && (
+                <div className="detalle-section">
+                  <h3>Zonas generales (personas de pie)</h3>
+                  <div className="zonas-list">
+                    {compraSeleccionada.areas_personas.map((ap) => (
+                      <div key={ap.id} className="zona-item">
+                        <span><strong>Zona:</strong> {ap.area_nombre || `Área ${ap.area_id}`}</span>
+                        <span><strong>Cantidad:</strong> {ap.cantidad} persona(s)</span>
+                        <span><strong>Precio:</strong> ${parseFloat(ap.precio_total || 0).toFixed(2)}</span>
+                        <span className={`badge badge-${(ap.estado || '').toLowerCase()}`}>{ap.estado}</span>
                       </div>
                     ))}
                   </div>
@@ -732,6 +784,7 @@ const Compras = () => {
         onSelect={handleSeleccionarTipoPago}
         title="Confirmar Pago"
         disabled={confirmando}
+        compraTotal={compraSeleccionada?.id === compraAConfirmar ? (compraSeleccionada?.total ?? 0) : (compras.find((c) => c.id === compraAConfirmar)?.total ?? 0)}
       />
     </div>
   );

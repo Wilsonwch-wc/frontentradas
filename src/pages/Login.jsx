@@ -71,10 +71,16 @@ const Login = () => {
           // Mostrar notificación de éxito
           await showAlert('¡Sesión iniciada exitosamente!', { 
             type: 'success',
-            title: 'Bienvenido'
+            title: user?.rol === 'admin' ? 'Bienvenido Administrador' : 'Bienvenido'
           });
-          const from = location.state?.from || '/';
-          navigate(from, { replace: true });
+
+          // Si es admin (o seguridad), llevar al dashboard admin
+          if (user?.rol === 'admin' || user?.rol === 'seguridad') {
+            navigate('/admin/dashboard', { replace: true });
+          } else {
+            const from = location.state?.from || '/';
+            navigate(from, { replace: true });
+          }
         } else {
           // Verificar si requiere verificación de email
           if (response.data.requiereVerificacion) {
@@ -186,10 +192,16 @@ const Login = () => {
         // Mostrar notificación de éxito
         await showAlert('¡Sesión iniciada exitosamente con Google!', { 
           type: 'success',
-          title: 'Bienvenido'
+          title: user?.rol === 'admin' || user?.rol === 'seguridad' ? 'Bienvenido Administrador' : 'Bienvenido'
         });
-        const from = location.state?.from || '/';
-        navigate(from, { replace: true });
+        
+        // Si es admin (o seguridad), llevar al dashboard admin
+        if (user?.rol === 'admin' || user?.rol === 'seguridad') {
+          navigate('/admin/dashboard', { replace: true });
+        } else {
+          const from = location.state?.from || '/';
+          navigate(from, { replace: true });
+        }
       } else {
         const errorMsg = apiResponse.data.message || 'Error al autenticar con Google';
         console.error('❌ Error en respuesta:', errorMsg);

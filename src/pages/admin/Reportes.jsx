@@ -120,7 +120,11 @@ const Reportes = () => {
         (acc, mesa) => acc + (mesa.cantidad_sillas || 0),
         0
       );
-      return asientos + sillasMesas || compra.cantidad || 0;
+      const personasAreas = (compra.areas_personas || []).reduce(
+        (acc, ap) => acc + (ap.cantidad || 0),
+        0
+      );
+      return asientos + sillasMesas + personasAreas || compra.cantidad || 0;
     }
 
     return compra.cantidad || 0;
@@ -150,6 +154,12 @@ const Reportes = () => {
           })
           .join(', ');
         partes.push(`Sillas: ${listaAsientos}`);
+      }
+      if (compra.areas_personas?.length) {
+        const zonasLista = compra.areas_personas
+          .map((ap) => `${ap.area_nombre || `Área ${ap.area_id}`}: ${ap.cantidad} p.`)
+          .join(', ');
+        partes.push(`Zonas generales: ${zonasLista}`);
       }
       return partes.join(' | ') || `${obtenerTotalEntradas(compra)} entrada(s)`;
     }
@@ -365,6 +375,18 @@ const Reportes = () => {
                   {reporte.resumen?.pagos_efectivo || 0} venta(s)
                 </span>
               </div>
+              {(reporte.resumen?.entradas_zonas_generales || 0) > 0 && (
+                <div className="card-resumen card-zonas-generales">
+                  <span className="card-label">🚶 Zonas generales (personas de pie)</span>
+                  <strong className="card-value">
+                    {reporte.resumen.entradas_zonas_generales}
+                  </strong>
+                  <span className="card-sub">
+                    {reporte.resumen.entradas_zonas_generales_confirmadas || 0} confirmadas,{' '}
+                    {reporte.resumen.entradas_zonas_generales_pendientes || 0} pendientes
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Estadísticas de ventas y disponibilidad */}
@@ -486,6 +508,30 @@ const Reportes = () => {
                           )}
                         </>
                       )}
+
+                      {estadisticas.zonas_generales && (
+                        <div className="stat-card-detail">
+                          <h4>Zonas generales (personas de pie)</h4>
+                          <div className="stat-row">
+                            <span>Capacidad total:</span>
+                            <strong>{estadisticas.zonas_generales.limite_total !== null ? estadisticas.zonas_generales.limite_total : '-'}</strong>
+                          </div>
+                          <div className="stat-row">
+                            <span>Vendidas:</span>
+                            <strong className="text-primary">{estadisticas.zonas_generales.vendidas}</strong>
+                          </div>
+                          <div className="stat-row">
+                            <span>Disponibles:</span>
+                            <strong className={estadisticas.zonas_generales.disponibles !== null && estadisticas.zonas_generales.disponibles < 10 ? 'text-warning' : 'text-success'}>
+                              {estadisticas.zonas_generales.disponibles !== null ? estadisticas.zonas_generales.disponibles : '-'}
+                            </strong>
+                          </div>
+                          <div className="stat-row">
+                            <span>Escaneadas:</span>
+                            <strong className="text-info">{estadisticas.zonas_generales.escaneadas}</strong>
+                          </div>
+                        </div>
+                      )}
                     </>
                   )}
 
@@ -518,6 +564,7 @@ const Reportes = () => {
                       <th>Compra</th>
                       <th>Confirmación</th>
                       <th>Tipo pago</th>
+                      <th>Tipo venta</th>
                       <th>Estado</th>
                       <th>Total</th>
                     </tr>
@@ -569,9 +616,29 @@ const Reportes = () => {
                               <span className="tipo-pago-badge tipo-pago-sin">-</span>
                             )}
                           </td>
+                          <td>
+                            {compra.tipo_venta === 'REGALO_ADMIN' ? (
+                              <span className="tipo-venta-badge tipo-venta-regalo">🎁 Regalo Admin</span>
+                            ) : compra.tipo_venta === 'OFERTA_ADMIN' ? (
+                              <span className="tipo-venta-badge tipo-venta-oferta">🏷️ Oferta</span>
+                            ) : (
+                              <span className="tipo-venta-badge tipo-venta-normal">Venta normal</span>
+                            )}
+                          </td>
                           <td>{getEstadoBadge(compra.estado)}</td>
                           <td className="centrado">
-                            ${parseFloat(compra.total || 0).toFixed(2)}
+                            {compra.tipo_venta === 'REGALO_ADMIN' ? (
+                              <span style={{ color: '#28a745', fontWeight: 600 }}>Gratis</span>
+                            ) : compra.tipo_venta === 'OFERTA_ADMIN' && compra.precio_original ? (
+                              <span title={`Original: Bs. ${parseFloat(compra.precio_original).toFixed(2)}`}>
+                                ${parseFloat(compra.total || 0).toFixed(2)}
+                                <small style={{ display: 'block', color: '#888', fontSize: '0.8em' }}>
+                                  (orig. ${parseFloat(compra.precio_original).toFixed(2)})
+                                </small>
+                              </span>
+                            ) : (
+                              `$${parseFloat(compra.total || 0).toFixed(2)}`
+                            )}
                           </td>
                         </tr>
                       );

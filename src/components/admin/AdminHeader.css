@@ -63,6 +63,24 @@
   gap: 1rem;
 }
 
+.admin-go-site-button {
+  background: linear-gradient(135deg, #D4AF37 0%, #FFD700 100%);
+  border: none;
+  color: #1a1a1a;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  transition: transform 0.1s ease, box-shadow 0.1s ease, background 0.2s ease;
+}
+
+.admin-go-site-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+  background: linear-gradient(135deg, #FFD700 0%, #FFE27A 100%);
+}
+
 .admin-user-info {
   display: flex;
   flex-direction: column;

@@ -65,6 +65,28 @@
   margin-bottom: 20px;
 }
 
+.modal-tipo-pago-extra {
+  margin-bottom: 16px;
+  padding: 12px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+.modal-tipo-pago-extra label {
+  display: block;
+  margin-bottom: 8px;
+  cursor: pointer;
+}
+
+.modal-tipo-pago-extra label:last-of-type {
+  margin-bottom: 0;
+}
+
+.modal-tipo-pago-extra input[type="checkbox"] {
+  margin-right: 8px;
+}
+
 .modal-tipo-pago-btn {
   flex: 1;
   display: flex;

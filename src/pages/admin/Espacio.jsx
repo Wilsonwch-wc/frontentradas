@@ -12,7 +12,7 @@ const Espacio = () => {
   const [tiposPrecio, setTiposPrecio] = useState([]);
   const [loading, setLoading] = useState(true);
   const [forma, setForma] = useState('rectangulo'); // rectangulo, cuadrado, triangulo, circulo
-  const [modo, setModo] = useState('escenario'); // escenario, area, asiento_individual, zona_asientos, zona_mesas, mesas, mesa_individual, seleccionar
+  const [modo, setModo] = useState('escenario'); // escenario, area, asiento_individual, persona_individual, zona_asientos, zona_mesas, zona_personas, mesas, mesa_individual, seleccionar
   const [tipoPrecioSeleccionado, setTipoPrecioSeleccionado] = useState(null);
   const [layoutBloqueado, setLayoutBloqueado] = useState(false); // Modo solo lectura después de guardar
   const [elementoInfo, setElementoInfo] = useState(null); // Información del elemento seleccionado para mostrar
@@ -31,6 +31,7 @@ const Espacio = () => {
   const [areas, setAreas] = useState([]); // [{id, nombre, x, y, width, height, color}]
   const [zonaAsientos, setZonaAsientos] = useState(null); // {x, y, width, height, cantidad, tipo_precio_id}
   const [zonaMesas, setZonaMesas] = useState(null); // {x, y, width, height, cantidad, sillasPorMesa, tipo_precio_id}
+  const [zonaPersonas, setZonaPersonas] = useState(null); // zona de personas dibujada (para mostrar)
   const [asientos, setAsientos] = useState([]); // [{id, x, y, numero_asiento, tipo_precio_id, mesa_id}]
   const [mesas, setMesas] = useState([]); // [{id, x, y, width, height, numero_mesa, capacidad_sillas, tipo_precio_id}]
   
@@ -49,7 +50,10 @@ const Espacio = () => {
         y: areaPendiente.y,
         width: areaPendiente.width,
         height: areaPendiente.height,
-        color: '#CCCCCC'
+        color: '#CCCCCC',
+        forma: areaPendiente.forma || 'rectangulo',
+        tipo_area: 'SILLAS',
+        capacidad_personas: null
       };
       setAreas([...areas, nuevaArea]);
       setNombreArea(nombre.trim());
@@ -72,20 +76,64 @@ const Espacio = () => {
     setMostrarModalNombreArea(false); // Cerrar el modal
     dibujarCanvas(); // Redibujar para limpiar el preview
   };
+
+  const abrirEditarArea = (area) => {
+    setAreaEnEdicion({ ...area });
+    setMostrarModalEditarArea(true);
+  };
+
+  const guardarEdicionArea = () => {
+    if (!areaEnEdicion) return;
+    if (areaEnEdicion.tipo_area === 'PERSONAS' && (!areaEnEdicion.capacidad_personas || areaEnEdicion.capacidad_personas < 1)) {
+      showAlert('Para zona de personas debes indicar la capacidad (mínimo 1)', { type: 'warning' });
+      return;
+    }
+    setAreas(areas.map(a => a.id === areaEnEdicion.id ? { ...a, ...areaEnEdicion } : a));
+    setAreaEnEdicion(null);
+    setMostrarModalEditarArea(false);
+    dibujarCanvas();
+  };
   
   // Configuración de generación automática
   const [cantidadAsientos, setCantidadAsientos] = useState(10);
+  const [cantidadPersonas, setCantidadPersonas] = useState(50); // Límite para Zona Personas
   
   // Configuración de mesas
   const [cantidadMesas, setCantidadMesas] = useState(1);
   const [sillasPorMesa, setSillasPorMesa] = useState(4);
   const [formaMesa, setFormaMesa] = useState('cuadrado'); // cuadrado, rectangulo
+  const [mostrarModalEditarArea, setMostrarModalEditarArea] = useState(false);
+  const [areaEnEdicion, setAreaEnEdicion] = useState(null); // área que se está editando (tipo, capacidad)
   const [hojaAncho, setHojaAncho] = useState(1000);
   const [hojaAlto, setHojaAlto] = useState(600);
   
   const canvasRef = useRef(null);
   const miniCanvasRef = useRef(null);
   const [mostrarCanvasAmpliado, setMostrarCanvasAmpliado] = useState(false);
+  const [mostrarNumerosAsientos, setMostrarNumerosAsientos] = useState(true);
+
+  // Limitar coordenadas a los bordes de la hoja (todo debe quedar dentro)
+  const clampRectToSheet = (rect) => {
+    let { x, y, width, height } = rect;
+    if (x < 0) { width += x; x = 0; }
+    if (y < 0) { height += y; y = 0; }
+    if (x + width > hojaAncho) width = hojaAncho - x;
+    if (y + height > hojaAlto) height = hojaAlto - y;
+    if (width < 0) width = 0;
+    if (height < 0) height = 0;
+    return { x, y, width, height };
+  };
+  const clampPointToSheet = (x, y, size = 16) => {
+    const margin = Math.ceil(size / 2) + 2;
+    return {
+      x: Math.max(margin, Math.min(hojaAncho - margin, x)),
+      y: Math.max(margin, Math.min(hojaAlto - margin, y))
+    };
+  };
+  const clampMesaToSheet = (x, y, w, h) => ({
+    x: Math.max(0, Math.min(hojaAncho - w, x)),
+    y: Math.max(0, Math.min(hojaAlto - h, y))
+  });
   const [isDrawing, setIsDrawing] = useState(false);
   const [startPos, setStartPos] = useState(null);
   const [currentElement, setCurrentElement] = useState(null);
@@ -257,11 +305,11 @@ const Espacio = () => {
 
   useEffect(() => {
     dibujarCanvas();
-  }, [forma, escenario, areas, zonaAsientos, asientos, mesas, eventoSeleccionado, elementosSeleccionados, seleccionCuadro]);
+  }, [forma, escenario, areas, zonaAsientos, asientos, mesas, eventoSeleccionado, elementosSeleccionados, seleccionCuadro, mostrarNumerosAsientos]);
 
   useEffect(() => {
     dibujarCanvasMini();
-  }, [forma, escenario, areas, asientos, mesas, eventoSeleccionado]);
+  }, [forma, escenario, areas, asientos, mesas, eventoSeleccionado, mostrarNumerosAsientos]);
 
   useEffect(() => {
     if (eventoSeleccionado) {
@@ -340,6 +388,19 @@ const Espacio = () => {
             title={layoutBloqueado ? 'Layout bloqueado' : 'Haz clic en el canvas para colocar un asiento'}
           >
             💺 Asiento Individual
+          </button>
+          <button
+            className={modo === 'persona_individual' ? 'active' : ''}
+            onClick={() => {
+              if (!layoutBloqueado) {
+                setModo('persona_individual');
+                setElementosSeleccionados([]);
+              }
+            }}
+            disabled={layoutBloqueado || !tipoPrecioSeleccionado}
+            title={layoutBloqueado ? 'Layout bloqueado' : 'Haz clic para colocar una persona (círculo). Mover, eliminar y asignar precio como asientos.'}
+          >
+            👤 Persona Individual
           </button>
           <button
             className={modo === 'mesas' ? 'active' : ''}
@@ -446,7 +507,7 @@ const Espacio = () => {
         className="espacio-canvas-container"
         style={
           ampliado
-            ? { ...baseStyle, maxWidth: '1400px', width: '100%', height: '100%' }
+            ? { ...baseStyle, maxWidth: 'none', width: '100%', minHeight: 'calc(96vh - 100px)', flex: 1 }
             : baseStyle
         }
       >
@@ -471,11 +532,13 @@ const Espacio = () => {
               ) : (
                 <>
                   {modo === 'escenario' && 'Haz clic y arrastra para dibujar el escenario'}
-                  {modo === 'area' && 'Haz clic y arrastra para dibujar el área. Se te pedirá el nombre después de dibujar.'}
+                  {modo === 'area' && 'Haz clic y arrastra para dibujar el área rectangular. Se te pedirá el nombre después de dibujar.'}
                   {modo === 'seleccionar' && 'Clic para seleccionar, Shift+clic para selección múltiple, arrastra para cuadro de selección. Arrastra elementos seleccionados para moverlos todos juntos.'}
                   {modo === 'asiento_individual' && 'Haz clic en el canvas para colocar un asiento. Arrastra los asientos existentes para moverlos. Clic derecho o Ctrl+clic para eliminar.'}
+                  {modo === 'persona_individual' && 'Haz clic para colocar una persona (círculo). Arrastra para mover. Clic derecho o Ctrl+clic para eliminar. Selecciona y asigna precio como los demás.'}
                   {modo === 'zona_asientos' && 'Haz clic y arrastra para dibujar la zona de asientos. Los asientos se generarán automáticamente.'}
                   {modo === 'zona_mesas' && 'Haz clic y arrastra para dibujar la zona de mesas. Las mesas con sillas se generarán automáticamente.'}
+                  {modo === 'zona_personas' && `Haz clic y arrastra para dibujar la zona. Se generarán hasta ${cantidadPersonas} personas (círculos).`}
                 </>
               )}
             </p>
@@ -568,18 +631,20 @@ const Espacio = () => {
     try {
       // Cargar evento para obtener forma y escenario
       const eventoRes = await api.get(`/eventos/${eventoId}`);
+      let escenarioCargado = null;
       if (eventoRes.data.success) {
         const evento = eventoRes.data.data;
         if (evento.forma_espacio) {
           setForma(evento.forma_espacio);
         }
         if (evento.escenario_x !== null && evento.escenario_y !== null) {
-          setEscenario({
+          escenarioCargado = {
             x: evento.escenario_x,
             y: evento.escenario_y,
             width: evento.escenario_width || 200,
             height: evento.escenario_height || 100
-          });
+          };
+          setEscenario(escenarioCargado);
         }
         // Cargar estado de bloqueo del layout
         if (evento.layout_bloqueado !== undefined) {
@@ -598,23 +663,38 @@ const Espacio = () => {
         api.get(`/asientos/evento/${eventoId}`)
       ]);
 
+      let areasCargadas = [];
+      let mesasCargadas = [];
+      let asientosCargados = [];
+      let hojaAnchoGuardado = 1000;
+      let hojaAltoGuardado = 600;
+      if (eventoRes.data.success && eventoRes.data.data) {
+        const ev = eventoRes.data.data;
+        hojaAnchoGuardado = ev.hoja_ancho ? Number(ev.hoja_ancho) : 1000;
+        hojaAltoGuardado = ev.hoja_alto ? Number(ev.hoja_alto) : 600;
+      }
+
       // Cargar áreas
       if (areasRes.data.success) {
-        const areasCargadas = areasRes.data.data.map(a => ({
+        areasCargadas = areasRes.data.data.map(a => ({
           id: a.id,
           nombre: a.nombre,
           x: a.posicion_x,
           y: a.posicion_y,
           width: a.ancho,
           height: a.alto,
-          color: a.color || '#CCCCCC'
+          color: a.color || '#CCCCCC',
+          forma: a.forma || 'rectangulo',
+          tipo_area: a.tipo_area || 'SILLAS',
+          capacidad_personas: a.capacidad_personas || null,
+          tipo_precio_id: a.tipo_precio_id || null
         }));
         setAreas(areasCargadas);
       }
 
       // Cargar mesas
       if (mesasRes.data.success && mesasRes.data.data.length > 0) {
-        const mesasCargadas = mesasRes.data.data.map(m => ({
+        mesasCargadas = mesasRes.data.data.map(m => ({
           id: m.id,
           x: m.posicion_x !== null && m.posicion_x !== undefined ? m.posicion_x : 100,
           y: m.posicion_y !== null && m.posicion_y !== undefined ? m.posicion_y : 100,
@@ -631,7 +711,7 @@ const Espacio = () => {
 
       // Cargar asientos (individuales y de mesas)
       if (asientosRes.data.success && asientosRes.data.data.length > 0) {
-        const asientosCargados = asientosRes.data.data.map(a => ({
+        asientosCargados = asientosRes.data.data.map(a => ({
           ...a,
           // Preservar posiciones exactas de la base de datos
           x: a.posicion_x !== null && a.posicion_x !== undefined ? a.posicion_x : 50,
@@ -663,6 +743,10 @@ const Espacio = () => {
           setCantidadAsientos(asientosIndividuales.length);
         }
       }
+
+      // Usar dimensiones guardadas (sin expandir)
+      setHojaAncho(hojaAnchoGuardado);
+      setHojaAlto(hojaAltoGuardado);
     } catch (error) {
       console.error('Error al cargar layout:', error);
     }
@@ -684,9 +768,9 @@ const Espacio = () => {
     const columnas = Math.ceil(Math.sqrt(cantidad));
     const filas = Math.ceil(cantidad / columnas);
     
-    const tamañoAsiento = 10; // Reducido
-    const padding = 20; // Padding dentro de la zona (aumentado)
-    const espacioEntreAsientos = 8; // Espacio mínimo entre asientos (aumentado)
+    const tamañoAsiento = 6; // Más pequeño para caber más
+    const padding = 10; // Padding reducido
+    const espacioEntreAsientos = 3; // Más juntos
     
     const anchoDisponible = anchoZona - (2 * padding) - (columnas * tamañoAsiento);
     const altoDisponible = altoZona - (2 * padding) - (filas * tamañoAsiento);
@@ -698,8 +782,10 @@ const Espacio = () => {
       const fila = Math.floor(i / columnas);
       const columna = i % columnas;
       
-      const x = xInicio + padding + (columna * (tamañoAsiento + espacioX)) + tamañoAsiento / 2;
-      const y = yInicio + padding + (fila * (tamañoAsiento + espacioY)) + tamañoAsiento / 2;
+      let x = xInicio + padding + (columna * (tamañoAsiento + espacioX)) + tamañoAsiento / 2;
+      let y = yInicio + padding + (fila * (tamañoAsiento + espacioY)) + tamañoAsiento / 2;
+      const c = clampPointToSheet(x, y, 14);
+      x = c.x; y = c.y;
 
       nuevosAsientos.push({
         id: `temp_asiento_${Date.now()}_${i}`,
@@ -715,6 +801,91 @@ const Espacio = () => {
     setAsientos(prev => [...prev, ...nuevosAsientos]);
   };
 
+  // Tamaño de persona (círculo) = mismo que asiento (cuadrado 16x16)
+  const TAMANO_PERSONA = 10;
+  // Colores para etiquetas/números (más visibles que blanco/gris)
+  const COLOR_TEXTO_MESA = '#FFD700';     // Amarillo dorado sobre mesas marrones
+  const COLOR_TEXTO_ASIENTO = '#0d0d0d';  // Negro suave sobre sillas/asientos
+
+  // Calcular cuántas personas caben en una zona (mismo algoritmo que asientos)
+  const calcularCapacidadPersonas = (zona) => {
+    if (!zona || zona.width <= 0 || zona.height <= 0) return 0;
+    const padding = 10;
+    const espacioEntre = 3;
+    const anchoParaGrid = zona.width - 2 * padding;
+    const altoParaGrid = zona.height - 2 * padding;
+    if (anchoParaGrid <= 0 || altoParaGrid <= 0) return 0;
+    const paso = TAMANO_PERSONA + espacioEntre;
+    const columnas = Math.max(1, Math.floor((anchoParaGrid + espacioEntre) / paso));
+    const filas = Math.max(1, Math.floor((altoParaGrid + espacioEntre) / paso));
+    return columnas * filas;
+  };
+
+  // Obtener posiciones de círculos para dibujar (a partir de un área tipo PERSONAS)
+  const getPosicionesPersonasParaArea = (area) => {
+    if (!area || area.tipo_area !== 'PERSONAS' || !area.capacidad_personas) return [];
+    const cantidad = area.capacidad_personas;
+    const columnas = Math.ceil(Math.sqrt(cantidad));
+    const filas = Math.ceil(cantidad / columnas);
+    const padding = 10;
+    const espacioEntre = 3;
+    const anchoDisponible = area.width - 2 * padding - columnas * TAMANO_PERSONA;
+    const altoDisponible = area.height - 2 * padding - filas * TAMANO_PERSONA;
+    const espacioX = columnas > 1 ? Math.max(espacioEntre, anchoDisponible / (columnas - 1)) : 0;
+    const espacioY = filas > 1 ? Math.max(espacioEntre, altoDisponible / (filas - 1)) : 0;
+    const posiciones = [];
+    for (let i = 0; i < cantidad; i++) {
+      const fila = Math.floor(i / columnas);
+      const columna = i % columnas;
+      const x = area.x + padding + (columna * (TAMANO_PERSONA + espacioX)) + TAMANO_PERSONA / 2;
+      const y = area.y + padding + (fila * (TAMANO_PERSONA + espacioY)) + TAMANO_PERSONA / 2;
+      posiciones.push({ x: Math.round(x), y: Math.round(y) });
+    }
+    return posiciones;
+  };
+
+  // Generar zona de personas: crea asientos (personas) en grid - limitado por cantidadPersonas
+  const generarPersonasAutomaticas = (zona) => {
+    if (!zona || !zona.tipo_precio_id || zona.width <= 10 || zona.height <= 10) return;
+    const capacidadMax = calcularCapacidadPersonas(zona);
+    const limite = zona.cantidad != null ? zona.cantidad : cantidadPersonas;
+    const cantidad = Math.min(capacidadMax, Math.max(1, limite));
+    if (cantidad <= 0) return;
+
+    const personasExistentes = asientos.filter(a => !a.mesa_id && String(a.numero_asiento || '').startsWith('P'));
+    const nuevoNumero = personasExistentes.length + 1;
+
+    const nuevasPersonas = [];
+    const columnas = Math.ceil(Math.sqrt(cantidad));
+    const filas = Math.ceil(cantidad / columnas);
+    const padding = 10;
+    const espacioEntre = 3;
+    const anchoDisponible = zona.width - 2 * padding - columnas * TAMANO_PERSONA;
+    const altoDisponible = zona.height - 2 * padding - filas * TAMANO_PERSONA;
+    const espacioX = columnas > 1 ? Math.max(espacioEntre, anchoDisponible / (columnas - 1)) : 0;
+    const espacioY = filas > 1 ? Math.max(espacioEntre, altoDisponible / (filas - 1)) : 0;
+
+    for (let i = 0; i < cantidad; i++) {
+      const fila = Math.floor(i / columnas);
+      const columna = i % columnas;
+      let x = zona.x + padding + (columna * (TAMANO_PERSONA + espacioX)) + TAMANO_PERSONA / 2;
+      let y = zona.y + padding + (fila * (TAMANO_PERSONA + espacioY)) + TAMANO_PERSONA / 2;
+      const c = clampPointToSheet(x, y, 16);
+      x = c.x; y = c.y;
+
+      nuevasPersonas.push({
+        id: `temp_asiento_${Date.now()}_${i}`,
+        x: Math.round(x),
+        y: Math.round(y),
+        numero_asiento: `P${nuevoNumero + i}`,
+        tipo_precio_id: zona.tipo_precio_id,
+        mesa_id: null
+      });
+    }
+
+    setAsientos(prev => [...prev, ...nuevasPersonas]);
+  };
+
   // Generar sillas alrededor de una mesa
   const generarSillasAlrededorMesa = (mesa) => {
     if (!mesa || !mesa.capacidad_sillas || !mesa.tipo_precio_id) return [];
@@ -727,9 +898,9 @@ const Espacio = () => {
     const mesaHeight = mesa.height;
 
     // Tamaño de la silla
-    const tamañoSilla = 12; // Aumentado para mejor visibilidad
-    const distanciaMesa = 4; // Distancia de la silla al borde de la mesa (reducida para acercar las sillas)
-    const espacioEntreSillas = 4; // Espacio mínimo entre sillas
+    const tamañoSilla = 8; // Más pequeñas para caber más
+    const distanciaMesa = 2; // Cerca de la mesa
+    const espacioEntreSillas = 2; // Más juntas
 
     // Distribuir sillas equitativamente alrededor de la mesa
     // Dividir en 4 lados: superior, derecho, inferior, izquierdo
@@ -838,9 +1009,9 @@ const Espacio = () => {
     const columnas = Math.ceil(Math.sqrt(cantidadMesas));
     const filas = Math.ceil(cantidadMesas / columnas);
     
-    const tamañoMesa = 32; // Tamaño de la mesa (reducido)
-    const padding = 30; // Padding dentro de la zona
-    const espacioEntreMesas = 60; // Espacio mínimo entre mesas (incluye espacio para sillas)
+    const tamañoMesa = 20; // Más pequeñas para caber más
+    const padding = 15; // Padding para no chocar con bordes
+    const espacioEntreMesas = 28; // Espacio para no chocar con lo de abajo
     
     const anchoDisponible = anchoZona - (2 * padding) - (columnas * tamañoMesa);
     const altoDisponible = altoZona - (2 * padding) - (filas * tamañoMesa);
@@ -856,13 +1027,14 @@ const Espacio = () => {
       const fila = Math.floor(i / columnas);
       const columna = i % columnas;
       
-      const x = xInicio + padding + (columna * (tamañoMesa + espacioX)) + tamañoMesa / 2;
-      const y = yInicio + padding + (fila * (tamañoMesa + espacioY)) + tamañoMesa / 2;
+      let x = xInicio + padding + (columna * (tamañoMesa + espacioX)) + tamañoMesa / 2;
+      let y = yInicio + padding + (fila * (tamañoMesa + espacioY)) + tamañoMesa / 2;
+      const { x: mx, y: my } = clampMesaToSheet(x - tamañoMesa / 2, y - tamañoMesa / 2, tamañoMesa, tamañoMesa);
 
       const nuevaMesa = {
         id: `temp_mesa_${Date.now()}_${i}`,
-        x: Math.round(x - tamañoMesa / 2),
-        y: Math.round(y - tamañoMesa / 2),
+        x: Math.round(mx),
+        y: Math.round(my),
         width: tamañoMesa,
         height: tamañoMesa,
         numero_mesa: numeroMesa,
@@ -872,9 +1044,11 @@ const Espacio = () => {
 
       nuevasMesas.push(nuevaMesa);
       
-      // Generar sillas alrededor de esta mesa
       const sillasMesa = generarSillasAlrededorMesa(nuevaMesa);
-      nuevasSillas.push(...sillasMesa);
+      sillasMesa.forEach(s => {
+        const c = clampPointToSheet(s.x, s.y, 14);
+        nuevasSillas.push({ ...s, x: c.x, y: c.y });
+      });
       
       numeroMesa++;
     }
@@ -917,18 +1091,30 @@ const Espacio = () => {
 
     // Dibujar áreas personalizadas
     areas.forEach(area => {
-      ctx.fillStyle = area.color || '#CCCCCC';
-      ctx.fillRect(area.x, area.y, area.width, area.height);
-      ctx.strokeStyle = '#666';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(area.x, area.y, area.width, area.height);
+      const isPersonas = area.tipo_area === 'PERSONAS';
+      ctx.fillStyle = isPersonas ? 'rgba(76, 175, 80, 0.08)' : (area.color || '#CCCCCC');
+      const isCircle = area.forma === 'circulo';
+      if (isCircle) {
+        const cx = area.x + area.width / 2;
+        const cy = area.y + area.height / 2;
+        const r = Math.min(area.width, area.height) / 2;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.strokeStyle = '#666';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      } else {
+        ctx.fillRect(area.x, area.y, area.width, area.height);
+        ctx.strokeStyle = '#666';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(area.x, area.y, area.width, area.height);
+      }
       
-      // Dibujar nombre del área en la parte superior (cabecera)
       ctx.fillStyle = '#333';
       ctx.font = 'bold 14px Arial';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'bottom';
-      // Dibujar fondo blanco para el texto para mejor legibilidad
       const textY = area.y - 5;
       const textX = area.x + area.width / 2;
       const text = area.nombre.toUpperCase();
@@ -960,11 +1146,21 @@ const Espacio = () => {
         ctx.setLineDash([]);
       } else if (currentElement.type === 'area') {
         ctx.fillStyle = 'rgba(200, 200, 200, 0.3)';
-        ctx.fillRect(currentElement.x, currentElement.y, currentElement.width, currentElement.height);
         ctx.strokeStyle = '#999';
         ctx.lineWidth = 2;
         ctx.setLineDash([5, 5]);
-        ctx.strokeRect(currentElement.x, currentElement.y, currentElement.width, currentElement.height);
+        if (currentElement.forma === 'circulo') {
+          const cx = currentElement.x + currentElement.width / 2;
+          const cy = currentElement.y + currentElement.height / 2;
+          const r = Math.min(currentElement.width, currentElement.height) / 2;
+          ctx.beginPath();
+          ctx.arc(cx, cy, r, 0, 2 * Math.PI);
+          ctx.fill();
+          ctx.stroke();
+        } else {
+          ctx.fillRect(currentElement.x, currentElement.y, currentElement.width, currentElement.height);
+          ctx.strokeRect(currentElement.x, currentElement.y, currentElement.width, currentElement.height);
+        }
         ctx.setLineDash([]);
         if (nombreArea) {
           // Dibujar nombre del área en la parte superior (cabecera) del preview
@@ -1012,6 +1208,22 @@ const Espacio = () => {
           ctx.textAlign = 'center';
           ctx.fillText(`ZONA MESAS (${zonaMesas.cantidad || 0} mesas, ${zonaMesas.sillasPorMesa || 0} sillas/mesa)`, currentElement.x + currentElement.width / 2, currentElement.y + 20);
         }
+      } else if (currentElement.type === 'zona_personas') {
+        ctx.fillStyle = 'rgba(76, 175, 80, 0.2)';
+        ctx.fillRect(currentElement.x, currentElement.y, currentElement.width, currentElement.height);
+        ctx.strokeStyle = '#4CAF50';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([5, 5]);
+        ctx.strokeRect(currentElement.x, currentElement.y, currentElement.width, currentElement.height);
+        ctx.setLineDash([]);
+        if (zonaPersonas && zonaPersonas.width > 0 && zonaPersonas.height > 0) {
+          const cap = calcularCapacidadPersonas(zonaPersonas);
+          const real = Math.min(cap, cantidadPersonas);
+          ctx.fillStyle = '#4CAF50';
+          ctx.font = 'bold 14px Arial';
+          ctx.textAlign = 'center';
+          ctx.fillText(`ZONA PERSONAS (máx. ${real})`, currentElement.x + currentElement.width / 2, currentElement.y + 20);
+        }
       } else if (currentElement.type === 'mesa') {
         ctx.fillStyle = 'rgba(139, 69, 19, 0.3)';
         ctx.fillRect(currentElement.x, currentElement.y, currentElement.width, currentElement.height);
@@ -1039,6 +1251,40 @@ const Espacio = () => {
       ctx.fillText(`ZONA ASIENTOS (${zonaAsientos.cantidad || 0})`, zonaAsientos.x + zonaAsientos.width / 2, zonaAsientos.y + 20);
     }
 
+    // Dibujar zona de personas (preview al dibujar)
+    if (zonaPersonas && (currentElement?.type === 'zona_personas' || modo === 'zona_personas')) {
+      ctx.fillStyle = 'rgba(76, 175, 80, 0.2)';
+      ctx.fillRect(zonaPersonas.x, zonaPersonas.y, zonaPersonas.width, zonaPersonas.height);
+      ctx.strokeStyle = '#4CAF50';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([5, 5]);
+      ctx.strokeRect(zonaPersonas.x, zonaPersonas.y, zonaPersonas.width, zonaPersonas.height);
+      ctx.setLineDash([]);
+      const cap = calcularCapacidadPersonas(zonaPersonas);
+      const real = Math.min(cap, cantidadPersonas);
+      ctx.fillStyle = '#4CAF50';
+      ctx.font = 'bold 14px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText(`ZONA PERSONAS (máx. ${real})`, zonaPersonas.x + zonaPersonas.width / 2, zonaPersonas.y + 20);
+    }
+
+    // Dibujar círculos de personas dentro de áreas tipo PERSONAS
+    areas.filter(a => a.tipo_area === 'PERSONAS').forEach(area => {
+      const posiciones = getPosicionesPersonasParaArea(area);
+      const tipoPrecio = tiposPrecio.find(tp => tp.id === area.tipo_precio_id);
+      const colorPersona = tipoPrecio?.color || getColorForTipoPrecio(area.tipo_precio_id) || '#4CAF50';
+      const radio = TAMANO_PERSONA / 2;
+      posiciones.forEach(p => {
+        ctx.fillStyle = colorPersona;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, radio, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      });
+    });
+
     // Dibujar zona de mesas
     if (zonaMesas && (currentElement?.type === 'zona_mesas' || modo === 'zona_mesas')) {
       ctx.fillStyle = 'rgba(139, 69, 19, 0.2)';
@@ -1065,11 +1311,13 @@ const Espacio = () => {
       ctx.lineWidth = estaSeleccionada ? 3 : 2;
       ctx.strokeRect(mesa.x, mesa.y, mesa.width, mesa.height);
       
-      // Dibujar texto de la mesa
-      ctx.fillStyle = '#fff';
-      ctx.font = 'bold 12px Arial';
-      ctx.textAlign = 'center';
-      ctx.fillText(`M${mesa.numero_mesa}`, mesa.x + mesa.width / 2, mesa.y + mesa.height / 2);
+      if (mostrarNumerosAsientos) {
+        ctx.fillStyle = COLOR_TEXTO_MESA;
+        ctx.font = 'bold 11px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`M${mesa.numero_mesa}`, mesa.x + mesa.width / 2, mesa.y + mesa.height / 2);
+      }
       
       // Dibujar sillas de la mesa
       const sillasMesa = asientos.filter(a => a.mesa_id === mesa.id);
@@ -1079,38 +1327,64 @@ const Espacio = () => {
         
         const colorSilla = tipoPrecio?.color || getColorForTipoPrecio(silla.tipo_precio_id) || '#2196F3';
         ctx.fillStyle = colorSilla;
-        ctx.fillRect((silla.x || 50) - 6, (silla.y || 50) - 6, 12, 12);
+        ctx.fillRect((silla.x || 50) - 4, (silla.y || 50) - 4, 8, 8);
         ctx.strokeStyle = estaSeleccionadaSilla ? '#FFD700' : '#333';
         ctx.lineWidth = estaSeleccionadaSilla ? 2 : 1;
-        ctx.strokeRect((silla.x || 50) - 6, (silla.y || 50) - 6, 12, 12);
+        ctx.strokeRect((silla.x || 50) - 4, (silla.y || 50) - 4, 8, 8);
         
-        // Dibujar número de la silla (las sillas de mesas ahora usan solo números: 1, 2, 3...)
-        ctx.fillStyle = '#fff';
-        ctx.font = 'bold 8px Arial';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(silla.numero_asiento || '', silla.x || 50, silla.y || 50);
+        if (mostrarNumerosAsientos) {
+          ctx.fillStyle = COLOR_TEXTO_ASIENTO;
+          ctx.font = 'bold 10px Arial';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(silla.numero_asiento || '', silla.x || 50, silla.y || 50);
+        }
       });
     });
 
-    // Dibujar asientos individuales (sin mesa)
-    asientos.filter(a => !a.mesa_id).forEach(asiento => {
+    // Dibujar asientos individuales (sin mesa) - cuadrados
+    asientos.filter(a => !a.mesa_id && !String(a.numero_asiento || '').startsWith('P')).forEach(asiento => {
       const tipoPrecio = tiposPrecio.find(tp => tp.id === asiento.tipo_precio_id);
       const estaSeleccionado = elementosSeleccionados.some(sel => sel.type === 'asiento' && sel.id === asiento.id);
       
       const colorAsiento = tipoPrecio?.color || getColorForTipoPrecio(asiento.tipo_precio_id) || '#2196F3';
       ctx.fillStyle = colorAsiento;
-      ctx.fillRect((asiento.x || 50) - 8, (asiento.y || 50) - 8, 16, 16);
+      ctx.fillRect((asiento.x || 50) - 5, (asiento.y || 50) - 5, 10, 10);
       ctx.strokeStyle = estaSeleccionado ? '#FFD700' : '#333';
       ctx.lineWidth = estaSeleccionado ? 3 : 1;
-      ctx.strokeRect((asiento.x || 50) - 8, (asiento.y || 50) - 8, 16, 16);
+      ctx.strokeRect((asiento.x || 50) - 5, (asiento.y || 50) - 5, 10, 10);
       
-      // Dibujar número del asiento
-      ctx.fillStyle = '#fff';
-      ctx.font = 'bold 9px Arial';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(asiento.numero_asiento || '', asiento.x || 50, asiento.y || 50);
+      if (mostrarNumerosAsientos) {
+        ctx.fillStyle = COLOR_TEXTO_ASIENTO;
+        ctx.font = 'bold 11px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(asiento.numero_asiento || '', asiento.x || 50, asiento.y || 50);
+      }
+    });
+
+    // Dibujar personas individuales (círculos, mismo tamaño que asientos)
+    asientos.filter(a => !a.mesa_id && String(a.numero_asiento || '').startsWith('P')).forEach(persona => {
+      const tipoPrecio = tiposPrecio.find(tp => tp.id === persona.tipo_precio_id);
+      const estaSeleccionado = elementosSeleccionados.some(sel => sel.type === 'asiento' && sel.id === persona.id);
+      
+      const colorPersona = tipoPrecio?.color || getColorForTipoPrecio(persona.tipo_precio_id) || '#4CAF50';
+      const radio = 5;
+      ctx.fillStyle = colorPersona;
+      ctx.beginPath();
+      ctx.arc(persona.x || 50, persona.y || 50, radio, 0, 2 * Math.PI);
+      ctx.fill();
+      ctx.strokeStyle = estaSeleccionado ? '#FFD700' : '#333';
+      ctx.lineWidth = estaSeleccionado ? 3 : 1;
+      ctx.stroke();
+      
+      if (mostrarNumerosAsientos) {
+        ctx.fillStyle = COLOR_TEXTO_ASIENTO;
+        ctx.font = 'bold 11px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(persona.numero_asiento || '', persona.x || 50, persona.y || 50);
+      }
     });
 
     // Dibujar cuadro de selección
@@ -1205,11 +1479,38 @@ const Espacio = () => {
       ctx.fillText('ESCENARIO', escenario.x + escenario.width / 2, escenario.y + escenario.height / 2);
     }
     areas.forEach(area => {
-      ctx.fillStyle = area.color || '#CCCCCC';
-      ctx.fillRect(area.x, area.y, area.width, area.height);
-      ctx.strokeStyle = '#666';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(area.x, area.y, area.width, area.height);
+      const isPersonas = area.tipo_area === 'PERSONAS';
+      ctx.fillStyle = isPersonas ? 'rgba(76, 175, 80, 0.08)' : (area.color || '#CCCCCC');
+      if (area.forma === 'circulo') {
+        const cx = area.x + area.width / 2;
+        const cy = area.y + area.height / 2;
+        const r = Math.min(area.width, area.height) / 2;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.strokeStyle = '#666';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      } else {
+        ctx.fillRect(area.x, area.y, area.width, area.height);
+        ctx.strokeStyle = '#666';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(area.x, area.y, area.width, area.height);
+      }
+    });
+    areas.filter(a => a.tipo_area === 'PERSONAS').forEach(area => {
+      const posiciones = getPosicionesPersonasParaArea(area);
+      const colorPersona = tiposPrecio.find(tp => tp.id === area.tipo_precio_id)?.color || '#4CAF50';
+      const radio = TAMANO_PERSONA / 2;
+      posiciones.forEach(p => {
+        ctx.fillStyle = colorPersona;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, radio, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      });
     });
     mesas.forEach(mesa => {
       ctx.fillStyle = '#8B4513';
@@ -1217,22 +1518,36 @@ const Espacio = () => {
       ctx.strokeStyle = '#654321';
       ctx.lineWidth = 1;
       ctx.strokeRect(mesa.x, mesa.y, mesa.width, mesa.height);
-      ctx.fillStyle = '#fff';
-      ctx.font = 'bold 10px Arial';
-      ctx.textAlign = 'center';
-      ctx.fillText(`M${mesa.numero_mesa}`, mesa.x + mesa.width / 2, mesa.y + mesa.height / 2);
+      if (mostrarNumerosAsientos) {
+        ctx.fillStyle = COLOR_TEXTO_MESA;
+        ctx.font = 'bold 9px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`M${mesa.numero_mesa}`, mesa.x + mesa.width / 2, mesa.y + mesa.height / 2);
+      }
     });
     asientos.forEach(asiento => {
       const tipoPrecio = tiposPrecio.find(tp => tp.id === asiento.tipo_precio_id);
       const color = tipoPrecio?.color || '#2196F3';
-      const size = asiento.mesa_id ? 6 : 7;
+      const esPersona = !asiento.mesa_id && String(asiento.numero_asiento || '').startsWith('P');
+      const size = asiento.mesa_id ? 4 : 5;
       const sx = (asiento.x || 50) - size / 2;
       const sy = (asiento.y || 50) - size / 2;
-      ctx.fillStyle = color;
-      ctx.fillRect(sx, sy, size, size);
+      ctx.fillStyle = esPersona ? (tipoPrecio?.color || '#4CAF50') : color;
+      if (esPersona) {
+        ctx.beginPath();
+        ctx.arc(asiento.x || 50, asiento.y || 50, size, 0, 2 * Math.PI);
+        ctx.fill();
+      } else {
+        ctx.fillRect(sx, sy, size, size);
+      }
       ctx.strokeStyle = '#333';
       ctx.lineWidth = 1;
-      ctx.strokeRect(sx, sy, size, size);
+      if (esPersona) {
+        ctx.stroke();
+      } else {
+        ctx.strokeRect(sx, sy, size, size);
+      }
     });
     ctx.restore();
   };
@@ -1267,11 +1582,11 @@ const Espacio = () => {
 
   const getMousePos = (e) => {
     const canvas = canvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
     const rect = canvas.getBoundingClientRect();
-    return {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top
-    };
+    const px = (e.clientX - rect.left) * (canvas.width / rect.width);
+    const py = (e.clientY - rect.top) * (canvas.height / rect.height);
+    return { x: px, y: py };
   };
 
 
@@ -1340,9 +1655,17 @@ const Espacio = () => {
   // Detectar en qué área está un punto
   const detectarAreaEnPosicion = (x, y) => {
     for (const area of areas) {
-      if (x >= area.x && x <= area.x + area.width && 
-          y >= area.y && y <= area.y + area.height) {
-        return area;
+      if (area.forma === 'circulo') {
+        const cx = area.x + area.width / 2;
+        const cy = area.y + area.height / 2;
+        const r = Math.min(area.width, area.height) / 2;
+        const dist = Math.sqrt(Math.pow(x - cx, 2) + Math.pow(y - cy, 2));
+        if (dist <= r) return area;
+      } else {
+        if (x >= area.x && x <= area.x + area.width && 
+            y >= area.y && y <= area.y + area.height) {
+          return area;
+        }
       }
     }
     return null;
@@ -1558,14 +1881,17 @@ const Espacio = () => {
       return;
     }
 
-    // Permitir mover asientos en cualquier modo (excepto cuando se está dibujando escenario o área)
+    // Permitir mover asientos/personas en cualquier modo (excepto cuando se está dibujando escenario o área)
     if (asientoClickeado && modo !== 'escenario' && modo !== 'area' && modo !== 'mesas' && modo !== 'mesa_individual') {
-      // Si es clic derecho, eliminar el asiento
+      const esPersona = String(asientoClickeado.numero_asiento || '').startsWith('P');
+      // Si es clic derecho, eliminar el asiento o persona
       if (e.button === 2 || e.ctrlKey) {
         e.preventDefault();
-        const confirmado = await showConfirm(`¿Eliminar asiento ${asientoClickeado.numero_asiento}?`, { 
+        const confirmado = await showConfirm(esPersona 
+          ? `¿Eliminar persona ${asientoClickeado.numero_asiento}?` 
+          : `¿Eliminar asiento ${asientoClickeado.numero_asiento}?`, { 
           type: 'warning',
-          title: 'Eliminar Asiento'
+          title: esPersona ? 'Eliminar Persona' : 'Eliminar Asiento'
         });
         if (confirmado) {
           eliminarAsiento(asientoClickeado.id);
@@ -1611,19 +1937,30 @@ const Espacio = () => {
     if (modo === 'escenario') {
       setCurrentElement({ type: 'escenario', x: pos.x, y: pos.y, width: 0, height: 0 });
     } else if (modo === 'area') {
-      // Permitir dibujar sin nombre, se pedirá después
-      setCurrentElement({ type: 'area', x: pos.x, y: pos.y, width: 0, height: 0 });
+      setCurrentElement({ type: 'area', x: pos.x, y: pos.y, width: 0, height: 0, forma: 'rectangulo' });
     } else if (modo === 'asiento_individual' && tipoPrecioSeleccionado) {
-      // Crear nuevo asiento en la posición del clic
+      const { x: cx, y: cy } = clampPointToSheet(pos.x, pos.y, 16);
       const numeroAsiento = asientos.length + 1;
       const nuevoAsiento = {
         id: `temp_asiento_${Date.now()}`,
-        x: pos.x,
-        y: pos.y,
+        x: cx,
+        y: cy,
         numero_asiento: `A${numeroAsiento}`,
         tipo_precio_id: tipoPrecioSeleccionado
       };
       setAsientos([...asientos, nuevoAsiento]);
+      setIsDrawing(false);
+    } else if (modo === 'persona_individual' && tipoPrecioSeleccionado) {
+      const { x: cx, y: cy } = clampPointToSheet(pos.x, pos.y, 16);
+      const personasCount = asientos.filter(a => !a.mesa_id && String(a.numero_asiento || '').startsWith('P')).length;
+      const nuevaPersona = {
+        id: `temp_asiento_${Date.now()}`,
+        x: cx,
+        y: cy,
+        numero_asiento: `P${personasCount + 1}`,
+        tipo_precio_id: tipoPrecioSeleccionado
+      };
+      setAsientos([...asientos, nuevaPersona]);
       setIsDrawing(false);
     } else if (modo === 'zona_asientos' && tipoPrecioSeleccionado) {
       setCurrentElement({ type: 'zona_asientos', x: pos.x, y: pos.y, width: 0, height: 0 });
@@ -1639,15 +1976,18 @@ const Espacio = () => {
         sillasPorMesa: sillasPorMesa,
         tipo_precio_id: tipoPrecioSeleccionado 
       });
+    } else if (modo === 'zona_personas' && tipoPrecioSeleccionado) {
+      setCurrentElement({ type: 'zona_personas', x: pos.x, y: pos.y, width: 0, height: 0 });
+      setZonaPersonas({ x: pos.x, y: pos.y, width: 0, height: 0 });
     } else if ((modo === 'mesas' || modo === 'mesa_individual') && tipoPrecioSeleccionado) {
-      // Crear nueva mesa en la posición del clic
-      const tamañoMesa = formaMesa === 'cuadrado' ? 24 : 32; // Cuadrado: 24x24, Rectángulo: 32x24 (reducidos)
-      const alturaMesa = formaMesa === 'cuadrado' ? 24 : 24;
+      const tamañoMesa = formaMesa === 'cuadrado' ? 16 : 20;
+      const alturaMesa = formaMesa === 'cuadrado' ? 16 : 20;
+      const { x: mx, y: my } = clampMesaToSheet(pos.x - tamañoMesa / 2, pos.y - alturaMesa / 2, tamañoMesa, alturaMesa);
       const numeroMesa = mesas.length + 1;
       const nuevaMesa = {
         id: `temp_mesa_${Date.now()}`,
-        x: pos.x - tamañoMesa / 2,
-        y: pos.y - alturaMesa / 2,
+        x: mx,
+        y: my,
         width: tamañoMesa,
         height: alturaMesa,
         numero_mesa: numeroMesa,
@@ -1655,9 +1995,10 @@ const Espacio = () => {
         tipo_precio_id: tipoPrecioSeleccionado
       };
       
-      // Generar sillas alrededor de la mesa
-      const sillas = generarSillasAlrededorMesa(nuevaMesa);
-      
+      const sillas = generarSillasAlrededorMesa(nuevaMesa).map(s => {
+        const c = clampPointToSheet(s.x, s.y, 14);
+        return { ...s, x: c.x, y: c.y };
+      });
       setMesas([...mesas, nuevaMesa]);
       setAsientos(prev => [...prev, ...sillas]);
       setIsDrawing(false);
@@ -1688,8 +2029,10 @@ const Espacio = () => {
           if (estaSeleccionada) {
             const posOriginal = posicionesOriginales[`mesa_${m.id}`];
             if (posOriginal) {
-              const nuevaX = posOriginal.x + deltaX;
-              const nuevaY = posOriginal.y + deltaY;
+              let nuevaX = posOriginal.x + deltaX;
+              let nuevaY = posOriginal.y + deltaY;
+              const { x: cx, y: cy } = clampMesaToSheet(nuevaX, nuevaY, m.width || 24, m.height || 24);
+              nuevaX = cx; nuevaY = cy;
               return {
                 ...m,
                 x: nuevaX,
@@ -1702,17 +2045,12 @@ const Espacio = () => {
         
         // Luego actualizar las sillas de todas las mesas seleccionadas
         setAsientos(prevAsientos => prevAsientos.map(a => {
-          // Verificar si esta silla pertenece a alguna mesa seleccionada
           const mesaSeleccionada = mesasSeleccionadas.find(sel => sel.id === a.mesa_id);
           if (mesaSeleccionada) {
-            // Usar la posición original de la silla guardada
             const posOriginalSilla = posicionesOriginales[`asiento_${a.id}`];
             if (posOriginalSilla) {
-              return {
-                ...a,
-                x: posOriginalSilla.x + deltaX,
-                y: posOriginalSilla.y + deltaY
-              };
+              const { x: cx, y: cy } = clampPointToSheet(posOriginalSilla.x + deltaX, posOriginalSilla.y + deltaY, 14);
+              return { ...a, x: cx, y: cy };
             }
           }
           return a;
@@ -1727,11 +2065,8 @@ const Espacio = () => {
           if (estaSeleccionado) {
             const posOriginal = posicionesOriginales[`asiento_${a.id}`];
             if (posOriginal) {
-              return {
-                ...a,
-                x: posOriginal.x + deltaX,
-                y: posOriginal.y + deltaY
-              };
+              const { x: cx, y: cy } = clampPointToSheet(posOriginal.x + deltaX, posOriginal.y + deltaY, 16);
+              return { ...a, x: cx, y: cy };
             }
           }
           return a;
@@ -1745,17 +2080,16 @@ const Espacio = () => {
     // Si se está arrastrando una mesa o asiento individual
     if (elementoArrastrando && isDrawing) {
       if (elementoArrastrando.type === 'mesa') {
-        const nuevaX = pos.x - elementoArrastrando.offsetX;
-        const nuevaY = pos.y - elementoArrastrando.offsetY;
+        let nuevaX = pos.x - elementoArrastrando.offsetX;
+        let nuevaY = pos.y - elementoArrastrando.offsetY;
         const mesa = mesas.find(m => m.id === elementoArrastrando.id);
         if (mesa) {
-          // Calcular el delta desde la posición original de la mesa
-          // Necesitamos obtener la posición original guardada
+          const { x: cx, y: cy } = clampMesaToSheet(nuevaX, nuevaY, mesa.width || 24, mesa.height || 24);
+          nuevaX = cx; nuevaY = cy;
           const posOriginalMesa = posicionesOriginales[`mesa_${elementoArrastrando.id}`] || { x: mesa.x, y: mesa.y };
           const deltaX = nuevaX - posOriginalMesa.x;
           const deltaY = nuevaY - posOriginalMesa.y;
           
-          // Mover la mesa
           setMesas(mesas.map(m => 
             m.id === elementoArrastrando.id 
               ? { ...m, x: nuevaX, y: nuevaY }
@@ -1778,10 +2112,13 @@ const Espacio = () => {
         dibujarCanvas();
         return;
       } else if (elementoArrastrando.type === 'asiento') {
+        const { x: cx, y: cy } = clampPointToSheet(
+          pos.x - elementoArrastrando.offsetX,
+          pos.y - elementoArrastrando.offsetY,
+          16
+        );
         setAsientos(asientos.map(a => 
-          a.id === elementoArrastrando.id 
-            ? { ...a, x: pos.x - elementoArrastrando.offsetX, y: pos.y - elementoArrastrando.offsetY }
-            : a
+          a.id === elementoArrastrando.id ? { ...a, x: cx, y: cy } : a
         ));
         dibujarCanvas();
         return;
@@ -1805,19 +2142,23 @@ const Espacio = () => {
     if (!isDrawing) return;
 
     if (currentElement) {
+      let x, y, w, h;
       const width = pos.x - startPos.x;
       const height = pos.y - startPos.y;
-      const x = Math.min(startPos.x, pos.x);
-      const y = Math.min(startPos.y, pos.y);
-      const w = Math.abs(width);
-      const h = Math.abs(height);
+      x = Math.min(startPos.x, pos.x);
+      y = Math.min(startPos.y, pos.y);
+      w = Math.abs(width);
+      h = Math.abs(height);
+      const clamped = clampRectToSheet({ x, y, width: w, height: h });
+      x = clamped.x; y = clamped.y; w = clamped.width; h = clamped.height;
 
       const updatedElement = {
         ...currentElement,
         x,
         y,
         width: w,
-        height: h
+        height: h,
+        ...(modo === 'area' && { forma: 'rectangulo' })
       };
 
       setCurrentElement(updatedElement);
@@ -1836,6 +2177,8 @@ const Espacio = () => {
           width: w, 
           height: h 
         });
+      } else if (modo === 'zona_personas') {
+        setZonaPersonas({ x, y, width: w, height: h });
       }
 
       // Redibujar canvas inmediatamente para mostrar el preview
@@ -1900,6 +2243,11 @@ const Espacio = () => {
       // Confirmar zona de mesas y generar mesas con sillas en esa zona
       generarMesasAutomaticas(zonaMesas);
       setZonaMesas(null);
+    } else if (zonaPersonas && modo === 'zona_personas' && tipoPrecioSeleccionado) {
+      if (zonaPersonas.width > 10 && zonaPersonas.height > 10) {
+        generarPersonasAutomaticas({ ...zonaPersonas, tipo_precio_id: tipoPrecioSeleccionado, cantidad: cantidadPersonas });
+      }
+      setZonaPersonas(null);
     }
 
     setIsDrawing(false);
@@ -2031,24 +2379,127 @@ const Espacio = () => {
     setElementosSeleccionados([]);
   };
 
+  const OFFSET_DUPLICADO = 60;
+
+  const duplicarElementosSeleccionados = () => {
+    if (elementosSeleccionados.length === 0) {
+      showAlert('Selecciona elementos para duplicar', { type: 'warning' });
+      return;
+    }
+    if (layoutBloqueado) {
+      showAlert('No se puede duplicar con el layout bloqueado', { type: 'warning' });
+      return;
+    }
+
+    const mesasSeleccionadas = elementosSeleccionados.filter(sel => sel.type === 'mesa');
+    const asientosSeleccionados = elementosSeleccionados.filter(sel => sel.type === 'asiento');
+    const idsMesasSeleccionadas = new Set(mesasSeleccionadas.map(s => s.id));
+    const asientosSinMesaSeleccionada = asientosSeleccionados.filter(sel => {
+      const a = asientos.find(x => x.id === sel.id);
+      return a && (!a.mesa_id || !idsMesasSeleccionadas.has(a.mesa_id));
+    });
+
+    const nuevasMesas = [];
+    const nuevosAsientos = [];
+    const maxNumeroMesa = mesas.length > 0 ? Math.max(...mesas.map(m => m.numero_mesa || 0)) : 0;
+    let proximoNumeroMesa = maxNumeroMesa + 1;
+
+    mesasSeleccionadas.forEach((sel, idx) => {
+      const mesa = mesas.find(m => m.id === sel.id);
+      if (!mesa) return;
+      const nuevaMesaId = `temp_mesa_${Date.now()}_dup_${idx}`;
+      let nx = (mesa.x || 0) + OFFSET_DUPLICADO;
+      let ny = (mesa.y || 0) + OFFSET_DUPLICADO;
+      const { x: cx, y: cy } = clampMesaToSheet(nx, ny, mesa.width || 24, mesa.height || 24);
+      nx = cx;
+      ny = cy;
+      const nuevaMesa = {
+        id: nuevaMesaId,
+        x: nx,
+        y: ny,
+        width: mesa.width || 24,
+        height: mesa.height || 24,
+        numero_mesa: proximoNumeroMesa++,
+        capacidad_sillas: mesa.capacidad_sillas || 4,
+        tipo_precio_id: mesa.tipo_precio_id,
+        area_id: mesa.area_id || null
+      };
+      nuevasMesas.push(nuevaMesa);
+
+      const sillasMesa = asientos.filter(a => a.mesa_id === mesa.id);
+      sillasMesa.forEach((silla, i) => {
+        let sx = (silla.x || 50) + OFFSET_DUPLICADO;
+        let sy = (silla.y || 50) + OFFSET_DUPLICADO;
+        const c = clampPointToSheet(sx, sy, 14);
+        sx = c.x;
+        sy = c.y;
+        nuevosAsientos.push({
+          id: `temp_silla_${nuevaMesaId}_${i}`,
+          x: sx,
+          y: sy,
+          numero_asiento: silla.numero_asiento || `${i + 1}`,
+          tipo_precio_id: silla.tipo_precio_id,
+          mesa_id: nuevaMesaId
+        });
+      });
+    });
+
+    const asientosA = asientos.filter(a => !a.mesa_id && !String(a.numero_asiento || '').startsWith('P'));
+    const personasExistentes = asientos.filter(a => !a.mesa_id && String(a.numero_asiento || '').startsWith('P'));
+    let contA = asientosA.length + 1;
+    let contP = personasExistentes.length + 1;
+
+    asientosSinMesaSeleccionada.forEach((sel, idx) => {
+      const asiento = asientos.find(a => a.id === sel.id);
+      if (!asiento) return;
+      const esPersona = String(asiento.numero_asiento || '').startsWith('P');
+      let nx = (asiento.x || 50) + OFFSET_DUPLICADO;
+      let ny = (asiento.y || 50) + OFFSET_DUPLICADO;
+      const c = clampPointToSheet(nx, ny, 16);
+      nx = c.x;
+      ny = c.y;
+      const numero = esPersona ? `P${contP++}` : `A${contA++}`;
+      nuevosAsientos.push({
+        id: `temp_asiento_${Date.now()}_dup_${idx}`,
+        x: nx,
+        y: ny,
+        numero_asiento: numero,
+        tipo_precio_id: asiento.tipo_precio_id,
+        mesa_id: null
+      });
+    });
+
+    if (nuevasMesas.length > 0) setMesas(prev => [...prev, ...nuevasMesas]);
+    if (nuevosAsientos.length > 0) setAsientos(prev => [...prev, ...nuevosAsientos]);
+
+    const nuevosSeleccionados = [
+      ...nuevasMesas.map(m => ({ type: 'mesa', id: m.id })),
+      ...nuevosAsientos.map(a => ({ type: 'asiento', id: a.id }))
+    ];
+    setElementosSeleccionados(nuevosSeleccionados);
+  };
+
   // Detectar elementos dentro de un área específica
   const detectarElementosEnArea = (area) => {
     const elementos = [];
-    const minX = area.x;
-    const maxX = area.x + area.width;
-    const minY = area.y;
-    const maxY = area.y + area.height;
 
-    // Detectar SOLO asientos individuales dentro del área (NO sillas de mesas)
-    asientos.forEach(asiento => {
-      // Excluir sillas de mesas (asientos con mesa_id)
-      if (asiento.mesa_id) {
-        return; // No incluir sillas de mesas
+    const puntoDentro = (px, py) => {
+      if (area.forma === 'circulo') {
+        const cx = area.x + area.width / 2;
+        const cy = area.y + area.height / 2;
+        const r = Math.min(area.width, area.height) / 2;
+        const dist = Math.sqrt(Math.pow(px - cx, 2) + Math.pow(py - cy, 2));
+        return dist <= r;
       }
-      
+      return px >= area.x && px <= area.x + area.width && 
+             py >= area.y && py <= area.y + area.height;
+    };
+
+    asientos.forEach(asiento => {
+      if (asiento.mesa_id) return;
       const asientoX = asiento.x || 50;
       const asientoY = asiento.y || 50;
-      if (asientoX >= minX && asientoX <= maxX && asientoY >= minY && asientoY <= maxY) {
+      if (puntoDentro(asientoX, asientoY)) {
         elementos.push({ type: 'asiento', id: asiento.id });
       }
     });
@@ -2082,24 +2533,54 @@ const Espacio = () => {
     }
   };
 
+  // Aplicar renumeración en pantalla (mesas M1,M2... y asientos A1,P1... en orden posición)
+  const aplicarRenumeracion = () => {
+    if (layoutBloqueado) {
+      showAlert('No se puede renumerar con el layout bloqueado', { type: 'warning' });
+      return;
+    }
+    const ordenarPorPosicion = (a, b) => {
+      const ay = (a.y ?? a.posicion_y ?? 0);
+      const by = (b.y ?? b.posicion_y ?? 0);
+      if (Math.abs(ay - by) > 5) return ay - by;
+      return (a.x ?? a.posicion_x ?? 0) - (b.x ?? b.posicion_x ?? 0);
+    };
+
+    const mesasOrdenadas = [...mesas].sort(ordenarPorPosicion);
+    const mesasRenumeradas = mesasOrdenadas.map((m, i) => ({ ...m, numero_mesa: i + 1 }));
+    setMesas(mesasRenumeradas);
+
+    const asientosConMesa = asientos.filter(a => a.mesa_id);
+    const asientosIndividuales = asientos.filter(a => !a.mesa_id && !String(a.numero_asiento || '').startsWith('P'));
+    const personas = asientos.filter(a => !a.mesa_id && String(a.numero_asiento || '').startsWith('P'));
+
+    const asientosIndOrd = [...asientosIndividuales].sort(ordenarPorPosicion).map((a, i) => ({ ...a, numero_asiento: `A${i + 1}` }));
+    const personasOrd = [...personas].sort(ordenarPorPosicion).map((a, i) => ({ ...a, numero_asiento: `P${i + 1}` }));
+
+    const todasSillas = asientos.filter(a => a.mesa_id);
+    const asientosFinales = [...asientosIndOrd, ...personasOrd, ...todasSillas];
+    setAsientos(asientosFinales);
+  };
+
   // Función para renumerar asientos asegurando que no haya duplicados
   const renumerarElementos = (numeroAsientoInicial = 0) => {
     // Renumerar SOLO asientos individuales (sin mesa_id)
     // Las sillas de mesas mantienen sus números simples (1, 2, 3...)
-    let contadorAsientosIndividuales = numeroAsientoInicial;
+    // Personas (P1, P2...) mantienen su prefijo P
+    let contadorAsientos = numeroAsientoInicial;
+    let contadorPersonas = 0;
     
     const asientosRenumerados = asientos.map((asiento) => {
       if (asiento.mesa_id) {
-        // Es una silla de mesa: mantener su número tal cual (1, 2, 3...)
         return asiento;
-      } else {
-        // Es un asiento individual: renumerar con formato A1, A2, A3...
-        contadorAsientosIndividuales++;
-        return {
-          ...asiento, // Preservar x, y, y todas las demás propiedades
-          numero_asiento: `A${contadorAsientosIndividuales}`
-        };
       }
+      const esPersona = String(asiento.numero_asiento || '').startsWith('P');
+      if (esPersona) {
+        contadorPersonas++;
+        return { ...asiento, numero_asiento: `P${contadorPersonas}` };
+      }
+      contadorAsientos++;
+      return { ...asiento, numero_asiento: `A${contadorAsientos}` };
     });
 
     return {
@@ -2109,38 +2590,42 @@ const Espacio = () => {
 
   // Función para calcular resumen del layout
   const calcularResumenLayout = () => {
-    const totalAsientos = asientos.length;
     const totalAreas = areas.length;
     const totalMesas = mesas.length;
     
-    // Separar sillas de mesas y asientos individuales
+    // Separar: sillas de mesas, asientos individuales (sillas), personas (espacio pie)
     const sillasDeMesas = asientos.filter(a => a.mesa_id).length;
-    const asientosIndividuales = asientos.filter(a => !a.mesa_id).length;
+    const personasPie = asientos.filter(a => !a.mesa_id && String(a.numero_asiento || '').startsWith('P')).length;
+    const asientosIndividuales = asientos.filter(a => !a.mesa_id && !String(a.numero_asiento || '').startsWith('P')).length;
+    const totalAsientos = sillasDeMesas + asientosIndividuales; // solo sillas, sin personas
+    const totalPersonas = personasPie;
     
     // Calcular capacidad total de mesas (suma de capacidad_sillas de todas las mesas)
     const capacidadTotalMesas = mesas.reduce((total, mesa) => {
       return total + (mesa.capacidad_sillas || 0);
     }, 0);
 
-    // Agrupar por tipo de precio (SOLO SILLAS/ASIENTOS, NO MESAS)
+    // Agrupar por tipo de precio: sillas (mesas + individuales) y personas (espacio pie)
     const porTipoPrecio = {};
     
-    // Función auxiliar para normalizar el tipo de precio
     const normalizarTipoId = (tipoPrecioId) => {
       if (tipoPrecioId === null || tipoPrecioId === undefined) {
         return 'sin_precio';
       }
-      // Convertir a string para consistencia
       return String(tipoPrecioId);
     };
     
-    // Solo contar sillas/asientos por tipo de precio (las mesas no se cuentan aquí)
     asientos.forEach(a => {
       const tipoId = normalizarTipoId(a.tipo_precio_id);
       if (!porTipoPrecio[tipoId]) {
-        porTipoPrecio[tipoId] = { sillas: 0 }; // Solo contamos sillas/asientos
+        porTipoPrecio[tipoId] = { sillas: 0, personas: 0 };
       }
-      porTipoPrecio[tipoId].sillas += 1;
+      const esPersona = !a.mesa_id && String(a.numero_asiento || '').startsWith('P');
+      if (esPersona) {
+        porTipoPrecio[tipoId].personas += 1;
+      } else {
+        porTipoPrecio[tipoId].sillas += 1;
+      }
     });
 
     return {
@@ -2149,6 +2634,7 @@ const Espacio = () => {
       totalMesas,
       sillasDeMesas,
       asientosIndividuales,
+      personasPie,
       capacidadTotalMesas,
       porTipoPrecio
     };
@@ -2361,7 +2847,11 @@ const Espacio = () => {
             posicion_y: Math.round(area.y),
             ancho: Math.round(area.width),
             alto: Math.round(area.height),
-            color: area.color || '#CCCCCC'
+            color: area.color || '#CCCCCC',
+            forma: area.forma || 'rectangulo',
+            tipo_area: area.tipo_area || 'SILLAS',
+            capacidad_personas: area.tipo_area === 'PERSONAS' ? (area.capacidad_personas || 50) : null,
+            tipo_precio_id: area.tipo_area === 'PERSONAS' ? (area.tipo_precio_id || tipoPrecioSeleccionado) : null
           });
           if (response.data.success) {
             areasActualizadas.push({ ...area, id: response.data.data.id });
@@ -2376,7 +2866,11 @@ const Espacio = () => {
             posicion_y: Math.round(area.y),
             ancho: Math.round(area.width),
             alto: Math.round(area.height),
-            color: area.color || '#CCCCCC'
+            color: area.color || '#CCCCCC',
+            forma: area.forma || 'rectangulo',
+            tipo_area: area.tipo_area || 'SILLAS',
+            capacidad_personas: area.tipo_area === 'PERSONAS' ? (area.capacidad_personas || 50) : null,
+            tipo_precio_id: area.tipo_area === 'PERSONAS' ? (area.tipo_precio_id || tipoPrecioSeleccionado) : null
           });
           areasActualizadas.push(area);
           actualizarProgreso(`Área ${i + 1} de ${areas.length} actualizada...`, `✅ Área "${area.nombre}" actualizada`);
@@ -2484,9 +2978,14 @@ const Espacio = () => {
 
 
 
-                {(modo === 'asiento_individual' || modo === 'zona_asientos') && (
+                {(modo === 'asiento_individual' || modo === 'persona_individual' || modo === 'zona_asientos') && (
                   <div className="control-section">
-                    <h3>Configuración de Asientos</h3>
+                    <h3>Configuración de {modo === 'persona_individual' ? 'Persona' : 'Asientos'}</h3>
+                    {modo === 'persona_individual' && (
+                      <p style={{ fontSize: '12px', color: '#666', marginTop: '8px' }}>
+                        Haz clic para colocar una persona (círculo). Arrastra para mover. Clic derecho o Ctrl+clic para eliminar. Selecciona y asigna precio como los demás.
+                      </p>
+                    )}
                     {modo === 'zona_asientos' && (
                       <>
                         <div className="form-group-small">
@@ -2649,7 +3148,7 @@ const Espacio = () => {
                           </>
                         )}
                         {!elementoInfo.mesa && (
-                          <p><strong>Tipo:</strong> 💺 Asiento Individual</p>
+                          <p><strong>Tipo:</strong> {String(elementoInfo.asiento?.numero_asiento || '').startsWith('P') ? '👤 Persona Individual' : '💺 Asiento Individual'}</p>
                         )}
                         {elementoInfo.area && <p><strong>Área:</strong> {elementoInfo.area.nombre}</p>}
                         {elementoInfo.tipoPrecio && (
@@ -2713,6 +3212,7 @@ const Espacio = () => {
             onClose={() => setMostrarCanvasAmpliado(false)}
             closeOnOverlayClick={false}
             title="Dibujo ampliado"
+            large={true}
             tools={
               <>
                 <div className="control-section">
@@ -2768,6 +3268,19 @@ const Espacio = () => {
                       💺 Asiento Individual
                     </button>
                     <button
+                      className={modo === 'persona_individual' ? 'active' : ''}
+                      onClick={() => {
+                        if (!layoutBloqueado) {
+                          setModo('persona_individual');
+                          setElementosSeleccionados([]);
+                        }
+                      }}
+                      disabled={layoutBloqueado || !tipoPrecioSeleccionado}
+                      title={layoutBloqueado ? 'Layout bloqueado' : 'Haz clic para colocar una persona (círculo)'}
+                    >
+                      👤 Persona Individual
+                    </button>
+                    <button
                       className={modo === 'mesas' ? 'active' : ''}
                       onClick={() => {
                         if (!layoutBloqueado) {
@@ -2819,6 +3332,19 @@ const Espacio = () => {
                     >
                       🪑 Mesas con Sillas (Auto)
                     </button>
+                    <button
+                      className={modo === 'zona_personas' ? 'active' : ''}
+                      onClick={() => {
+                        if (!layoutBloqueado) {
+                          setModo('zona_personas');
+                          setElementosSeleccionados([]);
+                        }
+                      }}
+                      disabled={layoutBloqueado || !tipoPrecioSeleccionado}
+                      title={layoutBloqueado ? 'Layout bloqueado' : 'Dibuja una zona de personas de pie (capacidad por cantidad)'}
+                    >
+                      👥 Zona Personas (Auto)
+                    </button>
                   </div>
                   
                 </div>
@@ -2837,7 +3363,7 @@ const Espacio = () => {
                       />
                     </div>
                     <p style={{ fontSize: '12px', color: '#666', marginTop: '8px' }}>
-                      Dibuja el área en el canvas. Se te pedirá el nombre después de dibujar.
+                      Clic y arrastra para dibujar un rectángulo. Se te pedirá el nombre después.
                     </p>
                     {areas.length > 0 && (
                       <div style={{ marginTop: '15px' }}>
@@ -2859,7 +3385,23 @@ const Espacio = () => {
                                 marginBottom: '5px'
                               }}>
                                 <span style={{ fontWeight: 'bold' }}>{area.nombre}</span>
-                                <div style={{ display: 'flex', gap: '5px' }}>
+                                <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
+                                  <button
+                                    type="button"
+                                    onClick={() => abrirEditarArea(area)}
+                                    title="Configurar tipo (sillas/personas) y capacidad"
+                                    style={{
+                                      background: '#2196F3',
+                                      color: 'white',
+                                      border: 'none',
+                                      borderRadius: '3px',
+                                      padding: '3px 8px',
+                                      cursor: 'pointer',
+                                      fontSize: '11px'
+                                    }}
+                                  >
+                                    ⚙️ Editar
+                                  </button>
                                   {elementosEnArea.length > 0 && (
                                     <button
                                       type="button"
@@ -2897,7 +3439,12 @@ const Espacio = () => {
                                 </div>
                               </div>
                               <div style={{ fontSize: '11px', color: '#666' }}>
-                                {elementosEnArea.length} elemento(s) dentro
+                                {area.tipo_area === 'PERSONAS'
+                                  ? `Personas: ${area.capacidad_personas || '-'}`
+                                  : area.tipo_area === 'MESAS'
+                                    ? 'Mesas'
+                                    : 'Sillas'}
+                                {elementosEnArea.length > 0 && ` · ${elementosEnArea.length} elemento(s)`}
                               </div>
                             </div>
                           );
@@ -2907,9 +3454,38 @@ const Espacio = () => {
                   </div>
                 )}
 
-                {(modo === 'asiento_individual' || modo === 'zona_asientos') && (
+                {modo === 'zona_personas' && (
                   <div className="control-section">
-                    <h3>Configuración de Asientos</h3>
+                    <h3>Zona Personas</h3>
+                    <div className="form-group-small">
+                      <label>Límite de Personas</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="500"
+                        value={cantidadPersonas}
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value) || 50;
+                          setCantidadPersonas(Math.max(1, Math.min(500, val)));
+                        }}
+                        className="select-input"
+                        placeholder="Máx. personas"
+                      />
+                    </div>
+                    <p style={{ fontSize: '12px', color: '#666', marginTop: '8px' }}>
+                      Clic y arrastra para dibujar la zona. Se generarán hasta {cantidadPersonas} personas (círculos) del mismo tamaño que las sillas.
+                    </p>
+                  </div>
+                )}
+
+                {(modo === 'asiento_individual' || modo === 'persona_individual' || modo === 'zona_asientos') && (
+                  <div className="control-section">
+                    <h3>Configuración de {modo === 'persona_individual' ? 'Persona' : 'Asientos'}</h3>
+                    {modo === 'persona_individual' && (
+                      <p style={{ fontSize: '12px', color: '#666', marginTop: '8px' }}>
+                        Haz clic para colocar una persona (círculo). Arrastra para mover. Clic derecho o Ctrl+clic para eliminar. Selecciona y asigna precio como los demás.
+                      </p>
+                    )}
                     {modo === 'zona_asientos' && (
                       <>
                         <div className="form-group-small">
@@ -3116,6 +3692,39 @@ const Espacio = () => {
                         <button className="btn-guardar" onClick={guardarLayout}>
                           💾 Guardar Layout
                         </button>
+                        <button
+                          onClick={aplicarRenumeracion}
+                          disabled={layoutBloqueado}
+                          style={{
+                            padding: '12px',
+                            backgroundColor: layoutBloqueado ? '#cccccc' : '#9C27B0',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '5px',
+                            cursor: layoutBloqueado ? 'not-allowed' : 'pointer',
+                            fontSize: '14px',
+                            fontWeight: 'bold'
+                          }}
+                          title={layoutBloqueado ? 'Layout bloqueado' : 'Renumerar mesas (M1,M2...) y asientos/personas (A1,P1...) en orden'}
+                        >
+                          🔢 Renumerar objetos
+                        </button>
+                        <button
+                          onClick={() => setMostrarNumerosAsientos(!mostrarNumerosAsientos)}
+                          style={{
+                            padding: '12px',
+                            backgroundColor: mostrarNumerosAsientos ? '#607D8B' : '#4CAF50',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '5px',
+                            cursor: 'pointer',
+                            fontSize: '14px',
+                            fontWeight: 'bold'
+                          }}
+                          title={mostrarNumerosAsientos ? 'Ocultar números de asientos y mesas' : 'Mostrar números'}
+                        >
+                          {mostrarNumerosAsientos ? '🙈 Ocultar números' : '👁️ Mostrar números'}
+                        </button>
                         <button 
                           onClick={() => limpiarEspacio(true)}
                           style={{
@@ -3175,6 +3784,23 @@ const Espacio = () => {
                         {tipoPrecioSeleccionado && tiposPrecio.find(tp => tp.id === tipoPrecioSeleccionado) 
                           ? `Asignar ${tiposPrecio.find(tp => tp.id === tipoPrecioSeleccionado)?.nombre}`
                           : 'Asignar Precio'}
+                      </button>
+                      <button
+                        onClick={duplicarElementosSeleccionados}
+                        disabled={layoutBloqueado}
+                        style={{
+                          padding: '6px 10px',
+                          backgroundColor: layoutBloqueado ? '#cccccc' : '#2196F3',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: layoutBloqueado ? 'not-allowed' : 'pointer',
+                          fontSize: '12px',
+                          fontWeight: 'bold'
+                        }}
+                        title={layoutBloqueado ? 'Layout bloqueado' : 'Duplicar elementos (aparecen desplazados, muévelos a donde quieras)'}
+                      >
+                        Duplicar
                       </button>
                       <button
                         onClick={eliminarElementosSeleccionados}
@@ -3378,8 +4004,9 @@ const Espacio = () => {
                 <div>• <strong>Áreas dibujadas:</strong> {resumenLayout.totalAreas}</div>
                 <div>• <strong>Mesas:</strong> {resumenLayout.totalMesas}</div>
                 <div>• <strong>Sillas de mesas:</strong> {resumenLayout.sillasDeMesas} ({resumenLayout.capacidadTotalMesas} capacidad total)</div>
-                <div>• <strong>Asientos individuales:</strong> {resumenLayout.asientosIndividuales}</div>
-                <div>• <strong>Total de asientos:</strong> {resumenLayout.totalAsientos}</div>
+                <div>• <strong>Asientos individuales (sillas):</strong> {resumenLayout.asientosIndividuales}</div>
+                <div>• <strong>Personas (espacio pie):</strong> {resumenLayout.personasPie || 0}</div>
+                <div>• <strong>Total sillas/asientos:</strong> {resumenLayout.totalAsientos}</div>
               </div>
             </div>
 
@@ -3401,7 +4028,6 @@ const Espacio = () => {
                 lineHeight: '1.8'
               }}>
                 {Object.entries(resumenLayout.porTipoPrecio).map(([tipoId, datos]) => {
-                  // Manejar el caso de 'sin_precio' y convertir correctamente
                   let tipoPrecio = null;
                   if (tipoId !== 'sin_precio') {
                     const tipoIdNum = parseInt(tipoId);
@@ -3411,15 +4037,17 @@ const Espacio = () => {
                   }
                   const nombre = tipoPrecio ? tipoPrecio.nombre : 'Sin precio';
                   const precio = tipoPrecio ? `$${tipoPrecio.precio}` : '';
+                  const sillas = datos.sillas || 0;
+                  const personas = datos.personas || 0;
                   
-                  // Solo mostrar si hay sillas en este tipo de precio
-                  if (!datos.sillas || datos.sillas === 0) return null;
+                  if (sillas === 0 && personas === 0) return null;
                   
                   return (
                     <div key={tipoId} style={{ marginBottom: '10px' }}>
                       <strong>{nombre}</strong> {precio && `(${precio})`}
                       <div style={{ marginLeft: '20px', fontSize: '14px', color: '#bdc3c7' }}>
-                        • Sillas: {datos.sillas}
+                        {sillas > 0 && <div>• Sillas: {sillas}</div>}
+                        {personas > 0 && <div>• Personas (espacio pie): {personas}</div>}
                       </div>
                     </div>
                   );
@@ -3487,6 +4115,92 @@ const Espacio = () => {
         message="Ingresa el nombre del área"
         placeholder="Ej: PALCO, VIP, Balcón..."
       />
+
+      {/* Modal para editar área (tipo, capacidad) - después de dibujar */}
+      {mostrarModalEditarArea && areaEnEdicion && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.6)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 2000
+        }} onClick={() => setMostrarModalEditarArea(false)}>
+          <div style={{
+            background: '#fff',
+            borderRadius: '12px',
+            padding: '20px',
+            minWidth: '320px',
+            maxWidth: '90vw'
+          }} onClick={e => e.stopPropagation()}>
+            <h3 style={{ marginTop: 0 }}>Configurar área: {areaEnEdicion.nombre}</h3>
+            <p style={{ fontSize: '13px', color: '#666', marginBottom: '16px' }}>
+              Define si esta área tendrá sillas, mesas o personas de pie, y su capacidad.
+            </p>
+            <div style={{ marginBottom: '12px' }}>
+              <label style={{ display: 'block', marginBottom: '4px', fontWeight: 600 }}>Tipo de área</label>
+              <select
+                value={areaEnEdicion.tipo_area || 'SILLAS'}
+                onChange={e => setAreaEnEdicion({ ...areaEnEdicion, tipo_area: e.target.value })}
+                style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #ddd' }}
+              >
+                <option value="SILLAS">Sillas</option>
+                <option value="MESAS">Mesas</option>
+                <option value="PERSONAS">Personas de pie (zona general)</option>
+              </select>
+            </div>
+            {areaEnEdicion.tipo_area === 'PERSONAS' && (
+              <>
+                <div style={{ marginBottom: '12px' }}>
+                  <label style={{ display: 'block', marginBottom: '4px', fontWeight: 600 }}>Capacidad de personas</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="10000"
+                    value={areaEnEdicion.capacidad_personas || 50}
+                    onChange={e => setAreaEnEdicion({
+                      ...areaEnEdicion,
+                      capacidad_personas: Math.max(1, parseInt(e.target.value) || 1)
+                    })}
+                    style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #ddd' }}
+                  />
+                </div>
+                <div style={{ marginBottom: '12px' }}>
+                  <label style={{ display: 'block', marginBottom: '4px', fontWeight: 600 }}>Tipo de precio</label>
+                  <select
+                    value={areaEnEdicion.tipo_precio_id || ''}
+                    onChange={e => setAreaEnEdicion({
+                      ...areaEnEdicion,
+                      tipo_precio_id: e.target.value ? parseInt(e.target.value) : null
+                    })}
+                    style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #ddd' }}
+                  >
+                    <option value="">-- Selecciona --</option>
+                    {tiposPrecio.map(tp => (
+                      <option key={tp.id} value={tp.id}>{tp.nombre} - ${tp.precio}</option>
+                    ))}
+                  </select>
+                </div>
+              </>
+            )}
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '16px' }}>
+              <button
+                onClick={() => { setMostrarModalEditarArea(false); setAreaEnEdicion(null); }}
+                style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid #ddd', cursor: 'pointer' }}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={guardarEdicionArea}
+                style={{ padding: '8px 16px', borderRadius: '6px', border: 'none', background: '#2196F3', color: '#fff', cursor: 'pointer' }}
+              >
+                Guardar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

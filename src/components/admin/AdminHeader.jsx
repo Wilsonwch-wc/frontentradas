@@ -1,9 +1,16 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import './AdminHeader.css';
 
 const AdminHeader = ({ onMenuToggle, isMenuOpen }) => {
   const { user } = useAuth();
+  const navigate = useNavigate();
+
+  const handleIrAlSitio = () => {
+    // Ir a la parte pública para poder comprar entradas
+    navigate('/eventos');
+  };
 
   return (
     <header className="admin-header">
@@ -25,6 +32,12 @@ const AdminHeader = ({ onMenuToggle, isMenuOpen }) => {
           </h1>
         </div>
         <div className="admin-header-right">
+          <button
+            className="admin-go-site-button"
+            onClick={handleIrAlSitio}
+          >
+            Ir al Sitio
+          </button>
           <div className="admin-user-info">
             <span className="admin-user-name">{user?.nombre_completo || 'Admin'}</span>
             <span className="admin-user-role">{user?.rol || 'admin'}</span>

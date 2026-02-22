@@ -21,7 +21,8 @@ const AdminLayout = () => {
   // Verificar autenticación y rol admin o seguridad
   const isAdminOrSeguridad = user && (user.rol === 'admin' || user.rol === 'seguridad');
   if (!user || !isAuthenticated() || !isAdminOrSeguridad) {
-    return <Navigate to="/account" replace />;
+    // Usar la pantalla de login única (correo/contraseña)
+    return <Navigate to="/login" replace />;
   }
 
   const toggleMenu = () => {

@@ -23,6 +23,7 @@ import WhatsAppWeb from './pages/admin/WhatsAppWeb';
 import ContactoAdmin from './pages/admin/ContactoAdmin';
 import BusquedaEntrada from './pages/admin/BusquedaEntrada';
 import EntradasEscaneadas from './pages/admin/EntradasEscaneadas';
+import Cupones from './pages/admin/Cupones';
 import './App.css';
 
 function App() {
@@ -43,6 +44,7 @@ function App() {
             <Route path="contacto" element={<ContactoAdmin />} />
             <Route path="busqueda-entrada" element={<BusquedaEntrada />} />
             <Route path="entradas-escaneadas" element={<EntradasEscaneadas />} />
+            <Route path="cupones" element={<Cupones />} />
           </Route>
           
           {/* Rutas públicas con Header y Footer */}
@@ -53,6 +55,8 @@ function App() {
           <Route path="/login" element={<PublicLayout><Login /></PublicLayout>} />
           <Route path="/mi-informacion" element={<PublicLayout><MiInformacion /></PublicLayout>} />
           <Route path="/mis-compras" element={<PublicLayout><MisCompras /></PublicLayout>} />
+          {/* Pantalla antigua de admin (/account) se mantiene por compatibilidad,
+              pero el flujo principal de login es /login con correo/contraseña */}
           <Route path="/account" element={<Account />} />
           <Route path="/compra/:id" element={<PublicLayout><Compra /></PublicLayout>} />
           <Route path="/pago-qr/:id" element={<PublicLayout><PagoQR /></PublicLayout>} />

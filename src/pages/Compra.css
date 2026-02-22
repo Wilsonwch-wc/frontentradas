@@ -349,12 +349,22 @@
   font-weight: 600;
 }
 
+/* Total anterior = precio sin descuento (más suave) */
+.resumen-item.resumen-item-anterior span:first-child {
+  color: #5a6c7d !important;
+  font-weight: 600;
+}
+
 .resumen-item.resumen-total {
   background: linear-gradient(135deg, rgba(212, 175, 55, 0.1) 0%, rgba(255, 215, 0, 0.1) 100%);
   border: 1px solid #D4AF37;
   margin-top: 0.5rem;
   padding: 1.2rem 1.2rem;
   box-shadow: 0 2px 8px rgba(212, 175, 55, 0.2);
+}
+
+.resumen-item.resumen-total.resumen-total-con-descuento {
+  margin-top: 0.75rem;
 }
 
 .resumen-total span:first-child {
