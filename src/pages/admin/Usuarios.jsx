@@ -165,14 +165,13 @@ const Usuarios = () => {
 
   const handleBorrarTodosLosDatos = async () => {
     const confirmado = await showConfirm(
-      '⚠️ ADVERTENCIA: Esta acción eliminará TODOS los datos de la base de datos excepto usuarios y roles.\n\n' +
-      'Esto incluye:\n' +
-      '• Todos los eventos\n' +
-      '• Todas las compras y entradas\n' +
-      '• Todos los clientes\n' +
-      '• Todos los asientos y mesas\n' +
-      '• Todos los pagos y escaneos\n\n' +
-      'Los usuarios y roles NO se eliminarán.\n\n' +
+      '⚠️ ADVERTENCIA: Esta acción eliminará TODOS los datos de la base de datos excepto:\n\n' +
+      '• Usuarios y roles\n' +
+      '• Datos de contacto (contacto_info)\n\n' +
+      'Se eliminará:\n' +
+      '• Todos los eventos, compras, entradas y clientes\n' +
+      '• Asientos, mesas, áreas, tipos de precio\n' +
+      '• Pagos, escaneos y cupones\n\n' +
       '¿Estás completamente seguro de que deseas continuar?',
       {
         type: 'warning',
@@ -222,7 +221,7 @@ const Usuarios = () => {
                 alignItems: 'center',
                 gap: '8px'
               }}
-              title="Eliminar todos los datos excepto usuarios y roles"
+              title="Eliminar todos los datos (se conservan usuarios, roles y datos de contacto)"
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <polyline points="3 6 5 6 21 6"></polyline>

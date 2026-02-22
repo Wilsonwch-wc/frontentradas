@@ -5,6 +5,7 @@ import { useAlert } from '../../context/AlertContext';
 import './BusquedaEntrada.css';
 
 const FEEDBACK_DURATION_MS = 1800;
+const ESCANEO_DEBOUNCE_MS = 2500; // Mismo QR/código no se procesa de nuevo en este tiempo (evita 3+ notificaciones)
 
 const playBeep = (type) => {
   try {
@@ -35,6 +36,7 @@ const BusquedaEntrada = () => {
   const [modoSoloConsulta, setModoSoloConsulta] = useState(false);
   const qrCodeRegionId = 'qr-reader';
   const html5QrCodeRef = useRef(null);
+  const lastProcessedScanRef = useRef({ code: null, time: 0 });
 
   const tickearEntrada = async () => {
     if (!datosEntrada) return;
@@ -349,8 +351,13 @@ const BusquedaEntrada = () => {
                 aspectRatio: 1.0
               },
                 async (decodedText) => {
+                const now = Date.now();
+                const last = lastProcessedScanRef.current;
+                if (last.code === decodedText && (now - last.time) < ESCANEO_DEBOUNCE_MS) {
+                  return; // Ignorar mismo código reciente (evita 3+ notificaciones por un solo escaneo)
+                }
+                lastProcessedScanRef.current = { code: decodedText, time: now };
                 console.log('📷 QR escaneado:', decodedText);
-                // Validar solo escaneando: fromQR true = auto-tickear + feedback, sin modal
                 try {
                   await procesarCodigoQR(decodedText, { fromQR: true });
                 } catch (err) {

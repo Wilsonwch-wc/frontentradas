@@ -64,8 +64,15 @@
 .filtros-compras {
   display: flex;
   align-items: center;
-  gap: 10px;
+  flex-wrap: wrap;
+  gap: 16px;
   margin-bottom: 20px;
+}
+
+.filtro-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .filtros-compras label {

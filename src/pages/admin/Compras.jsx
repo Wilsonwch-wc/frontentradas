@@ -15,6 +15,8 @@ const Compras = () => {
   const [compraSeleccionada, setCompraSeleccionada] = useState(null);
   const [mostrarDetalle, setMostrarDetalle] = useState(false);
   const [filtroEstado, setFiltroEstado] = useState(''); // 'PAGO_PENDIENTE', 'PAGO_REALIZADO', etc.
+  const [eventoFiltro, setEventoFiltro] = useState(''); // '', 'activo', o id del evento
+  const [listaEventos, setListaEventos] = useState([]);
   const [confirmando, setConfirmando] = useState(false);
   const [reenviando, setReenviando] = useState(false);
   const [eliminando, setEliminando] = useState(false);
@@ -23,12 +25,28 @@ const Compras = () => {
 
   useEffect(() => {
     cargarCompras();
-  }, [filtroEstado]);
+  }, [filtroEstado, eventoFiltro]);
+
+  useEffect(() => {
+    const cargarEventos = async () => {
+      try {
+        const res = await api.get('/eventos');
+        if (res.data.success && Array.isArray(res.data.data)) {
+          setListaEventos(res.data.data);
+        }
+      } catch (e) {
+        console.warn('No se pudo cargar lista de eventos para filtro:', e);
+      }
+    };
+    cargarEventos();
+  }, []);
 
   const cargarCompras = async () => {
     try {
       setLoading(true);
-      const params = filtroEstado ? { estado: filtroEstado } : {};
+      const params = {};
+      if (filtroEstado) params.estado = filtroEstado;
+      if (eventoFiltro) params.evento_id = eventoFiltro;
       const response = await api.get('/compras', { params });
       if (response.data.success) {
         setCompras(response.data.data);
@@ -406,18 +424,37 @@ const Compras = () => {
 
         {/* Filtros */}
         <div className="filtros-compras">
-          <label>Filtrar por estado:</label>
-          <select
-            value={filtroEstado}
-            onChange={(e) => setFiltroEstado(e.target.value)}
-            className="select-filtro"
-          >
-            <option value="">Todos</option>
-            <option value="PAGO_PENDIENTE">Pago Pendiente</option>
-            <option value="PAGO_REALIZADO">Pago Realizado</option>
-            <option value="CANCELADO">Cancelado</option>
-            <option value="ENTRADA_USADA">Entrada Usada</option>
-          </select>
+          <div className="filtro-group">
+            <label>Filtrar por evento:</label>
+            <select
+              value={eventoFiltro}
+              onChange={(e) => setEventoFiltro(e.target.value)}
+              className="select-filtro"
+            >
+              <option value="">Todos los eventos</option>
+              <option value="activo">Evento activo (próximo)</option>
+              {listaEventos.map((ev) => (
+                <option key={ev.id} value={ev.id}>
+                  {ev.titulo || `Evento #${ev.id}`}
+                  {ev.hora_inicio ? ` — ${new Date(ev.hora_inicio).toLocaleDateString('es-ES')}` : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="filtro-group">
+            <label>Filtrar por estado:</label>
+            <select
+              value={filtroEstado}
+              onChange={(e) => setFiltroEstado(e.target.value)}
+              className="select-filtro"
+            >
+              <option value="">Todos</option>
+              <option value="PAGO_PENDIENTE">Pago Pendiente</option>
+              <option value="PAGO_REALIZADO">Pago Realizado</option>
+              <option value="CANCELADO">Cancelado</option>
+              <option value="ENTRADA_USADA">Entrada Usada</option>
+            </select>
+          </div>
         </div>
 
         {error && <div className="error-message">{error}</div>}
