@@ -35,6 +35,7 @@ const Dashboard = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [eventoSeleccionado, setEventoSeleccionado] = useState('');
   const [showClientesModal, setShowClientesModal] = useState(false);
   const [clientes, setClientes] = useState([]);
   const [loadingClientes, setLoadingClientes] = useState(false);
@@ -59,11 +60,14 @@ const Dashboard = () => {
     }
   }, [isVendedor, user?.rol, navigate]);
 
-  const loadData = async () => {
+  const loadData = async (eventoId) => {
+    const id = (eventoId !== undefined && eventoId !== null && eventoId !== '') ? eventoId : eventoSeleccionado;
+    const idParaUrl = (id !== undefined && id !== null && id !== '') ? id : null;
     setLoading(true);
     setError('');
     try {
-      const res = await api.get('/dashboard/resumen');
+      const url = idParaUrl ? `/dashboard/resumen?evento_id=${idParaUrl}` : '/dashboard/resumen';
+      const res = await api.get(url);
       if (res.data.success) {
         setData(res.data.data);
       } else {
@@ -161,6 +165,12 @@ const Dashboard = () => {
     loadData();
   }, []);
 
+  const handleCambiarEvento = (e) => {
+    const value = e.target.value;
+    setEventoSeleccionado(value);
+    loadData(value);
+  };
+
   const fmtNumber = (n) =>
     Intl.NumberFormat('es-ES', { maximumFractionDigits: 0 }).format(Number(n || 0));
 
@@ -178,16 +188,36 @@ const Dashboard = () => {
           <div>
             <h1>Panel de Control</h1>
             <p>Vista rápida de la operación.</p>
+            {data?.lista_eventos?.length > 0 && (
+              <div className="dash-selector-evento">
+                <label htmlFor="dash-evento-select">Ver datos del evento: </label>
+                <select
+                  id="dash-evento-select"
+                  value={eventoSeleccionado}
+                  onChange={handleCambiarEvento}
+                  className="dash-evento-select"
+                >
+                  <option value="">Evento activo (próximo)</option>
+                  {data.lista_eventos.map((ev) => (
+                    <option key={ev.id} value={ev.id}>
+                      {ev.titulo}
+                      {ev.estado ? ` (${ev.estado})` : ''}
+                      {ev.hora_inicio ? ` — ${new Date(ev.hora_inicio).toLocaleDateString('es-ES')}` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             {data?.evento_activo_nombres?.length > 0 && (
               <p className="dash-evento-activo">
-                Datos del evento activo: <strong>{data.evento_activo_nombres.join(', ')}</strong>
+                Datos del evento: <strong>{data.evento_activo_nombres.join(', ')}</strong>
               </p>
             )}
-            {data?.eventos_habilitados === 0 && (
-              <p className="dash-evento-activo dash-sin-evento">No hay evento activo; las cifras de ventas están en cero.</p>
+            {!eventoSeleccionado && data?.eventos_habilitados === 0 && (
+              <p className="dash-evento-activo dash-sin-evento">No hay evento activo (próximo); las cifras de ventas están en cero.</p>
             )}
           </div>
-          <button className="dash-refresh" onClick={loadData} disabled={loading}>
+          <button className="dash-refresh" onClick={() => loadData()} disabled={loading}>
             {loading ? 'Actualizando...' : 'Actualizar'}
           </button>
         </div>
