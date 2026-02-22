@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import './ModalTipoPago.css';
 
-const ModalTipoPago = ({ isOpen, onClose, onSelect, title = 'Tipo de pago', disabled = false, compraTotal = 0 }) => {
+const ModalTipoPago = ({ isOpen, onClose, onSelect, title = 'Tipo de pago', disabled = false, compraTotal = 0, soloTipoPago = false, mensajeTotal = null }) => {
   const [esRegalo, setEsRegalo] = useState(false);
   const [esOferta, setEsOferta] = useState(false);
   const [precioOriginal, setPrecioOriginal] = useState('');
@@ -11,11 +11,13 @@ const ModalTipoPago = ({ isOpen, onClose, onSelect, title = 'Tipo de pago', disa
   const handleSelect = (tipo) => {
     if (disabled) return;
     const payload = { tipoPago: tipo };
-    if (esRegalo) {
-      payload.tipo_venta = 'REGALO_ADMIN';
-    } else if (esOferta && precioOriginal && !isNaN(parseFloat(precioOriginal))) {
-      payload.tipo_venta = 'OFERTA_ADMIN';
-      payload.precio_original = parseFloat(precioOriginal);
+    if (!soloTipoPago) {
+      if (esRegalo) {
+        payload.tipo_venta = 'REGALO_ADMIN';
+      } else if (esOferta && precioOriginal && !isNaN(parseFloat(precioOriginal))) {
+        payload.tipo_venta = 'OFERTA_ADMIN';
+        payload.precio_original = parseFloat(precioOriginal);
+      }
     }
     onSelect(payload);
     onClose();
@@ -29,6 +31,7 @@ const ModalTipoPago = ({ isOpen, onClose, onSelect, title = 'Tipo de pago', disa
       <div className="modal-tipo-pago-container" onClick={(e) => e.stopPropagation()}>
         <div className="modal-tipo-pago-content">
           <h3 className="modal-tipo-pago-title">{title}</h3>
+          {mensajeTotal != null && <p className="modal-tipo-pago-total" style={{ marginBottom: '12px', fontWeight: 600 }}>{mensajeTotal}</p>}
           <p className="modal-tipo-pago-message">¿Cómo pagó el cliente?</p>
           <div className="modal-tipo-pago-buttons">
             <button
@@ -52,6 +55,7 @@ const ModalTipoPago = ({ isOpen, onClose, onSelect, title = 'Tipo de pago', disa
               <span className="btn-desc">Pago en efectivo</span>
             </button>
           </div>
+          {!soloTipoPago && (
           <div className="modal-tipo-pago-extra">
             <label>
               <input
@@ -90,6 +94,7 @@ const ModalTipoPago = ({ isOpen, onClose, onSelect, title = 'Tipo de pago', disa
               </div>
             )}
           </div>
+          )}
           <button
             type="button"
             className="modal-tipo-pago-cancel"

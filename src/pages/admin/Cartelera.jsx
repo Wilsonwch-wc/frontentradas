@@ -33,8 +33,8 @@ const Cartelera = () => {
   const [qrFile, setQrFile] = useState(null);
   const [uploadingQr, setUploadingQr] = useState(false);
   
-  // Estados para tipos de precio en el formulario (solo para eventos especiales)
-  const [tiposPrecioForm, setTiposPrecioForm] = useState([{ tipo: '', precio: '' }]);
+  // Estados para tipos de precio en el formulario (general y especial): tipo, precio, limite (opcional por tipo)
+  const [tiposPrecioForm, setTiposPrecioForm] = useState([{ tipo: '', precio: '', limite: '' }]);
 
   useEffect(() => {
     cargarEventos();
@@ -62,13 +62,9 @@ const Cartelera = () => {
       [name]: type === 'checkbox' ? checked : value
     });
     
-    // Si cambia el tipo de evento, resetear tipos de precio
-    if (name === 'tipo_evento') {
-      if (value === 'general') {
-        setTiposPrecioForm([{ tipo: '', precio: '' }]);
-      } else if (value === 'especial' && tiposPrecioForm.length === 0) {
-        setTiposPrecioForm([{ tipo: '', precio: '' }]);
-      }
+    // Si cambia el tipo de evento, mantener tipos de precio (ambos pueden tener múltiples)
+    if (name === 'tipo_evento' && value === 'especial' && tiposPrecioForm.length === 0) {
+      setTiposPrecioForm([{ tipo: '', precio: '', limite: '' }]);
     }
     
     setError('');
@@ -83,7 +79,7 @@ const Cartelera = () => {
 
   // Agregar nuevo tipo de precio
   const agregarTipoPrecio = () => {
-    setTiposPrecioForm([...tiposPrecioForm, { tipo: '', precio: '' }]);
+    setTiposPrecioForm([...tiposPrecioForm, { tipo: '', precio: '', limite: '' }]);
   };
 
   // Eliminar tipo de precio
@@ -230,41 +226,20 @@ const Cartelera = () => {
       return;
     }
 
-    // Validar precio y limite_entradas solo para eventos generales
-    if (formData.tipo_evento === 'general') {
-      if (!formData.precio) {
-        setError('El precio es requerido para eventos generales');
-        return;
-      }
-      if (isNaN(formData.precio) || parseFloat(formData.precio) < 0) {
-        setError('El precio debe ser un número válido mayor o igual a 0');
-        return;
-      }
-      if (!formData.limite_entradas) {
-        setError('El límite de entradas es requerido para eventos generales');
-        return;
-      }
-      if (isNaN(formData.limite_entradas) || parseInt(formData.limite_entradas) < 1) {
-        setError('El límite de entradas debe ser un número válido mayor a 0');
+    // Validar tipos de precio para eventos general y especial (ambos usan múltiples precios: VIP, General, Gradería, etc.)
+    const tiposValidos = tiposPrecioForm.filter(tp => tp.tipo.trim() && tp.precio);
+    if (tiposValidos.length === 0) {
+      setError('Debes agregar al menos un tipo de precio (ej: VIP, General, Gradería)');
+      return;
+    }
+    for (const tp of tiposPrecioForm) {
+      if (tp.tipo.trim() && (!tp.precio || isNaN(tp.precio) || parseFloat(tp.precio) < 0)) {
+        setError('Todos los tipos de precio deben tener un nombre y un precio válido');
         return;
       }
     }
 
-    // Validar tipos de precio para eventos especiales
-    if (formData.tipo_evento === 'especial') {
-      const tiposValidos = tiposPrecioForm.filter(tp => tp.tipo.trim() && tp.precio);
-      if (tiposValidos.length === 0) {
-        setError('Debes agregar al menos un tipo de precio para eventos especiales');
-        return;
-      }
-      // Validar que todos los tipos tengan nombre y precio válido
-      for (const tp of tiposPrecioForm) {
-        if (tp.tipo.trim() && (!tp.precio || isNaN(tp.precio) || parseFloat(tp.precio) < 0)) {
-          setError('Todos los tipos de precio deben tener un nombre y un precio válido');
-          return;
-        }
-      }
-    }
+    // (Límite global ya no se usa para general: cada tipo de precio define su propio límite)
 
     try {
 
@@ -280,13 +255,17 @@ const Cartelera = () => {
         qrUrl = await subirQr();
       }
 
+      const tiposValidos = tiposPrecioForm.filter(tp => tp.tipo.trim() && tp.precio);
+      const precioMinGeneral = tiposValidos.length > 0
+        ? Math.min(...tiposValidos.map(tp => parseFloat(tp.precio)))
+        : 0;
       const eventoData = {
         ...formData,
         imagen: imagenUrl || null,
         qr_pago_url: qrUrl || null,
-        precio: formData.tipo_evento === 'general' ? parseFloat(formData.precio) : 0,
+        precio: formData.tipo_evento === 'general' ? precioMinGeneral : (formData.tipo_evento === 'especial' ? 0 : parseFloat(formData.precio) || 0),
         capacidad_maxima: formData.tipo_evento === 'especial' ? (formData.capacidad_maxima ? parseInt(formData.capacidad_maxima) : null) : null,
-        limite_entradas: formData.tipo_evento === 'general' ? (formData.limite_entradas ? parseInt(formData.limite_entradas) : null) : null,
+        limite_entradas: formData.tipo_evento === 'general' ? null : (formData.limite_entradas ? parseInt(formData.limite_entradas) : null),
         estado: formData.estado || 'activo'
       };
 
@@ -302,8 +281,8 @@ const Cartelera = () => {
       if (response.data.success) {
         const nuevoEventoId = editingEvento ? editingEvento.id : response.data.data.id;
         
-        // Si es evento especial, guardar los tipos de precio
-        if (formData.tipo_evento === 'especial') {
+        // Guardar tipos de precio para evento especial y para general (VIP, General, Gradería, etc.)
+        if (formData.tipo_evento === 'especial' || formData.tipo_evento === 'general') {
           const tiposValidos = tiposPrecioForm.filter(tp => tp.tipo.trim() && tp.precio);
           
           if (editingEvento) {
@@ -320,28 +299,33 @@ const Cartelera = () => {
                 const tipoPrecio = tiposValidos[i];
                 const tipoExistente = tiposExistentes[i]; // Usar índice para mapear (asumiendo orden similar)
                 
+                const limiteVal = (tipoPrecio.limite !== '' && tipoPrecio.limite != null && !isNaN(parseInt(tipoPrecio.limite, 10)))
+                  ? parseInt(tipoPrecio.limite, 10) : null;
                 if (tipoExistente && !tiposProcesados.has(tipoExistente.id)) {
-                  // Actualizar el tipo existente si el nombre o precio cambió
-                  if (tipoExistente.nombre !== tipoPrecio.tipo.trim() || 
-                      parseFloat(tipoExistente.precio) !== parseFloat(tipoPrecio.precio)) {
+                  const nombreCambio = tipoExistente.nombre !== tipoPrecio.tipo.trim();
+                  const precioCambio = parseFloat(tipoExistente.precio) !== parseFloat(tipoPrecio.precio);
+                  const limiteCambio = (tipoExistente.limite != null ? tipoExistente.limite : '') !== (limiteVal != null ? limiteVal : '');
+                  if (nombreCambio || precioCambio || limiteCambio) {
                     try {
                       await api.put(`/tipos-precio/${tipoExistente.id}`, {
                         nombre: tipoPrecio.tipo.trim(),
                         precio: parseFloat(tipoPrecio.precio),
+                        limite: limiteVal,
                         activo: true
                       });
                     } catch (error) {
                       console.error('Error al actualizar tipo de precio:', error);
+                      if (error.response?.data?.message) setError(error.response.data.message);
                     }
                   }
                   tiposProcesados.add(tipoExistente.id);
                 } else {
-                  // Crear nuevo tipo de precio
                   try {
                     await api.post('/tipos-precio', {
                       evento_id: nuevoEventoId,
                       nombre: tipoPrecio.tipo.trim(),
                       precio: parseFloat(tipoPrecio.precio),
+                      limite: limiteVal,
                       descripcion: null,
                       activo: true
                     });
@@ -374,13 +358,15 @@ const Cartelera = () => {
               console.error('Error al sincronizar tipos de precio:', error);
             }
           } else {
-            // Al crear nuevo evento, simplemente crear los tipos de precio
             for (const tipoPrecio of tiposValidos) {
+              const limiteVal = (tipoPrecio.limite !== '' && tipoPrecio.limite != null && !isNaN(parseInt(tipoPrecio.limite, 10)))
+                ? parseInt(tipoPrecio.limite, 10) : null;
               try {
                 await api.post('/tipos-precio', {
                   evento_id: nuevoEventoId,
                   nombre: tipoPrecio.tipo.trim(),
                   precio: parseFloat(tipoPrecio.precio),
+                  limite: limiteVal,
                   descripcion: null,
                   activo: true
                 });
@@ -458,24 +444,28 @@ const Cartelera = () => {
     setQrPreview(qrFull);
     setQrFile(null);
     
-    // Si es evento especial, cargar tipos de precio
-    if (evento.tipo_evento === 'especial') {
+    // Cargar tipos de precio (especial y general pueden tener múltiples)
+    if (evento.tipo_evento === 'especial' || evento.tipo_evento === 'general') {
       try {
         const tiposRes = await api.get(`/tipos-precio/evento/${evento.id}`);
         if (tiposRes.data.success && tiposRes.data.data.length > 0) {
           setTiposPrecioForm(tiposRes.data.data.map(tp => ({
+            id: tp.id,
             tipo: tp.nombre,
-            precio: tp.precio.toString()
+            precio: tp.precio.toString(),
+            limite: tp.limite != null ? tp.limite.toString() : '',
+            vendidos: tp.vendidos,
+            disponibles: tp.disponibles
           })));
         } else {
-          setTiposPrecioForm([{ tipo: '', precio: '' }]);
+          setTiposPrecioForm([{ tipo: '', precio: '', limite: '' }]);
         }
       } catch (error) {
         console.error('Error al cargar tipos de precio:', error);
-        setTiposPrecioForm([{ tipo: '', precio: '' }]);
+        setTiposPrecioForm([{ tipo: '', precio: '', limite: '' }]);
       }
     } else {
-      setTiposPrecioForm([{ tipo: '', precio: '' }]);
+      setTiposPrecioForm([{ tipo: '', precio: '', limite: '' }]);
     }
     
     setShowModal(true);
@@ -521,7 +511,7 @@ const Cartelera = () => {
     setQrPreview('');
     setQrFile(null);
     setError('');
-    setTiposPrecioForm([{ tipo: '', precio: '' }]);
+    setTiposPrecioForm([{ tipo: '', precio: '', limite: '' }]);
     setShowModal(true);
   };
 
@@ -745,44 +735,13 @@ const Cartelera = () => {
                       onChange={handleInputChange}
                       required
                     >
-                      <option value="general">General (Precio único, sin asientos)</option>
-                      <option value="especial">Especial (Múltiples precios, con mesas y asientos)</option>
+                      <option value="general">General (Múltiples precios: VIP, General, Gradería… sin asientos)</option>
+                      <option value="especial">Especial (Múltiples precios, con diseño de mesas y asientos)</option>
                     </select>
                   </div>
                 </div>
 
-                {formData.tipo_evento === 'general' && (
-                  <>
-                    <div className="form-group">
-                      <label>Precio *</label>
-                      <input
-                        type="number"
-                        name="precio"
-                        value={formData.precio}
-                        onChange={handleInputChange}
-                        required
-                        min="0"
-                        step="0.01"
-                        placeholder="0.00"
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label>Límite de Entradas *</label>
-                      <input
-                        type="number"
-                        name="limite_entradas"
-                        value={formData.limite_entradas}
-                        onChange={handleInputChange}
-                        required
-                        min="1"
-                        step="1"
-                        placeholder="Ej: 500"
-                      />
-                    </div>
-                  </>
-                )}
-
-                {formData.tipo_evento === 'especial' && (
+                {(formData.tipo_evento === 'general' || formData.tipo_evento === 'especial') && (
                   <div className="form-group">
                     <label>Tipos de Precio *</label>
                     <div className="tipos-precio-table">
@@ -791,12 +750,14 @@ const Cartelera = () => {
                           <tr>
                             <th style={{ textAlign: 'left', padding: '8px' }}>Tipo</th>
                             <th style={{ textAlign: 'left', padding: '8px' }}>Precio</th>
+                            <th style={{ textAlign: 'left', padding: '8px' }}>Vendidos / Quedan</th>
+                            <th style={{ textAlign: 'left', padding: '8px' }}>Límite (opc.)</th>
                             <th style={{ width: '50px', padding: '8px' }}></th>
                           </tr>
                         </thead>
                         <tbody>
                           {tiposPrecioForm.map((tipoPrecio, index) => (
-                            <tr key={index}>
+                            <tr key={tipoPrecio.id ?? index}>
                               <td style={{ padding: '8px' }}>
                                 <input
                                   type="text"
@@ -814,6 +775,30 @@ const Cartelera = () => {
                                   placeholder="0.00"
                                   min="0"
                                   step="0.01"
+                                  style={{ width: '100%', padding: '6px', border: '1px solid #ddd', borderRadius: '4px' }}
+                                />
+                              </td>
+                              <td style={{ padding: '8px', minWidth: '140px' }}>
+                                {typeof tipoPrecio.vendidos === 'number' ? (
+                                  <span style={{ color: '#c0392b', fontWeight: 600, fontSize: '13px' }}>
+                                    Vendidos: {tipoPrecio.vendidos}
+                                    {tipoPrecio.disponibles !== null && tipoPrecio.disponibles !== undefined && (
+                                      <> · Quedan: {tipoPrecio.disponibles}</>
+                                    )}
+                                  </span>
+                                ) : (
+                                  <span style={{ color: '#888', fontSize: '12px' }}>—</span>
+                                )}
+                              </td>
+                              <td style={{ padding: '8px' }}>
+                                <input
+                                  type="number"
+                                  value={tipoPrecio.limite ?? ''}
+                                  onChange={(e) => handleTipoPrecioChange(index, 'limite', e.target.value)}
+                                  placeholder="Sin límite"
+                                  min={typeof tipoPrecio.vendidos === 'number' ? tipoPrecio.vendidos : 0}
+                                  step="1"
+                                  title={typeof tipoPrecio.vendidos === 'number' ? `Mínimo ${tipoPrecio.vendidos} (ya vendidos/reservados). Puedes subir el límite (ej. +20 más).` : 'Cantidad máxima para este tipo. Vacío = sin límite.'}
                                   style={{ width: '100%', padding: '6px', border: '1px solid #ddd', borderRadius: '4px' }}
                                 />
                               </td>

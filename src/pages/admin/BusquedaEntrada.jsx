@@ -4,6 +4,23 @@ import api from '../../api/axios';
 import { useAlert } from '../../context/AlertContext';
 import './BusquedaEntrada.css';
 
+const FEEDBACK_DURATION_MS = 1800;
+
+const playBeep = (type) => {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    osc.frequency.value = type === 'ok' ? 800 : 200;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.25, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + (type === 'ok' ? 0.15 : 0.35));
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + (type === 'ok' ? 0.15 : 0.35));
+  } catch (_) {}
+};
+
 const BusquedaEntrada = () => {
   const { showAlert } = useAlert();
   const [codigo, setCodigo] = useState('');
@@ -13,6 +30,9 @@ const BusquedaEntrada = () => {
   const [datosEntrada, setDatosEntrada] = useState(null);
   const [tickeando, setTickeando] = useState(false);
   const [escanearQR, setEscanearQR] = useState(false);
+  const [feedbackTipo, setFeedbackTipo] = useState(null);
+  const [feedbackMensaje, setFeedbackMensaje] = useState('');
+  const [modoSoloConsulta, setModoSoloConsulta] = useState(false);
   const qrCodeRegionId = 'qr-reader';
   const html5QrCodeRef = useRef(null);
 
@@ -49,7 +69,7 @@ const BusquedaEntrada = () => {
     }
   };
 
-  const procesarCodigoQR = async (qrData) => {
+  const procesarCodigoQR = async (qrData, options = {}) => {
     try {
       // Intentar parsear como JSON
       const qrJson = JSON.parse(qrData);
@@ -58,7 +78,7 @@ const BusquedaEntrada = () => {
       // El QR contiene 'codigo' que es el código único de la compra (ej: "ENT-1766583828542-9705")
       if (qrJson.codigo) {
         const index = qrJson.index !== undefined ? qrJson.index : 0;
-        return buscarEntradaPorCodigoUnico(qrJson.codigo, index);
+        return buscarEntradaPorCodigoUnico(qrJson.codigo, index, options);
       }
       
       throw new Error('QR no contiene código de compra válido');
@@ -66,13 +86,13 @@ const BusquedaEntrada = () => {
       console.error('Error al parsear QR:', parseError);
       // Si no es JSON, intentar como código de 5 dígitos directamente
       if (/^\d{5}$/.test(qrData)) {
-        return buscarEntradaPorCodigoEscaneo(qrData);
+        return buscarEntradaPorCodigoEscaneo(qrData.trim(), options);
       }
       throw new Error('QR no válido. Debe ser un código de 5 dígitos o un QR válido de entrada.');
     }
   };
 
-  const buscarEntradaPorCodigoUnico = async (codigoUnico, index = 0) => {
+  const buscarEntradaPorCodigoUnico = async (codigoUnico, index = 0, options = {}) => {
     try {
       console.log(`🔍 Buscando compra por código único: ${codigoUnico}, index: ${index}`);
       
@@ -80,7 +100,7 @@ const BusquedaEntrada = () => {
       const compraResponse = await api.get(`/compras/codigo/${codigoUnico}`);
       if (compraResponse.data.success) {
         const compra = compraResponse.data.data;
-        return buscarCodigoEscaneoDesdeCompra(compra, index);
+        return buscarCodigoEscaneoDesdeCompra(compra, index, options);
       }
       throw new Error('Compra no encontrada');
     } catch (error) {
@@ -151,13 +171,16 @@ const BusquedaEntrada = () => {
       throw new Error('No se encontró código de escaneo en la compra');
     }
     
-    return buscarEntradaPorCodigoEscaneo(codigoEscaneo);
+    return buscarEntradaPorCodigoEscaneo(codigoEscaneo.toString().trim(), options);
   };
 
-  const buscarEntradaPorCodigoEscaneo = async (codigoEscaneo) => {
+  const buscarEntradaPorCodigoEscaneo = async (codigoEscaneo, options = {}) => {
+    const fromQR = options.fromQR === true;
+    const autoValidar = fromQR || options.autoValidar === true;
     setLoading(true);
     setError('');
     setDatosEntrada(null);
+    setFeedbackTipo(null);
 
     try {
       console.log('🔍 Buscando código:', codigoEscaneo);
@@ -168,32 +191,71 @@ const BusquedaEntrada = () => {
       console.log('✅ Respuesta recibida:', response.data);
 
       if (response.data.success) {
-        setDatosEntrada(response.data.data);
-        setMostrarModal(true);
-        setCodigo(''); // Limpiar input
-        // Detener el escáner QR si está activo
-        if (escanearQR) {
-          detenerEscanerQR();
+        const data = response.data.data;
+        setDatosEntrada(data);
+
+        if (autoValidar) {
+          // Validar al instante (QR o código): auto-tickear y confirmación, sin modal
+          if (escanearQR) detenerEscanerQR();
+          if (!data.ya_escaneada) {
+            try {
+              await api.post('/compras/tickear-entrada', {
+                codigoEscaneo: data.entrada.codigo_escaneo,
+                tipo: data.entrada.tipo,
+                compra_asiento_id: data.entrada.compra_asiento_id,
+                compra_mesa_id: data.entrada.compra_mesa_id,
+                compra_entrada_general_id: data.entrada.compra_entrada_general_id
+              });
+              playBeep('ok');
+              setFeedbackTipo('ok');
+              setFeedbackMensaje('Entrada válida');
+            } catch (tickError) {
+              playBeep('error');
+              setFeedbackTipo('error');
+              setFeedbackMensaje(tickError.response?.data?.message || 'Error al validar');
+            }
+          } else {
+            playBeep('ok');
+            setFeedbackTipo('ok');
+            setFeedbackMensaje('Entrada ya ingresada');
+          }
+          setCodigo('');
+          setTimeout(() => {
+            setFeedbackTipo(null);
+            setFeedbackMensaje('');
+            setDatosEntrada(null);
+          }, FEEDBACK_DURATION_MS);
+        } else {
+          setModoSoloConsulta(options.soloConsulta === true);
+          setMostrarModal(true);
+          setCodigo('');
+          if (escanearQR) detenerEscanerQR();
         }
       }
     } catch (error) {
       console.error('❌ Error al buscar:', error);
       const mensajeError = error.response?.data?.message || error.message || 'Error al buscar la entrada';
       setError(`❌ ${mensajeError}`);
-      
-      if (error.response?.status === 404) {
-        setError('❌ Código no encontrado o entrada no confirmada');
-      } else if (error.response?.status === 401) {
-        setError('❌ No autorizado. Por favor, inicia sesión nuevamente.');
-      } else if (error.response?.status === 403) {
-        setError('❌ No tienes permisos para acceder a esta función.');
+      if (autoValidar) {
+        playBeep('error');
+        setFeedbackTipo('error');
+        setFeedbackMensaje(error.response?.status === 404 ? 'Entrada no encontrada' : (error.response?.data?.message || mensajeError));
+        if (escanearQR) detenerEscanerQR();
+        setCodigo('');
+        setTimeout(() => {
+          setFeedbackTipo(null);
+          setFeedbackMensaje('');
+        }, FEEDBACK_DURATION_MS);
       }
+      if (error.response?.status === 404) setError('❌ Código no encontrado o entrada no confirmada');
+      else if (error.response?.status === 401) setError('❌ No autorizado. Por favor, inicia sesión nuevamente.');
+      else if (error.response?.status === 403) setError('❌ No tienes permisos para acceder a esta función.');
     } finally {
       setLoading(false);
     }
   };
 
-  const buscarEntrada = async () => {
+  const buscarEntrada = async (soloConsulta = false) => {
     const codigoLimpio = codigo.trim();
     
     if (!codigoLimpio) {
@@ -206,7 +268,10 @@ const BusquedaEntrada = () => {
       return;
     }
 
-    await buscarEntradaPorCodigoEscaneo(codigoLimpio);
+    await buscarEntradaPorCodigoEscaneo(codigoLimpio, {
+      soloConsulta,
+      autoValidar: !soloConsulta
+    });
   };
 
   const formatearFecha = (fecha) => {
@@ -225,12 +290,13 @@ const BusquedaEntrada = () => {
   const cerrarModal = () => {
     setMostrarModal(false);
     setDatosEntrada(null);
+    setModoSoloConsulta(false);
     setCodigo('');
   };
 
   const handleKeyPress = (e) => {
     if (e.key === 'Enter' && codigo.trim().length === 5 && !loading) {
-      buscarEntrada();
+      buscarEntrada(false);
     }
   };
 
@@ -282,18 +348,19 @@ const BusquedaEntrada = () => {
                 qrbox: { width: 250, height: 250 },
                 aspectRatio: 1.0
               },
-              async (decodedText, decodedResult) => {
+                async (decodedText) => {
                 console.log('📷 QR escaneado:', decodedText);
-                
-                // Detener el escáner después de escanear exitosamente
-                await detenerEscanerQR();
-                
-                // Procesar el código QR
+                // Validar solo escaneando: fromQR true = auto-tickear + feedback, sin modal
                 try {
-                  await procesarCodigoQR(decodedText);
+                  await procesarCodigoQR(decodedText, { fromQR: true });
                 } catch (err) {
                   console.error('Error al procesar QR:', err);
                   setError(`❌ ${err.message}`);
+                  playBeep('error');
+                  setFeedbackTipo('error');
+                  setFeedbackMensaje(err.message || 'QR no válido');
+                  setTimeout(() => { setFeedbackTipo(null); setFeedbackMensaje(''); }, FEEDBACK_DURATION_MS);
+                  detenerEscanerQR();
                 }
               },
               (errorMessage) => {
@@ -335,14 +402,40 @@ const BusquedaEntrada = () => {
   }, [escanearQR]);
 
   return (
-    <div className="admin-page busqueda-entrada-page">
+    <div className={`admin-page busqueda-entrada-page${escanearQR ? ' qr-activo' : ''}`}>
+      {/* Feedback visual + sonido al escanear (verde OK / rojo error) */}
+      {feedbackTipo && (
+        <div className={`feedback-overlay feedback-${feedbackTipo}`}>
+          <span className="feedback-icon">{feedbackTipo === 'ok' ? '✓' : '✕'}</span>
+          <span className="feedback-mensaje">{feedbackMensaje}</span>
+        </div>
+      )}
       <div className="admin-content">
         <div className="busqueda-header">
           <h1>🔍 Búsqueda de Entrada</h1>
-          <p>Ingresa el código de escaneo para buscar y verificar una entrada</p>
+          <p>{escanearQR ? 'Escanea el código QR del boleto' : 'Ingresa el código de escaneo para buscar y verificar una entrada'}</p>
         </div>
 
         <div className="busqueda-container">
+          {/* Cuando está escaneando QR, el escáner va primero para que quede arriba en móviles */}
+          {escanearQR && (
+            <div className="qr-scanner-section">
+              <div 
+                id={qrCodeRegionId} 
+                className="qr-reader-wrapper"
+              />
+              <p className="qr-instruction">
+                Apunta la cámara hacia el código QR del boleto
+              </p>
+              <button
+                onClick={detenerEscanerQR}
+                className="btn-qr btn-detener-escaneo"
+              >
+                ⏹️ Detener Escaneo
+              </button>
+            </div>
+          )}
+
           <div className="busqueda-input-section">
             <label className="label-codigo">
               <strong>Código de Escaneo (5 dígitos) o Escanear QR:</strong>
@@ -361,14 +454,23 @@ const BusquedaEntrada = () => {
                 className="input-codigo"
                 maxLength={5}
                 disabled={loading || escanearQR}
-                autoFocus
+                autoFocus={!escanearQR}
               />
               <button
-                onClick={buscarEntrada}
+                onClick={() => buscarEntrada(false)}
                 className="btn-buscar"
                 disabled={loading || escanearQR || codigo.trim().length !== 5}
               >
                 {loading ? 'Buscando...' : '🔍 Buscar'}
+              </button>
+              <button
+                type="button"
+                onClick={() => buscarEntrada(true)}
+                className="btn-solo-consultar"
+                disabled={loading || escanearQR || codigo.trim().length !== 5}
+                title="Solo verificar que la entrada existe, sin marcarla como usada"
+              >
+                👁️ Solo consultar
               </button>
               <button
                 onClick={escanearQR ? detenerEscanerQR : iniciarEscanerQR}
@@ -379,34 +481,12 @@ const BusquedaEntrada = () => {
                 {escanearQR ? '⏹️ Detener QR' : '📷 Escanear QR'}
               </button>
             </div>
+            <p className="hint-solo-consultar">
+              <strong>Solo consultar:</strong> ver datos de la entrada sin validarla (no se marca como usada).
+            </p>
             {error && (
               <div className="error-message">
                 {error}
-              </div>
-            )}
-            
-            {/* Área del escáner QR */}
-            {escanearQR && (
-              <div style={{ marginTop: '20px', textAlign: 'center' }}>
-                <div 
-                  id={qrCodeRegionId} 
-                  style={{ 
-                    width: '100%', 
-                    maxWidth: '500px', 
-                    margin: '0 auto',
-                    minHeight: '300px'
-                  }}
-                ></div>
-                <p style={{ marginTop: '10px', color: '#666' }}>
-                  Apunta la cámara hacia el código QR del boleto
-                </p>
-                <button
-                  onClick={detenerEscanerQR}
-                  className="btn-qr"
-                  style={{ marginTop: '10px' }}
-                >
-                  ⏹️ Detener Escaneo
-                </button>
               </div>
             )}
           </div>
@@ -418,9 +498,11 @@ const BusquedaEntrada = () => {
             <div className="modal-busqueda" onClick={(e) => e.stopPropagation()}>
               <div className="modal-header-busqueda">
                 <h2>
-                  {datosEntrada.ya_escaneada 
-                    ? '⚠️ Entrada ya escaneada anteriormente' 
-                    : '✅ Entrada encontrada'}
+                  {modoSoloConsulta
+                    ? '👁️ Solo consulta (entrada no validada)'
+                    : datosEntrada.ya_escaneada 
+                      ? '⚠️ Entrada ya escaneada anteriormente' 
+                      : '✅ Entrada encontrada'}
                 </h2>
                 <button
                   className="btn-cerrar-modal"
@@ -514,7 +596,10 @@ const BusquedaEntrada = () => {
               </div>
 
               <div className="modal-footer-busqueda">
-                {!datosEntrada.ya_escaneada && (
+                {modoSoloConsulta && (
+                  <span className="modal-solo-consulta-note">Consulta sin validar — la entrada no se ha marcado como usada.</span>
+                )}
+                {!modoSoloConsulta && !datosEntrada.ya_escaneada && (
                   <button
                     className="btn-tickear"
                     onClick={tickearEntrada}

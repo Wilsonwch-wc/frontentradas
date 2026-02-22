@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useAlert } from '../context/AlertContext';
 import { getApiBase, getServerBase } from '../api/base';
 import api from '../api/axios';
+import ModalTipoPago from '../components/ModalTipoPago';
 import './Compra.css';
 
 const serverBase = getServerBase();
@@ -12,7 +13,7 @@ const apiBase = getApiBase();
 const Compra = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { isAuthenticated, user, isAdmin } = useAuth();
+  const { isAuthenticated, user, isAdmin, canSellWithVerification } = useAuth();
   const { showAlert } = useAlert();
   const [evento, setEvento] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -24,7 +25,8 @@ const Compra = () => {
 
   // Estados para eventos especiales
   const [selecciones, setSelecciones] = useState([]); // [{type: 'asiento', id, tipo_precio_id, precio, nombre}]
-  const [cantidad, setCantidad] = useState(1); // Para eventos generales
+  const [cantidad, setCantidad] = useState(1); // Para eventos generales (precio único)
+  const [cantidadesPorTipo, setCantidadesPorTipo] = useState({}); // Para general con múltiples precios: { tipo_precio_id: cantidad }
   const [asientosOcupados, setAsientosOcupados] = useState([]); // IDs de asientos ocupados/confirmados
   const [mesasOcupadas, setMesasOcupadas] = useState([]); // IDs de mesas ocupadas/confirmadas
   const [enviando, setEnviando] = useState(false); // Estado para prevenir doble envío
@@ -34,8 +36,14 @@ const Compra = () => {
   const [codigoCupon, setCodigoCupon] = useState('');
   const [cuponValidado, setCuponValidado] = useState(null);
   const [validandoCupon, setValidandoCupon] = useState(false);
+  const [compraRecienCreada, setCompraRecienCreada] = useState(null);
+  const [showModalVerificarPago, setShowModalVerificarPago] = useState(false);
+  const [compraConfirmada, setCompraConfirmada] = useState(null);
+  const [confirmandoPago, setConfirmandoPago] = useState(false);
+  const [enviandoBoleto, setEnviandoBoleto] = useState(false);
   const canvasRef = useRef(null);
   const escalaRef = useRef({ sx: 1, sy: 1, ox: 0, oy: 0, minX: 0, minY: 0, worldW: 1000, worldH: 1000 });
+  const compraRealizadaRef = useRef(null);
   const [mostrarNumerosAsientos, setMostrarNumerosAsientos] = useState(true);
 
   useEffect(() => {
@@ -54,6 +62,16 @@ const Compra = () => {
       dibujarCanvas();
     }
   }, [evento, selecciones, asientosOcupados, mesasOcupadas, mostrarNumerosAsientos]);
+
+  // Al confirmar pago, hacer scroll al bloque "Compra realizada" para enviar boletos rápido
+  useEffect(() => {
+    if (compraConfirmada && compraRealizadaRef.current) {
+      const t = setTimeout(() => {
+        compraRealizadaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+      return () => clearTimeout(t);
+    }
+  }, [compraConfirmada]);
 
   const cargarEvento = async () => {
     try {
@@ -110,6 +128,13 @@ const Compra = () => {
         }
         
         setEvento(eventoData);
+
+        // Inicializar cantidades por tipo para evento general con múltiples precios (VIP, General, Gradería)
+        if (eventoData.tipo_evento === 'general' && eventoData.tipos_precio?.length > 0) {
+          const inicial = {};
+          eventoData.tipos_precio.forEach(tp => { inicial[tp.id] = 0; });
+          setCantidadesPorTipo(inicial);
+        }
         
         // Cargar asientos ocupados (confirmados) para este evento
         if (eventoData.tipo_evento === 'especial') {
@@ -782,12 +807,25 @@ const Compra = () => {
     const seleccionesValidas = selecciones.filter(s => s.type === 'asiento' || s.type === 'mesa_completa');
     if (evento.tipo_evento === 'especial' && seleccionesValidas.length === 0) {
       showAlert('Por favor selecciona al menos un asiento', { type: 'warning' });
+      setEnviando(false);
       return;
+    }
+
+    // Para evento general con múltiples tipos (VIP, General, etc.), validar que haya al menos una entrada
+    if (evento.tipo_evento === 'general' && evento.tipos_precio?.length > 0) {
+      const totalPorTipo = Object.values(cantidadesPorTipo).reduce((s, q) => s + (parseInt(q, 10) || 0), 0);
+      if (totalPorTipo < 1) {
+        showAlert('Selecciona al menos una entrada por tipo (VIP, General, Gradería, etc.)', { type: 'warning' });
+        setEnviando(false);
+        return;
+      }
     }
     
     // Calcular cantidad real (sin contar mesas completas como entrada adicional)
     let cantidadReal = cantidad;
-    if (evento.tipo_evento === 'especial') {
+    if (evento.tipo_evento === 'general' && evento.tipos_precio?.length > 0) {
+      cantidadReal = Object.values(cantidadesPorTipo).reduce((s, q) => s + (parseInt(q, 10) || 0), 0);
+    } else if (evento.tipo_evento === 'especial') {
       // Obtener IDs de mesas completas seleccionadas
       const mesasCompletasSeleccionadas = selecciones.filter(s => s.type === 'mesa_completa');
       const idsMesasCompletas = mesasCompletasSeleccionadas.map(m => m.mesa_id);
@@ -844,9 +882,15 @@ const Compra = () => {
           });
         });
       } else {
-        // Para eventos generales, no hay asientos específicos
-        // Pero podrías tener una lógica diferente aquí si es necesario
+        // Para eventos generales (precio único o con tipos), no hay asientos
       }
+
+      // Entradas generales por tipo (VIP, General, Gradería) para evento general
+      const entradasGeneralesPayload = (evento.tipo_evento === 'general' && evento.tipos_precio?.length > 0)
+        ? Object.entries(cantidadesPorTipo)
+            .filter(([, q]) => (parseInt(q, 10) || 0) > 0)
+            .map(([tipoId, q]) => ({ tipo_precio_id: parseInt(tipoId, 10), cantidad: parseInt(q, 10) }))
+        : undefined;
 
       // Enviar al backend: total SIN descuento cuando hay cupón (el backend aplica el descuento una vez).
       // Si enviamos el total ya con descuento, el backend lo descontaría de nuevo y quedaría mal (ej. 972 en vez de 1080).
@@ -858,7 +902,7 @@ const Compra = () => {
       let totalFinal = totalConDescuento || 0;
       let tipoVenta = 'NORMAL';
       let precioOriginal = null;
-      if (isAdmin && isAdmin()) {
+      if (canSellWithVerification && canSellWithVerification()) {
         if (esRegaloAdmin) {
           totalFinal = 0;
           tipoVenta = 'REGALO_ADMIN';
@@ -875,7 +919,7 @@ const Compra = () => {
       }
 
       // Crear compra en el backend
-      const compraResponse = await api.post('/compras', {
+      const compraPayload = {
         evento_id: parseInt(id),
         cliente_nombre: formData.nombre || 'Cliente',
         cliente_email: formData.email || null,
@@ -887,12 +931,24 @@ const Compra = () => {
         codigo_cupon: cuponValidado ? codigoCupon.trim() : null,
         asientos: asientosParaBackend,
         mesas: mesasParaBackend
-      });
+      };
+      if (entradasGeneralesPayload && entradasGeneralesPayload.length > 0) {
+        compraPayload.entradas_generales = entradasGeneralesPayload;
+      }
+      const compraResponse = await api.post('/compras', compraPayload);
 
       if (compraResponse.data.success) {
         const compra = compraResponse.data.data;
         
-        // Guardar código único y datos de compra en localStorage
+        // Si es admin: mostrar modal para verificar tipo de pago (QR/Efectivo) y no ir a pago-qr
+        if (canSellWithVerification && canSellWithVerification()) {
+          setCompraRecienCreada(compra);
+          setShowModalVerificarPago(true);
+          setEnviando(false);
+          return;
+        }
+        
+        // Cliente normal: guardar en localStorage y redirigir a pago QR
         localStorage.setItem('codigoCompra', compra.codigo_unico);
         localStorage.setItem('compraId', compra.id.toString());
         localStorage.setItem('eventoCompra', JSON.stringify(evento));
@@ -902,7 +958,6 @@ const Compra = () => {
         if (evento.tipo_evento === 'especial') {
           localStorage.setItem('seleccionesCompra', JSON.stringify(selecciones));
         }
-        
         console.log('✅ Compra registrada con código:', compra.codigo_unico);
       } else {
         throw new Error(compraResponse.data.message || 'Error al registrar la compra');
@@ -917,11 +972,96 @@ const Compra = () => {
       setEnviando(false);
     }
     
-    // El WhatsApp se envía automáticamente desde el backend al crear la compra
-    // No es necesario enviarlo desde aquí para evitar duplicados
-    
-    // Redirigir a la página de pago QR
     navigate(`/pago-qr/${id}`);
+  };
+
+  const totalParaModalAdmin = () => {
+    if (esRegaloAdmin) return 0;
+    if (esOfertaAdmin && precioEspecial !== '' && !isNaN(parseFloat(precioEspecial))) {
+      return parseFloat(precioEspecial) * cantidadEntradas;
+    }
+    return totalConDescuento || 0;
+  };
+
+  const handleSeleccionarTipoPagoAdmin = async (payload) => {
+    if (!compraRecienCreada) return;
+    const tipoPago = typeof payload === 'string' ? payload : payload.tipoPago;
+    if (!tipoPago || !['QR', 'EFECTIVO'].includes(tipoPago)) return;
+    const body = { tipo_pago: tipoPago };
+    if (esRegaloAdmin) body.tipo_venta = 'REGALO_ADMIN';
+    else if (esOfertaAdmin && precioEspecial && !isNaN(parseFloat(precioEspecial))) {
+      body.tipo_venta = 'OFERTA_ADMIN';
+      body.precio_original = total;
+    }
+    setConfirmandoPago(true);
+    try {
+      const response = await api.put(`/compras/${compraRecienCreada.id}/confirmar-pago`, body);
+      if (response.data.success) {
+        setCompraConfirmada({ ...response.data.data, boletoUrl: response.data.boletoUrl });
+        setShowModalVerificarPago(false);
+        setCompraRecienCreada(null);
+        showAlert('Pago confirmado. Puedes enviar el boleto por correo o WhatsApp.', { type: 'success' });
+      } else {
+        showAlert(response.data.message || 'Error al confirmar el pago', { type: 'error' });
+      }
+    } catch (error) {
+      showAlert(error.response?.data?.message || 'Error al confirmar el pago', { type: 'error' });
+    } finally {
+      setConfirmandoPago(false);
+    }
+  };
+
+  const enviarBoletoPorCorreoAdmin = async () => {
+    if (!compraConfirmada?.id) return;
+    const email = compraConfirmada.cliente_email;
+    if (!email) {
+      showAlert('No hay correo del cliente', { type: 'warning' });
+      return;
+    }
+    setEnviandoBoleto(true);
+    try {
+      const response = await api.post(`/compras/${compraConfirmada.id}/enviar-email`);
+      if (response.data.success) {
+        showAlert(`Boleto enviado a ${response.data.email || email}`, { type: 'success' });
+      } else {
+        showAlert(response.data.message || 'Error al enviar', { type: 'error' });
+      }
+    } catch (error) {
+      showAlert(error.response?.data?.message || 'Error al enviar el boleto por correo', { type: 'error' });
+    } finally {
+      setEnviandoBoleto(false);
+    }
+  };
+
+  const enviarBoletoPorWhatsAppAdmin = async () => {
+    if (!compraConfirmada?.id) return;
+    const telefono = compraConfirmada.cliente_telefono;
+    if (!telefono) {
+      showAlert('No hay teléfono del cliente', { type: 'warning' });
+      return;
+    }
+    setEnviandoBoleto(true);
+    try {
+      const response = await api.post(`/compras/${compraConfirmada.id}/enviar-whatsapp-web`);
+      if (response.data.success) {
+        showAlert(`PDF enviado por WhatsApp a ${response.data.telefono || telefono}`, { type: 'success' });
+      } else {
+        if (response.data?.qrCode) {
+          showAlert('WhatsApp Web no está conectado. Escanea el QR en el servidor.', { type: 'warning' });
+        } else {
+          showAlert(response.data?.message || 'Error al enviar por WhatsApp', { type: 'error' });
+        }
+      }
+    } catch (error) {
+      const data = error.response?.data;
+      if (data?.qrCode) {
+        showAlert('WhatsApp Web no está conectado. Escanea el QR en el servidor.', { type: 'warning' });
+      } else {
+        showAlert(data?.message || 'Error al enviar por WhatsApp', { type: 'error' });
+      }
+    } finally {
+      setEnviandoBoleto(false);
+    }
   };
 
   if (loading) {
@@ -990,6 +1130,11 @@ const Compra = () => {
       }
       return sum;
     }, 0);
+  } else if (evento.tipo_evento === 'general' && evento.tipos_precio?.length > 0) {
+    total = (evento.tipos_precio || []).reduce((sum, tp) => {
+      const q = cantidadesPorTipo[tp.id] || 0;
+      return sum + (parseFloat(tp.precio) || 0) * q;
+    }, 0);
   } else {
     total = evento.precio * cantidad;
   }
@@ -1006,9 +1151,11 @@ const Compra = () => {
     }
   }
 
-  // Cantidad de entradas (para precio especial: precio × cantidad)
+  // Cantidad de entradas (para precio especial: precio × cantidad; para general con tipos: suma por tipo)
   let cantidadEntradas = cantidad;
-  if (evento.tipo_evento === 'especial' && selecciones.length > 0) {
+  if (evento.tipo_evento === 'general' && evento.tipos_precio?.length > 0) {
+    cantidadEntradas = Object.values(cantidadesPorTipo).reduce((s, q) => s + (parseInt(q, 10) || 0), 0);
+  } else if (evento.tipo_evento === 'especial' && selecciones.length > 0) {
     const mesasCompletasSel = selecciones.filter((s) => s.type === 'mesa_completa');
     const idsMesasCompletas = mesasCompletasSel.map((m) => m.mesa_id);
     let cantidadMesas = 0;
@@ -1043,10 +1190,56 @@ const Compra = () => {
 
   return (
     <div className="compra-page">
+      <ModalTipoPago
+        isOpen={showModalVerificarPago}
+        onClose={() => { if (!confirmandoPago) { setShowModalVerificarPago(false); setCompraRecienCreada(null); } }}
+        onSelect={handleSeleccionarTipoPagoAdmin}
+        title="Verificar pago"
+        disabled={confirmandoPago}
+        compraTotal={totalParaModalAdmin()}
+        soloTipoPago={true}
+        mensajeTotal={compraRecienCreada ? (esRegaloAdmin ? 'Total: Bs. 0 (entrada gratis)' : `Total: Bs. ${totalParaModalAdmin().toFixed(2)}${cuponValidado ? ' (con cupón aplicado)' : ''}${esOfertaAdmin ? ' (precio especial)' : ''}`) : null}
+      />
+
       <div className="container">
         <button onClick={() => navigate(-1)} className="btn-volver">
           ← Volver
         </button>
+
+        {compraConfirmada && canSellWithVerification && canSellWithVerification() && (
+          <div ref={compraRealizadaRef} className="compra-card compra-card-resultado-admin" style={{ marginBottom: '24px', border: '2px solid #28a745', borderRadius: '12px', padding: '20px', background: '#f8fff9' }}>
+            <h2 style={{ marginTop: 0, color: '#28a745' }}>✓ Compra realizada</h2>
+            <p style={{ marginBottom: '8px' }}><strong>Código:</strong> {compraConfirmada.codigo_unico}</p>
+            <p style={{ marginBottom: '8px' }}><strong>Cliente:</strong> {compraConfirmada.cliente_nombre}</p>
+            <p style={{ marginBottom: '8px' }}><strong>Total:</strong> Bs. {parseFloat(compraConfirmada.total || 0).toFixed(2)} · <strong>Tipo pago:</strong> {compraConfirmada.tipo_pago || '—'}</p>
+            <p style={{ marginBottom: '16px' }}><strong>Correo:</strong> {compraConfirmada.cliente_email || '—'} · <strong>Teléfono:</strong> {compraConfirmada.cliente_telefono || '—'}</p>
+            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={enviarBoletoPorCorreoAdmin}
+                disabled={enviandoBoleto || !compraConfirmada.cliente_email}
+                style={{ padding: '10px 18px', background: '#007bff', color: 'white', border: 'none', borderRadius: '8px', cursor: enviandoBoleto ? 'not-allowed' : 'pointer', fontWeight: 600 }}
+              >
+                {enviandoBoleto ? 'Enviando...' : '📧 Enviar boleto por correo'}
+              </button>
+              <button
+                type="button"
+                onClick={enviarBoletoPorWhatsAppAdmin}
+                disabled={enviandoBoleto || !compraConfirmada.cliente_telefono}
+                style={{ padding: '10px 18px', background: '#25D366', color: 'white', border: 'none', borderRadius: '8px', cursor: enviandoBoleto ? 'not-allowed' : 'pointer', fontWeight: 600 }}
+              >
+                {enviandoBoleto ? 'Enviando...' : '📱 Enviar por WhatsApp'}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setCompraConfirmada(null); }}
+                style={{ padding: '10px 18px', background: '#6c757d', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
+              >
+                Hacer otra compra
+              </button>
+            </div>
+          </div>
+        )}
 
         <h1 className="compra-title">Completa tu Compra</h1>
 
@@ -1063,7 +1256,7 @@ const Compra = () => {
                   <p className="evento-hora">🕐 {formatearFecha(evento.hora_inicio).hora}</p>
                 </div>
                 {!esEventoEspecial && (
-                  <p className="evento-resumen-precio">${evento.precio.toFixed(2)} por entrada</p>
+                  <p className="evento-resumen-precio">Bs. {evento.precio.toFixed(2)} por entrada</p>
                 )}
               </div>
             </div>
@@ -1084,7 +1277,7 @@ const Compra = () => {
                     ></div>
                     <div className="tipo-precio-info">
                       <span className="tipo-precio-nombre">{tipoPrecio.nombre}</span>
-                      <span className="tipo-precio-valor">${tipoPrecio.precio.toFixed(2)}</span>
+                      <span className="tipo-precio-valor precio-destacado">Bs. {tipoPrecio.precio.toFixed(2)}</span>
                     </div>
                   </div>
                 ))}
@@ -1195,7 +1388,7 @@ const Compra = () => {
                         return (
                           <div key={index} className="seleccion-item">
                             <span className="seleccion-nombre">{sel.nombre}</span>
-                            <span className="seleccion-precio">${sel.precio.toFixed(2)}</span>
+                            <span className="seleccion-precio">Bs. {sel.precio.toFixed(2)}</span>
                           </div>
                         );
                       } else if (sel.type === 'mesa_completa') {
@@ -1210,7 +1403,7 @@ const Compra = () => {
                                 Sillas: {sel.sillas}
                               </span>
                             </div>
-                            <span className="seleccion-precio seleccion-precio-mesa">${sel.precio_total.toFixed(2)}</span>
+                            <span className="seleccion-precio seleccion-precio-mesa">Bs. {sel.precio_total.toFixed(2)}</span>
                           </div>
                         );
                       }
@@ -1219,7 +1412,7 @@ const Compra = () => {
                   </div>
                   <div className="selecciones-total">
                     <span>Total:</span>
-                    <span>${selecciones.reduce((sum, sel) => {
+                    <span>Bs. {selecciones.reduce((sum, sel) => {
                       if (sel.type === 'mesa_completa') {
                         return sum + sel.precio_total;
                       } else if (sel.type === 'asiento') {
@@ -1242,24 +1435,74 @@ const Compra = () => {
           {/* Selector de cantidad para eventos generales */}
           {!esEventoEspecial && (
             <div className="compra-card compra-card-cantidad">
-              <h2>Cantidad de Entradas</h2>
-              <div className="cantidad-selector-wrapper">
-                <div className="cantidad-selector">
-                  <button 
-                    onClick={() => setCantidad(Math.max(1, cantidad - 1))}
-                    className="cantidad-btn"
-                  >
-                    -
-                  </button>
-                  <span className="cantidad-value">{cantidad}</span>
-                  <button 
-                    onClick={() => setCantidad(cantidad + 1)}
-                    className="cantidad-btn"
-                  >
-                    +
-                  </button>
+              <h2>
+                {evento.tipos_precio?.length > 0
+                  ? 'Elige tipo y cantidad de entradas'
+                  : 'Cantidad de Entradas'}
+              </h2>
+              {evento.tipos_precio?.length > 0 ? (
+                <div className="tipos-precio-cantidad-list">
+                  {evento.tipos_precio.map((tp) => {
+                    const disponibles = tp.disponibles != null ? parseInt(tp.disponibles, 10) : null;
+                    const actual = cantidadesPorTipo[tp.id] || 0;
+                    const maxPermitido = disponibles != null ? disponibles : null;
+                    const puedeSumar = maxPermitido == null || actual < maxPermitido;
+                    return (
+                      <div key={tp.id} className="tipo-precio-fila" style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
+                        <span className="tipo-nombre" style={{ fontWeight: 600, minWidth: '120px' }}>{tp.nombre}</span>
+                        <span className="tipo-precio precio-destacado" style={{ fontWeight: 700, color: '#0d6efd', fontSize: '1.05rem' }}>Bs. {parseFloat(tp.precio).toFixed(2)}</span>
+                        {maxPermitido != null && (
+                          <span className="tipo-disponibles" style={{ fontSize: '0.9rem', color: maxPermitido === 0 ? '#c00' : '#555' }}>
+                            Quedan: {maxPermitido}
+                          </span>
+                        )}
+                        <div className="cantidad-selector" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <button
+                            type="button"
+                            onClick={() => setCantidadesPorTipo(prev => ({ ...prev, [tp.id]: Math.max(0, (prev[tp.id] || 0) - 1) }))}
+                            className="cantidad-btn"
+                          >
+                            -
+                          </button>
+                          <span className="cantidad-value">{(cantidadesPorTipo[tp.id] || 0)}</span>
+                          <button
+                            type="button"
+                            onClick={() => puedeSumar && setCantidadesPorTipo(prev => ({ ...prev, [tp.id]: (prev[tp.id] || 0) + 1 }))}
+                            className="cantidad-btn"
+                            disabled={!puedeSumar}
+                            title={maxPermitido === 0 ? 'No hay entradas disponibles' : (maxPermitido != null ? `Máximo ${maxPermitido}` : null)}
+                          >
+                            +
+                          </button>
+                        </div>
+                        <span className="tipo-subtotal" style={{ marginLeft: 'auto', fontWeight: 600 }}>
+                          Bs. {((parseFloat(tp.precio) || 0) * (cantidadesPorTipo[tp.id] || 0)).toFixed(2)}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
-              </div>
+              ) : (
+                <div className="cantidad-selector-wrapper">
+                  <div className="cantidad-selector">
+                    <button 
+                      type="button"
+                      onClick={() => setCantidad(Math.max(1, cantidad - 1))}
+                      className="cantidad-btn"
+                    >
+                      -
+                    </button>
+                    <span className="cantidad-value">{cantidad}</span>
+                    <button 
+                      type="button"
+                      onClick={() => setCantidad(cantidad + 1)}
+                      className="cantidad-btn"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -1352,9 +1595,9 @@ const Compra = () => {
                 </div>
               )}
 
-              {isAdmin && isAdmin() && (
+              {(canSellWithVerification && canSellWithVerification()) && (
                 <div className="form-group compra-admin-opciones">
-                  <label style={{ display: 'block', marginBottom: '10px', fontWeight: '600' }}>Opciones de administrador</label>
+                  <label style={{ display: 'block', marginBottom: '10px', fontWeight: '600' }}>Opciones de venta (admin / vendedor)</label>
                   <div className="admin-opcion">
                     <label>
                       <input
@@ -1383,7 +1626,7 @@ const Compra = () => {
                     {esOfertaAdmin && (
                       <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
                         <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
-                          <span>Precio original total: ${total.toFixed(2)}</span>
+                          <span>Precio original total: Bs. {total.toFixed(2)}</span>
                           <span>Precio por entrada: </span>
                           <input
                             type="number"
@@ -1394,7 +1637,7 @@ const Compra = () => {
                             onChange={(e) => setPrecioEspecial(e.target.value)}
                             style={{ width: '100px', padding: '6px' }}
                           />
-                          <span>Bs. × {cantidadEntradas} = ${(precioEspecial && !isNaN(parseFloat(precioEspecial)) ? parseFloat(precioEspecial) * cantidadEntradas : 0).toFixed(2)}</span>
+                          <span>Bs. × {cantidadEntradas} = Bs. {(precioEspecial && !isNaN(parseFloat(precioEspecial)) ? parseFloat(precioEspecial) * cantidadEntradas : 0).toFixed(2)}</span>
                         </div>
                       </div>
                     )}
@@ -1403,7 +1646,7 @@ const Compra = () => {
               )}
 
               <button type="submit" className="btn-confirmar-compra" disabled={enviando}>
-                {enviando ? 'Procesando...' : (esRegaloAdmin ? 'Confirmar Compra - Gratis' : `Confirmar Compra - $${(esOfertaAdmin && precioEspecial && !isNaN(parseFloat(precioEspecial)) ? parseFloat(precioEspecial) * cantidadEntradas : totalConDescuento).toFixed(2)}`)}
+                {enviando ? 'Procesando...' : (esRegaloAdmin ? 'Confirmar Compra - Gratis' : `Confirmar Compra - Bs. ${(esOfertaAdmin && precioEspecial && !isNaN(parseFloat(precioEspecial)) ? parseFloat(precioEspecial) * cantidadEntradas : totalConDescuento).toFixed(2)}`)}
               </button>
             </form>
           </div>
@@ -1412,10 +1655,24 @@ const Compra = () => {
           <div className="compra-card compra-card-resumen">
             <h2>Resumen de Compra</h2>
             {!esEventoEspecial && (
-              <div className="resumen-cantidad">
-                <span>Cantidad:</span>
-                <span>{cantidad} entrada(s)</span>
-              </div>
+              <>
+                <div className="resumen-cantidad">
+                  <span>Cantidad:</span>
+                  <span>{cantidadEntradas} entrada{cantidadEntradas !== 1 ? 's' : ''}</span>
+                </div>
+                {evento.tipos_precio?.length > 0 && cantidadEntradas > 0 && (
+                  <div className="resumen-tipos-general" style={{ marginTop: '8px', fontSize: '0.95rem' }}>
+                    {evento.tipos_precio
+                      .filter(tp => (cantidadesPorTipo[tp.id] || 0) > 0)
+                      .map(tp => (
+                        <div key={tp.id} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                          <span>{tp.nombre}: {cantidadesPorTipo[tp.id] || 0} × Bs. {parseFloat(tp.precio).toFixed(2)}</span>
+                          <span style={{ fontWeight: 600 }}>Bs. {((cantidadesPorTipo[tp.id] || 0) * parseFloat(tp.precio)).toFixed(2)}</span>
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </>
             )}
             {esEventoEspecial && selecciones.length > 0 && (
               <div className="resumen-selecciones">
@@ -1434,7 +1691,7 @@ const Compra = () => {
                       return (
                         <div key={index} className="resumen-seleccion-item">
                           <span className="resumen-seleccion-nombre">{sel.nombre}</span>
-                          <span className="resumen-seleccion-precio">${sel.precio.toFixed(2)}</span>
+                          <span className="resumen-seleccion-precio">Bs. {sel.precio.toFixed(2)}</span>
                         </div>
                       );
                     } else if (sel.type === 'mesa_completa') {
@@ -1449,7 +1706,7 @@ const Compra = () => {
                               Sillas: {sel.sillas}
                             </span>
                           </div>
-                          <span className="resumen-seleccion-precio resumen-precio-mesa">${sel.precio_total.toFixed(2)}</span>
+                          <span className="resumen-seleccion-precio resumen-precio-mesa">Bs. {sel.precio_total.toFixed(2)}</span>
                         </div>
                       );
                     }
@@ -1463,28 +1720,28 @@ const Compra = () => {
                 <>
                   <div className="resumen-item resumen-item-anterior">
                     <span>Total anterior (sin descuento)</span>
-                    <span>${total.toFixed(2)}</span>
+                    <span>Bs. {total.toFixed(2)}</span>
                   </div>
                   <div className="resumen-item" style={{ color: '#28a745' }}>
                     <span>Descuento ({cuponValidado.porcentaje_descuento}%)</span>
-                    <span>-${descuentoCupon.toFixed(2)}</span>
+                    <span>- Bs. {descuentoCupon.toFixed(2)}</span>
                   </div>
                   <div className="resumen-item resumen-total resumen-total-con-descuento">
                     <span>Total con descuento (a pagar)</span>
-                    <span className="resumen-total-monto">${totalConDescuento.toFixed(2)}</span>
+                    <span className="resumen-total-monto">Bs. {totalConDescuento.toFixed(2)}</span>
                   </div>
                 </>
               )}
               {!cuponValidado && !esRegaloAdmin && !esOfertaAdmin && (
                 <div className="resumen-item resumen-total">
                   <span>Total a pagar</span>
-                  <span className="resumen-total-monto">${totalConDescuento.toFixed(2)}</span>
+                  <span className="resumen-total-monto">Bs. {totalConDescuento.toFixed(2)}</span>
                 </div>
               )}
-              {isAdmin && isAdmin() && (esRegaloAdmin || (esOfertaAdmin && precioEspecial !== '')) && (
+              {(canSellWithVerification && canSellWithVerification()) && (esRegaloAdmin || (esOfertaAdmin && precioEspecial !== '')) && (
                 <div className="resumen-item">
                   <span>Precio original</span>
-                  <span>${total.toFixed(2)}</span>
+                  <span>Bs. {total.toFixed(2)}</span>
                 </div>
               )}
               {(esRegaloAdmin || esOfertaAdmin) && (
@@ -1494,9 +1751,9 @@ const Compra = () => {
                     {esRegaloAdmin ? (
                       <span style={{ color: '#28a745', fontWeight: 700 }}>Gratis</span>
                     ) : esOfertaAdmin && precioEspecial !== '' && !isNaN(parseFloat(precioEspecial)) ? (
-                      <span style={{ fontWeight: 700 }}>${(parseFloat(precioEspecial) * cantidadEntradas).toFixed(2)} <small style={{ fontWeight: 400, color: '#666' }}>({cantidadEntradas} × ${parseFloat(precioEspecial).toFixed(2)})</small></span>
+                      <span style={{ fontWeight: 700 }}>Bs. {(parseFloat(precioEspecial) * cantidadEntradas).toFixed(2)} <small style={{ fontWeight: 400, color: '#666' }}>({cantidadEntradas} × Bs. {parseFloat(precioEspecial).toFixed(2)})</small></span>
                     ) : (
-                      `$${totalConDescuento.toFixed(2)}`
+                      `Bs. ${totalConDescuento.toFixed(2)}`
                     )}
                   </span>
                 </div>

@@ -270,13 +270,15 @@ export const AuthProvider = ({ children }) => {
     return user !== null;
   };
 
-  const isAdmin = () => {
-    return user?.rol === 'admin';
-  };
+  const rol = (user?.rol || '').toLowerCase();
 
-  const hasRole = (role) => {
-    return user?.rol === role;
-  };
+  const isAdmin = () => rol === 'admin';
+
+  const isVendedor = () => rol === 'vendedor';
+
+  const canSellWithVerification = () => rol === 'admin' || rol === 'vendedor';
+
+  const hasRole = (role) => (role && (user?.rol || '').toLowerCase() === (role || '').toLowerCase());
 
   const value = {
     user,
@@ -284,6 +286,8 @@ export const AuthProvider = ({ children }) => {
     logout,
     isAuthenticated,
     isAdmin,
+    isVendedor,
+    canSellWithVerification,
     hasRole,
     loading
   };

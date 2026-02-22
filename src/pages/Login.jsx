@@ -68,15 +68,16 @@ const Login = () => {
         if (response.data.success) {
           const { token, user } = response.data.data;
           login(user, token);
-          // Mostrar notificación de éxito
+          const rol = (user?.rol || '').toLowerCase();
+          const esStaff = rol === 'admin' || rol === 'seguridad' || rol === 'vendedor';
           await showAlert('¡Sesión iniciada exitosamente!', { 
             type: 'success',
-            title: user?.rol === 'admin' ? 'Bienvenido Administrador' : 'Bienvenido'
+            title: rol === 'admin' ? 'Bienvenido Administrador' : rol === 'vendedor' ? 'Bienvenido Vendedor' : rol === 'seguridad' ? 'Bienvenido Seguridad' : 'Bienvenido'
           });
 
-          // Si es admin (o seguridad), llevar al dashboard admin
-          if (user?.rol === 'admin' || user?.rol === 'seguridad') {
-            navigate('/admin/dashboard', { replace: true });
+          if (esStaff) {
+            const panelPath = rol === 'vendedor' ? '/admin/compras' : rol === 'seguridad' ? '/admin/busqueda-entrada' : '/admin/dashboard';
+            navigate(panelPath, { replace: true });
           } else {
             const from = location.state?.from || '/';
             navigate(from, { replace: true });
@@ -195,10 +196,12 @@ const Login = () => {
           title: user?.rol === 'admin' || user?.rol === 'seguridad' ? 'Bienvenido Administrador' : 'Bienvenido'
         });
         
-        // Si es admin (o seguridad), llevar al dashboard admin
-        if (user?.rol === 'admin' || user?.rol === 'seguridad') {
-          navigate('/admin/dashboard', { replace: true });
-        } else {
+        // Si es staff, llevar al panel según rol
+        const rolGoogle = (user?.rol || '').toLowerCase();
+        if (rolGoogle === 'admin') navigate('/admin/dashboard', { replace: true });
+        else if (rolGoogle === 'vendedor') navigate('/admin/compras', { replace: true });
+        else if (rolGoogle === 'seguridad') navigate('/admin/busqueda-entrada', { replace: true });
+        else {
           const from = location.state?.from || '/';
           navigate(from, { replace: true });
         }

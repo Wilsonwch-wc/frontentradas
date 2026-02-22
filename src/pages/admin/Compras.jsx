@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import api from '../../api/axios';
 import { useAlert } from '../../context/AlertContext';
+import { useAuth } from '../../context/AuthContext';
 import ModalTipoPago from '../../components/ModalTipoPago';
 import './Compras.css';
 
 const Compras = () => {
   const { showAlert, showConfirm } = useAlert();
+  const { isAdmin } = useAuth();
   const [compras, setCompras] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -601,6 +603,42 @@ const Compras = () => {
                 </div>
               )}
 
+              {((compraSeleccionada.entradas_generales && compraSeleccionada.entradas_generales.length > 0) ||
+                (compraSeleccionada.detalle_general && compraSeleccionada.detalle_general.length > 0)) && (
+                <div className="detalle-section">
+                  <h3>Tipos de entrada comprados</h3>
+                  <div className="entradas-generales-resumen">
+                    {compraSeleccionada.entradas_generales && compraSeleccionada.entradas_generales.length > 0 ? (
+                      (() => {
+                        const porTipo = {};
+                        compraSeleccionada.entradas_generales.forEach((eg) => {
+                          const nombre = eg.tipo_precio_nombre || eg.area_nombre || 'General';
+                          if (!porTipo[nombre]) porTipo[nombre] = [];
+                          porTipo[nombre].push(eg);
+                        });
+                        return Object.entries(porTipo).map(([tipo, entradas]) => (
+                          <div key={tipo} className="entradas-tipo-item" style={{ marginBottom: '12px', padding: '8px 12px', background: '#f8f9fa', borderRadius: '8px' }}>
+                            <strong>{tipo}:</strong> {entradas.length} entrada(s)
+                            {entradas.some(e => e.codigo_escaneo) && (
+                              <div style={{ fontSize: '0.9rem', marginTop: '4px', color: '#555' }}>
+                                Códigos: {entradas.map(e => e.codigo_escaneo).filter(Boolean).join(', ')}
+                              </div>
+                            )}
+                          </div>
+                        ));
+                      })()
+                    ) : (
+                      compraSeleccionada.detalle_general.map((dg) => (
+                        <div key={dg.id} className="entradas-tipo-item" style={{ marginBottom: '12px', padding: '8px 12px', background: '#f8f9fa', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                          <span><strong>{dg.tipo_precio_nombre || 'Entrada'}:</strong> {dg.cantidad} entrada(s)</span>
+                          {dg.precio != null && <span style={{ color: '#0d6efd', fontWeight: 600 }}>Bs. {(parseFloat(dg.precio) * (dg.cantidad || 0)).toFixed(2)}</span>}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+
               <div className="detalle-actions">
                 {compraSeleccionada.estado === 'PAGO_PENDIENTE' && (
                   <>
@@ -656,6 +694,7 @@ const Compras = () => {
                     </button>
                   </>
                 )}
+                {isAdmin && isAdmin() && (
                 <button
                   onClick={() => eliminarCompra(compraSeleccionada.id)}
                   className="btn-eliminar"
@@ -664,6 +703,7 @@ const Compras = () => {
                 >
                   {eliminando ? 'Eliminando...' : '🗑️ Eliminar Entradas y Todas las Relaciones'}
                 </button>
+                )}
               </div>
             </div>
           </div>

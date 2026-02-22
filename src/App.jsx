@@ -1,5 +1,5 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { AlertProvider } from './context/AlertContext';
 import PublicLayout from './components/PublicLayout';
 import Home from './pages/Home';
@@ -26,6 +26,14 @@ import EntradasEscaneadas from './pages/admin/EntradasEscaneadas';
 import Cupones from './pages/admin/Cupones';
 import './App.css';
 
+function AdminIndexRedirect() {
+  const { user } = useAuth();
+  const rol = (user?.rol || '').toLowerCase();
+  if (rol === 'vendedor') return <Navigate to="/admin/compras" replace />;
+  if (rol === 'seguridad') return <Navigate to="/admin/busqueda-entrada" replace />;
+  return <Navigate to="/admin/dashboard" replace />;
+}
+
 function App() {
   return (
     <AlertProvider>
@@ -34,6 +42,7 @@ function App() {
         <Routes>
           {/* Rutas del panel admin (sin Header/Footer del sitio público) */}
           <Route path="/admin" element={<AdminLayout />}>
+            <Route index element={<AdminIndexRedirect />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="usuarios" element={<Usuarios />} />
             <Route path="cartelera" element={<Cartelera />} />

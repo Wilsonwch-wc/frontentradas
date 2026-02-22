@@ -5,6 +5,8 @@ import './Header.css';
 const Header = () => {
   const { user, logout, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const rol = (user?.rol || '').toLowerCase();
+  const esStaffPanel = rol === 'admin' || rol === 'seguridad' || rol === 'vendedor';
 
   const handleLogout = () => {
     logout();
@@ -27,8 +29,8 @@ const Header = () => {
           {isAuthenticated() && !user?.rol && (
             <Link to="/mis-compras" className="nav-link">Mis Compras</Link>
           )}
-          {isAuthenticated() && (user?.rol === 'admin' || user?.rol === 'seguridad') && (
-            <Link to="/admin/dashboard" className="nav-link" style={{ 
+          {isAuthenticated() && esStaffPanel && (
+            <Link to={rol === 'vendedor' ? '/admin/compras' : rol === 'seguridad' ? '/admin/busqueda-entrada' : '/admin/dashboard'} className="nav-link" style={{ 
               background: '#D4AF37', 
               color: '#000', 
               padding: '0.5rem 1rem', 

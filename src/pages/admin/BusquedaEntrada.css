@@ -2,6 +2,19 @@
   padding: 20px;
 }
 
+/* Escáner arriba: cuando QR está activo, mínimo padding superior */
+.busqueda-entrada-page.qr-activo .busqueda-header {
+  margin-bottom: 16px;
+}
+.busqueda-entrada-page.qr-activo .qr-scanner-section {
+  margin-top: -8px;
+  margin-bottom: 16px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  padding-top: 8px;
+}
+
 .busqueda-header {
   text-align: center;
   margin-bottom: 40px;
@@ -116,6 +129,35 @@
   transform: none;
 }
 
+.btn-solo-consultar {
+  padding: 15px 20px;
+  background: #6c5ce7;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  white-space: nowrap;
+}
+.btn-solo-consultar:hover:not(:disabled) {
+  background: #5b4cdb;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(108, 92, 231, 0.3);
+}
+.btn-solo-consultar:disabled {
+  background: #95a5a6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.hint-solo-consultar {
+  margin: 10px 0 0;
+  font-size: 13px;
+  color: #7f8c8d;
+}
+
 .error-message {
   padding: 12px;
   background: #fee;
@@ -123,6 +165,74 @@
   border-radius: 6px;
   color: #c33;
   margin-top: 10px;
+}
+
+/* Feedback visual al escanear: pantalla verde (OK) o roja (error) */
+.feedback-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  animation: feedbackFadeIn 0.2s ease-out;
+}
+.feedback-overlay.feedback-ok {
+  background: rgba(39, 174, 96, 0.95);
+  color: white;
+}
+.feedback-overlay.feedback-error {
+  background: rgba(231, 76, 60, 0.95);
+  color: white;
+}
+.feedback-overlay .feedback-icon {
+  font-size: 80px;
+  margin-bottom: 16px;
+  line-height: 1;
+}
+.feedback-overlay .feedback-mensaje {
+  font-size: 22px;
+  font-weight: 600;
+  text-align: center;
+  max-width: 320px;
+}
+@keyframes feedbackFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Sección del escáner QR: arriba en la página para móviles */
+.qr-scanner-section {
+  background: #1a1a2e;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.qr-reader-wrapper {
+  width: 100%;
+  max-width: 500px;
+  margin: 0 auto;
+  min-height: 280px;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.qr-instruction {
+  margin: 12px 0 0;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 15px;
+}
+
+.btn-detener-escaneo {
+  margin-top: 12px;
+  display: inline-block;
 }
 
 /* Modal */
@@ -265,6 +375,9 @@
   padding: 20px 25px;
   border-top: 2px solid #ecf0f1;
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
   justify-content: flex-end;
   gap: 15px;
 }
@@ -305,6 +418,13 @@
   box-shadow: 0 4px 12px rgba(149, 165, 166, 0.3);
 }
 
+.modal-solo-consulta-note {
+  font-size: 13px;
+  color: #6c5ce7;
+  margin-right: auto;
+  font-style: italic;
+}
+
 @media (max-width: 768px) {
   .input-group-busqueda {
     flex-direction: column;
@@ -323,6 +443,54 @@
   .info-value {
     text-align: left;
     margin-left: 0;
+  }
+
+  /* Con QR activo: escáner arriba y bien visible en móviles */
+  .busqueda-entrada-page.qr-activo .busqueda-header {
+    margin-bottom: 16px;
+  }
+
+  .busqueda-entrada-page.qr-activo .busqueda-header h1 {
+    font-size: 22px;
+  }
+
+  .busqueda-entrada-page.qr-activo .busqueda-header p {
+    font-size: 14px;
+  }
+
+  .busqueda-entrada-page.qr-activo .qr-scanner-section {
+    margin-bottom: 16px;
+    padding: 12px;
+    /* Ocupar zona alta de la pantalla sin empujar el botón demasiado abajo */
+    max-height: min(65vh, 480px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .busqueda-entrada-page.qr-activo .qr-reader-wrapper {
+    min-height: 220px;
+    max-height: min(50vh, 380px);
+    width: 100%;
+    flex: 1;
+  }
+
+  .busqueda-entrada-page.qr-activo .qr-instruction {
+    margin-top: 8px;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+
+  .busqueda-entrada-page.qr-activo .btn-detener-escaneo {
+    margin-top: 10px;
+    flex-shrink: 0;
+    padding: 14px 24px;
+    min-height: 48px;
+  }
+
+  /* Reducir padding de la página en móvil cuando hay QR para ganar espacio */
+  .busqueda-entrada-page.qr-activo {
+    padding: 12px 16px;
   }
 }
 

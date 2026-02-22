@@ -7,7 +7,7 @@ import { Navigate } from 'react-router-dom';
 import './AdminLayout.css';
 
 const AdminLayout = () => {
-  const { isAuthenticated, isAdmin, loading, user } = useAuth();
+  const { isAuthenticated, isAdmin, isVendedor, loading, user } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   if (loading) {
@@ -18,10 +18,9 @@ const AdminLayout = () => {
     );
   }
 
-  // Verificar autenticación y rol admin o seguridad
-  const isAdminOrSeguridad = user && (user.rol === 'admin' || user.rol === 'seguridad');
-  if (!user || !isAuthenticated() || !isAdminOrSeguridad) {
-    // Usar la pantalla de login única (correo/contraseña)
+  const rol = (user?.rol || '').toLowerCase();
+  const puedeEntrarPanel = user && (rol === 'admin' || rol === 'seguridad' || rol === 'vendedor');
+  if (!user || !isAuthenticated() || !puedeEntrarPanel) {
     return <Navigate to="/login" replace />;
   }
 

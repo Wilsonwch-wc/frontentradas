@@ -25,6 +25,14 @@ const containerStyle = {
   flexDirection: 'column'
 };
 
+const containerStyleWide = {
+  ...containerStyle,
+  maxWidth: 'min(90vw, 900px)',
+  width: 'min(90vw, 900px)',
+  minHeight: 'min(70vh, 500px)',
+  maxHeight: '90vh'
+};
+
 const containerStyleLarge = {
   ...containerStyle,
   maxWidth: '98vw',
@@ -45,13 +53,19 @@ const headerStyle = {
   background: '#fafafa'
 };
 
-const Modal = ({ isOpen, onClose, title, children, tools, closeOnOverlayClick = true, large = false }) => {
+const Modal = ({ isOpen, onClose, title, children, tools, closeOnOverlayClick = true, large = false, wide = false }) => {
   if (!isOpen) return null;
 
   const handleOverlayClick = (e) => {
     if (e.target === e.currentTarget && closeOnOverlayClick) {
       onClose?.();
     }
+  };
+
+  const getContainerStyle = () => {
+    if (large) return containerStyleLarge;
+    if (wide) return containerStyleWide;
+    return containerStyle;
   };
 
   const contentLayoutStyle = {
@@ -67,7 +81,7 @@ const Modal = ({ isOpen, onClose, title, children, tools, closeOnOverlayClick = 
 
   return (
     <div style={overlayStyle} onClick={handleOverlayClick}>
-      <div style={large ? containerStyleLarge : containerStyle}>
+      <div style={getContainerStyle()}>
         <div style={headerStyle}>
           <h3 style={{ margin: 0, fontSize: '1.25rem' }}>{title}</h3>
           <button

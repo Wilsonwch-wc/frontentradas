@@ -3,15 +3,18 @@ import { useAuth } from '../../context/AuthContext';
 import './AdminSidebar.css';
 
 const AdminSidebar = ({ isOpen, onClose }) => {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const navigate = useNavigate();
+  const rol = (user?.rol || '').toLowerCase();
+  const esVendedor = rol === 'vendedor';
+  const esSeguridad = rol === 'seguridad';
 
   const handleLogout = async () => {
     await logout();
     navigate('/account');
   };
 
-  const menuItems = [
+  const menuItemsFull = [
     {
       path: '/admin/dashboard',
       label: 'Panel de Control',
@@ -133,6 +136,19 @@ const AdminSidebar = ({ isOpen, onClose }) => {
       )
     }
   ];
+
+  let menuItems = menuItemsFull;
+  if (esVendedor) {
+    menuItems = menuItemsFull
+      .filter((item) =>
+        ['/admin/compras', '/admin/busqueda-entrada', '/admin/entradas-escaneadas'].includes(item.path)
+      )
+      .map((item) => (item.path === '/admin/compras' ? { ...item, label: 'Mis ventas' } : item));
+  } else if (esSeguridad) {
+    menuItems = menuItemsFull.filter((item) =>
+      ['/admin/busqueda-entrada', '/admin/entradas-escaneadas'].includes(item.path)
+    );
+  }
 
   return (
     <>

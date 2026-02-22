@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
 import { useAlert } from '../../context/AlertContext';
+import { useAuth } from '../../context/AuthContext';
 import Modal from '../../components/Modal';
 import './AdminLayout.css';
 import './Dashboard.css';
@@ -27,7 +29,9 @@ const StatCard = ({ title, value, subtitle, icon, tone = 'default', onClick }) =
 );
 
 const Dashboard = () => {
+  const navigate = useNavigate();
   const { showAlert, showConfirm } = useAlert();
+  const { isVendedor, user } = useAuth();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -43,6 +47,17 @@ const Dashboard = () => {
     telefono: '',
     activo: true
   });
+
+  useEffect(() => {
+    if (isVendedor && isVendedor()) {
+      navigate('/admin/compras', { replace: true });
+      return;
+    }
+    const rol = (user?.rol || '').toLowerCase();
+    if (rol === 'seguridad') {
+      navigate('/admin/busqueda-entrada', { replace: true });
+    }
+  }, [isVendedor, user?.rol, navigate]);
 
   const loadData = async () => {
     setLoading(true);
@@ -337,6 +352,7 @@ const Dashboard = () => {
           isOpen={showClientesModal}
           onClose={handleCerrarModalClientes}
           title="Gestión de Clientes"
+          wide
         >
           <div style={{ padding: '20px' }}>
             {loadingClientes ? (
