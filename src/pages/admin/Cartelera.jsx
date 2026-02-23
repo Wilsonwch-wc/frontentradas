@@ -744,6 +744,11 @@ const Cartelera = () => {
                 {(formData.tipo_evento === 'general' || formData.tipo_evento === 'especial') && (
                   <div className="form-group">
                     <label>Tipos de Precio *</label>
+                    {formData.tipo_evento === 'especial' && (
+                      <p className="form-hint" style={{ marginBottom: '10px', color: '#555', fontSize: '13px' }}>
+                        Solo define el nombre y precio de cada tipo (ej. VIP, General). El límite de entradas por tipo se define después en <strong>Espacio</strong>, al diseñar el plano y asignar asientos a cada tipo; los clientes elegirán su lugar ahí.
+                      </p>
+                    )}
                     <div className="tipos-precio-table">
                       <table style={{ width: '100%', marginBottom: '10px' }}>
                         <thead>
@@ -751,7 +756,9 @@ const Cartelera = () => {
                             <th style={{ textAlign: 'left', padding: '8px' }}>Tipo</th>
                             <th style={{ textAlign: 'left', padding: '8px' }}>Precio</th>
                             <th style={{ textAlign: 'left', padding: '8px' }}>Vendidos / Quedan</th>
-                            <th style={{ textAlign: 'left', padding: '8px' }}>Límite (opc.)</th>
+                            <th style={{ textAlign: 'left', padding: '8px' }}>
+                              {formData.tipo_evento === 'especial' ? 'Límite (opc.; mejor en Espacio)' : 'Límite (opc.)'}
+                            </th>
                             <th style={{ width: '50px', padding: '8px' }}></th>
                           </tr>
                         </thead>
@@ -795,10 +802,12 @@ const Cartelera = () => {
                                   type="number"
                                   value={tipoPrecio.limite ?? ''}
                                   onChange={(e) => handleTipoPrecioChange(index, 'limite', e.target.value)}
-                                  placeholder="Sin límite"
+                                  placeholder={formData.tipo_evento === 'especial' ? 'Definir en Espacio' : 'Sin límite'}
                                   min={typeof tipoPrecio.vendidos === 'number' ? tipoPrecio.vendidos : 0}
                                   step="1"
-                                  title={typeof tipoPrecio.vendidos === 'number' ? `Mínimo ${tipoPrecio.vendidos} (ya vendidos/reservados). Puedes subir el límite (ej. +20 más).` : 'Cantidad máxima para este tipo. Vacío = sin límite.'}
+                                  title={formData.tipo_evento === 'especial'
+                                    ? 'Opcional. El límite real lo defines en Espacio al colocar los asientos por tipo.'
+                                    : (typeof tipoPrecio.vendidos === 'number' ? `Mínimo ${tipoPrecio.vendidos} (ya vendidos).` : 'Cantidad máxima. Vacío = sin límite.')}
                                   style={{ width: '100%', padding: '6px', border: '1px solid #ddd', borderRadius: '4px' }}
                                 />
                               </td>
