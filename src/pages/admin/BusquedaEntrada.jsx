@@ -218,8 +218,8 @@ const BusquedaEntrada = () => {
             }
           } else {
             playBeep('ok');
-            setFeedbackTipo('ok');
-            setFeedbackMensaje('Entrada ya ingresada');
+            setFeedbackTipo('ya-escaneada');
+            setFeedbackMensaje('Entrada ya escaneada');
           }
           setCodigo('');
           setTimeout(() => {
@@ -413,7 +413,9 @@ const BusquedaEntrada = () => {
       {/* Feedback visual + sonido al escanear (verde OK / rojo error) */}
       {feedbackTipo && (
         <div className={`feedback-overlay feedback-${feedbackTipo}`}>
-          <span className="feedback-icon">{feedbackTipo === 'ok' ? '✓' : '✕'}</span>
+          <span className="feedback-icon">
+            {feedbackTipo === 'ok' ? '✓' : feedbackTipo === 'ya-escaneada' ? '⚠' : '✕'}
+          </span>
           <span className="feedback-mensaje">{feedbackMensaje}</span>
         </div>
       )}
