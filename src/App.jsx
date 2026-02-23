@@ -23,6 +23,7 @@ import WhatsAppWeb from './pages/admin/WhatsAppWeb';
 import ContactoAdmin from './pages/admin/ContactoAdmin';
 import BusquedaEntrada from './pages/admin/BusquedaEntrada';
 import EntradasEscaneadas from './pages/admin/EntradasEscaneadas';
+import PanelEnVivo from './pages/admin/PanelEnVivo';
 import Cupones from './pages/admin/Cupones';
 import './App.css';
 
@@ -53,6 +54,7 @@ function App() {
             <Route path="contacto" element={<ContactoAdmin />} />
             <Route path="busqueda-entrada" element={<BusquedaEntrada />} />
             <Route path="entradas-escaneadas" element={<EntradasEscaneadas />} />
+            <Route path="panel-en-vivo" element={<PanelEnVivo />} />
             <Route path="cupones" element={<Cupones />} />
           </Route>
           

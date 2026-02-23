@@ -1,0 +1,186 @@
+.panel-en-vivo-page .admin-content {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.panel-en-vivo-header {
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.panel-en-vivo-header h1 {
+  margin: 0 0 8px 0;
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #101828;
+}
+
+.panel-en-vivo-header p {
+  margin: 0;
+  font-size: 1rem;
+  color: #667085;
+}
+
+.panel-en-vivo-filtros {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.panel-en-vivo-filtros label {
+  font-weight: 600;
+  color: #344054;
+}
+
+.panel-en-vivo-select {
+  min-width: 280px;
+  padding: 10px 12px;
+  border: 1px solid #d0d5dd;
+  border-radius: 8px;
+  font-size: 1rem;
+  background: #fff;
+}
+
+.btn-actualizar-panel {
+  padding: 10px 18px;
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.2s ease;
+}
+
+.btn-actualizar-panel:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.25);
+}
+
+.btn-actualizar-panel:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.panel-en-vivo-error {
+  padding: 12px 16px;
+  background: #fef3f2;
+  border: 1px solid #fecdca;
+  color: #b42318;
+  border-radius: 10px;
+  font-weight: 500;
+}
+
+.panel-en-vivo-loading {
+  padding: 24px;
+  text-align: center;
+  color: #667085;
+  font-weight: 500;
+}
+
+.panel-en-vivo-titulo-evento {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #344054;
+  text-align: center;
+  padding: 12px 0 8px;
+}
+
+.panel-en-vivo-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.panel-en-vivo-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 28px 24px;
+  text-align: center;
+  box-shadow: 0 4px 20px rgba(15, 23, 42, 0.08);
+  border: 1px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.panel-en-vivo-card.card-ingresados {
+  border-top: 4px solid #10b981;
+  background: linear-gradient(180deg, rgba(16, 185, 129, 0.06) 0%, #fff 30%);
+}
+
+.panel-en-vivo-card.card-por-escanear {
+  border-top: 4px solid #f59e0b;
+  background: linear-gradient(180deg, rgba(245, 158, 11, 0.06) 0%, #fff 30%);
+}
+
+.panel-en-vivo-card.card-rechazados {
+  border-top: 4px solid #ef4444;
+  background: linear-gradient(180deg, rgba(239, 68, 68, 0.06) 0%, #fff 30%);
+}
+
+.panel-en-vivo-card-label {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #475467;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.panel-en-vivo-card-value {
+  font-size: 3rem;
+  font-weight: 800;
+  line-height: 1.1;
+  color: #101828;
+}
+
+.card-ingresados .panel-en-vivo-card-value { color: #059669; }
+.card-por-escanear .panel-en-vivo-card-value { color: #d97706; }
+.card-rechazados .panel-en-vivo-card-value { color: #dc2626; }
+
+.panel-en-vivo-card-sub {
+  font-size: 0.85rem;
+  color: #98a2b3;
+  margin-top: 4px;
+}
+
+.panel-en-vivo-footer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+  padding: 16px;
+  font-size: 0.95rem;
+  color: #667085;
+}
+
+.panel-en-vivo-footer strong {
+  color: #344054;
+}
+
+.panel-en-vivo-hora {
+  font-size: 0.9rem;
+  color: #98a2b3;
+}
+
+.panel-en-vivo-sin-datos {
+  text-align: center;
+  padding: 40px 20px;
+  color: #667085;
+  font-size: 1rem;
+}
+
+@media (max-width: 768px) {
+  .panel-en-vivo-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .panel-en-vivo-card-value {
+    font-size: 2.5rem;
+  }
+}

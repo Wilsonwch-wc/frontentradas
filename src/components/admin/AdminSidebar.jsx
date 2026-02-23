@@ -134,6 +134,16 @@ const AdminSidebar = ({ isOpen, onClose }) => {
           <polyline points="22 4 12 14.01 9 11.01"></polyline>
         </svg>
       )
+    },
+    {
+      path: '/admin/panel-en-vivo',
+      label: 'Panel en vivo',
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <polyline points="12 6 12 12 16 14"></polyline>
+        </svg>
+      )
     }
   ];
 
@@ -146,7 +156,7 @@ const AdminSidebar = ({ isOpen, onClose }) => {
       .map((item) => (item.path === '/admin/compras' ? { ...item, label: 'Mis ventas' } : item));
   } else if (esSeguridad) {
     menuItems = menuItemsFull.filter((item) =>
-      ['/admin/busqueda-entrada', '/admin/entradas-escaneadas'].includes(item.path)
+      ['/admin/busqueda-entrada', '/admin/entradas-escaneadas', '/admin/panel-en-vivo'].includes(item.path)
     );
   }
 
