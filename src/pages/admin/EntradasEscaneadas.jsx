@@ -68,7 +68,8 @@ const EntradasEscaneadas = () => {
         codigoEscaneo: entrada.codigo_escaneo,
         tipo: entrada.tipo,
         compra_asiento_id: entrada.compra_asiento_id,
-        compra_mesa_id: entrada.compra_mesa_id
+        compra_mesa_id: entrada.compra_mesa_id,
+        compra_entrada_general_id: entrada.compra_entrada_general_id
       });
 
       if (response.data.success) {
@@ -96,7 +97,8 @@ const EntradasEscaneadas = () => {
     });
   };
 
-  const todasLasEntradas = [...entradas.asientos, ...entradas.mesas];
+  const generales = Array.isArray(entradas.generales) ? entradas.generales : [];
+  const todasLasEntradas = [...(entradas.asientos || []), ...(entradas.mesas || []), ...generales];
 
   return (
     <div className="admin-page entradas-escaneadas-page">
@@ -168,15 +170,15 @@ const EntradasEscaneadas = () => {
                       <h4>Evento General</h4>
                       <div className="stat-detail-row">
                         <span>Entradas Confirmadas:</span>
-                        <strong>{entradas.estadisticas.generales.total_confirmadas}</strong>
+                        <strong>{entradas.estadisticas.generales?.total_confirmadas ?? entradas.estadisticas.generales?.vendidas ?? 0}</strong>
                       </div>
                       <div className="stat-detail-row">
                         <span>Entradas Escaneadas:</span>
-                        <strong className="text-success">{entradas.estadisticas.generales.total_escaneadas}</strong>
+                        <strong className="text-success">{entradas.estadisticas.generales?.total_escaneadas ?? entradas.estadisticas.generales?.escaneadas ?? 0}</strong>
                       </div>
                       <div className="stat-detail-row">
                         <span>Entradas Faltantes:</span>
-                        <strong className="text-warning">{entradas.estadisticas.generales.total_faltantes}</strong>
+                        <strong className="text-warning">{entradas.estadisticas.generales?.total_faltantes ?? 0}</strong>
                       </div>
                       <div className="stat-info-note">
                         <small>Los eventos generales no tienen asientos asignados. Se cuenta el total de entradas confirmadas.</small>
@@ -306,6 +308,8 @@ const EntradasEscaneadas = () => {
                               {entrada.numero_mesa && ` (Mesa M${entrada.numero_mesa})`}
                               {entrada.tipo_precio_nombre && ` - ${entrada.tipo_precio_nombre}`}
                             </>
+                          ) : entrada.tipo === 'GENERAL' ? (
+                            <>Entrada General{entrada.area_nombre ? ` (${entrada.area_nombre})` : ''}</>
                           ) : (
                             <>
                               Mesa M{entrada.numero_mesa} ({entrada.cantidad_sillas} sillas)
