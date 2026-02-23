@@ -44,8 +44,8 @@ const BusquedaEntrada = () => {
 
   useEffect(() => {
     const rol = (user?.rol || '').toLowerCase();
-    if (rol && rol !== 'admin' && rol !== 'seguridad') {
-      // Solo seguridad/admin pueden tickear/buscar entradas
+    if (rol && rol !== 'admin' && rol !== 'seguridad' && rol !== 'vendedor') {
+      // Solo seguridad/admin/vendedor (interno) pueden tickear/buscar entradas
       navigate('/admin', { replace: true });
     }
   }, [user?.rol, navigate]);

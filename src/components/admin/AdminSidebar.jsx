@@ -6,7 +6,8 @@ const AdminSidebar = ({ isOpen, onClose }) => {
   const { logout, user } = useAuth();
   const navigate = useNavigate();
   const rol = (user?.rol || '').toLowerCase();
-  const esVendedor = rol === 'vendedor' || rol === 'vendedor_externo';
+  const esVendedorInterno = rol === 'vendedor';
+  const esVendedorExterno = rol === 'vendedor_externo';
   const esSeguridad = rol === 'seguridad';
 
   const handleLogout = async () => {
@@ -158,11 +159,15 @@ const AdminSidebar = ({ isOpen, onClose }) => {
   ];
 
   let menuItems = menuItemsFull;
-  if (esVendedor) {
+  if (esVendedorInterno) {
     menuItems = menuItemsFull
       .filter((item) =>
-        ['/admin/mi-panel', '/admin/compras'].includes(item.path)
+        ['/admin/mi-panel', '/admin/compras', '/admin/busqueda-entrada', '/admin/entradas-escaneadas'].includes(item.path)
       )
+      .map((item) => (item.path === '/admin/compras' ? { ...item, label: 'Mis ventas' } : item));
+  } else if (esVendedorExterno) {
+    menuItems = menuItemsFull
+      .filter((item) => ['/admin/mi-panel', '/admin/compras'].includes(item.path))
       .map((item) => (item.path === '/admin/compras' ? { ...item, label: 'Mis ventas' } : item));
   } else if (esSeguridad) {
     menuItems = menuItemsFull.filter((item) =>

@@ -22,7 +22,7 @@ const EntradasEscaneadas = () => {
 
   useEffect(() => {
     const rol = (user?.rol || '').toLowerCase();
-    if (rol && rol !== 'admin' && rol !== 'seguridad') {
+    if (rol && rol !== 'admin' && rol !== 'seguridad' && rol !== 'vendedor') {
       navigate('/admin', { replace: true });
     }
   }, [user?.rol, navigate]);
