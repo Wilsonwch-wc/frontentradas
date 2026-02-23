@@ -25,11 +25,13 @@ import BusquedaEntrada from './pages/admin/BusquedaEntrada';
 import EntradasEscaneadas from './pages/admin/EntradasEscaneadas';
 import PanelEnVivo from './pages/admin/PanelEnVivo';
 import Cupones from './pages/admin/Cupones';
+import MiPanelVentas from './pages/admin/MiPanelVentas';
 import './App.css';
 
 function AdminIndexRedirect() {
   const { user } = useAuth();
   const rol = (user?.rol || '').toLowerCase();
+  if (rol === 'vendedor_externo') return <Navigate to="/admin/mi-panel" replace />;
   if (rol === 'vendedor') return <Navigate to="/admin/compras" replace />;
   if (rol === 'seguridad') return <Navigate to="/admin/busqueda-entrada" replace />;
   return <Navigate to="/admin/dashboard" replace />;
@@ -49,6 +51,7 @@ function App() {
             <Route path="cartelera" element={<Cartelera />} />
             <Route path="espacio" element={<Espacio />} />
             <Route path="compras" element={<Compras />} />
+            <Route path="mi-panel" element={<MiPanelVentas />} />
             <Route path="reportes" element={<Reportes />} />
             <Route path="whatsapp-web" element={<WhatsAppWeb />} />
             <Route path="contacto" element={<ContactoAdmin />} />

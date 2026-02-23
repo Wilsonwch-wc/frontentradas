@@ -1,7 +1,17 @@
 import { useState } from 'react';
 import './ModalTipoPago.css';
 
-const ModalTipoPago = ({ isOpen, onClose, onSelect, title = 'Tipo de pago', disabled = false, compraTotal = 0, soloTipoPago = false, mensajeTotal = null }) => {
+const ModalTipoPago = ({
+  isOpen,
+  onClose,
+  onSelect,
+  title = 'Tipo de pago',
+  disabled = false,
+  compraTotal = 0,
+  soloTipoPago = false,
+  mensajeTotal = null,
+  permitirExtrasAdmin = true
+}) => {
   const [esRegalo, setEsRegalo] = useState(false);
   const [esOferta, setEsOferta] = useState(false);
   const [precioOriginal, setPrecioOriginal] = useState('');
@@ -55,7 +65,7 @@ const ModalTipoPago = ({ isOpen, onClose, onSelect, title = 'Tipo de pago', disa
               <span className="btn-desc">Pago en efectivo</span>
             </button>
           </div>
-          {!soloTipoPago && (
+          {!soloTipoPago && permitirExtrasAdmin && (
           <div className="modal-tipo-pago-extra">
             <label>
               <input

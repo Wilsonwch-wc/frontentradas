@@ -11,9 +11,46 @@ const serverBase = getServerBase();
 const apiBase = getApiBase();
 
 const Compra = () => {
+  const PLANO_COLORS = {
+    // Fondo “cálido” (no gris) + borde suave
+    sheetFill: '#fff7ed',
+    sheetStroke: '#cbd5e1',
+    stageFill: '#7c2d12',
+    stageStroke: '#3f1d0b',
+    stageText: '#ffffff',
+    // Áreas bien marcadas
+    areaStroke: '#1f2937',
+    areaStrokeInner: 'rgba(255,255,255,0.55)',
+    areaLabelBg: 'rgba(255, 255, 255, 0.92)',
+    areaLabelStroke: '#94a3b8',
+    // Mesas: madera + contraste
+    mesaFill: '#8b5a2b',
+    mesaStroke: '#3f2a14',
+    mesaText: '#fde68a',
+    // Asientos: defaults por categoría
+    seatFillDefault: '#3b82f6',        // asientos normales
+    mesaChairFillDefault: '#22c55e',   // sillas de mesa
+    personaFillDefault: '#a855f7',     // personas (P...)
+    seatStroke: '#0f172a',
+    occupiedFill: '#ef4444',
+    occupiedStroke: '#991b1b',
+    selectedStroke: '#fbbf24'
+  };
+
+  const hexToRgba = (hex, alpha = 1) => {
+    if (!hex || typeof hex !== 'string') return `rgba(203,213,225,${alpha})`;
+    const h = hex.replace('#', '').trim();
+    const full = h.length === 3 ? h.split('').map((c) => c + c).join('') : h;
+    if (full.length !== 6) return `rgba(203,213,225,${alpha})`;
+    const r = parseInt(full.slice(0, 2), 16);
+    const g = parseInt(full.slice(2, 4), 16);
+    const b = parseInt(full.slice(4, 6), 16);
+    return `rgba(${r},${g},${b},${alpha})`;
+  };
+
   const { id } = useParams();
   const navigate = useNavigate();
-  const { isAuthenticated, user, isAdmin, canSellWithVerification } = useAuth();
+  const { isAuthenticated, user, isAdmin, canSellWithVerification, canUseAdminSaleOptions } = useAuth();
   const { showAlert } = useAlert();
   const [evento, setEvento] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -41,10 +78,29 @@ const Compra = () => {
   const [compraConfirmada, setCompraConfirmada] = useState(null);
   const [confirmandoPago, setConfirmandoPago] = useState(false);
   const [enviandoBoleto, setEnviandoBoleto] = useState(false);
+  const [descargandoPDF, setDescargandoPDF] = useState(false);
   const canvasRef = useRef(null);
+  const svgRef = useRef(null);
   const escalaRef = useRef({ sx: 1, sy: 1, ox: 0, oy: 0, minX: 0, minY: 0, worldW: 1000, worldH: 1000 });
   const compraRealizadaRef = useRef(null);
   const [mostrarNumerosAsientos, setMostrarNumerosAsientos] = useState(true);
+  const [zonaSeleccionadaId, setZonaSeleccionadaId] = useState('');
+  const [cantidadJuntos, setCantidadJuntos] = useState(2);
+  const [filtroTipoPrecioId, setFiltroTipoPrecioId] = useState('');
+  // Plano siempre en SVG (sin toggle visible).
+  const usarSvgPlano = true;
+  const [cursorPlano, setCursorPlano] = useState('pointer');
+  const eventoCompletoRef = useRef(null);
+
+  const puedeOpcionesVentaAdmin = !!(canUseAdminSaleOptions && canUseAdminSaleOptions());
+
+  useEffect(() => {
+    if (!puedeOpcionesVentaAdmin && (esRegaloAdmin || esOfertaAdmin || (precioEspecial || '').trim() !== '')) {
+      setEsRegaloAdmin(false);
+      setEsOfertaAdmin(false);
+      setPrecioEspecial('');
+    }
+  }, [puedeOpcionesVentaAdmin]);
 
   useEffect(() => {
     // Verificar autenticación
@@ -61,7 +117,36 @@ const Compra = () => {
     if (evento && evento.tipo_evento === 'especial' && canvasRef.current) {
       dibujarCanvas();
     }
-  }, [evento, selecciones, asientosOcupados, mesasOcupadas, mostrarNumerosAsientos]);
+  }, [evento, selecciones, asientosOcupados, mesasOcupadas, mostrarNumerosAsientos, zonaSeleccionadaId, filtroTipoPrecioId]);
+
+  // Carga progresiva por zona: cuando se selecciona una zona, cargar solo asientos/mesas de esa zona
+  useEffect(() => {
+    if (!evento || evento.tipo_evento !== 'especial' || !eventoCompletoRef.current) return;
+
+    if (!zonaSeleccionadaId) {
+      setEvento(prev => prev ? {
+        ...prev,
+        asientos: [...(eventoCompletoRef.current.asientos || [])],
+        mesas: [...(eventoCompletoRef.current.mesas || [])]
+      } : prev);
+      return;
+    }
+
+    const cargarPlano = async () => {
+      try {
+        const res = await fetch(`${apiBase}/eventos-public/${id}/plano?area_id=${zonaSeleccionadaId}`);
+        const data = await res.json();
+        if (data.success && data.data) {
+          const asientos = (data.data.asientos || []).map(a => ({ ...a, x: a.posicion_x, y: a.posicion_y }));
+          const mesas = (data.data.mesas || []).map(m => ({ ...m, width: m.ancho || 40, height: m.alto || 40 }));
+          setEvento(prev => prev ? { ...prev, asientos, mesas } : prev);
+        }
+      } catch (e) {
+        console.error('Error al cargar plano por zona:', e);
+      }
+    };
+    cargarPlano();
+  }, [zonaSeleccionadaId, id]);
 
   // Al confirmar pago, hacer scroll al bloque "Compra realizada" para enviar boletos rápido
   useEffect(() => {
@@ -110,8 +195,8 @@ const Compra = () => {
         if (eventoData.mesas && Array.isArray(eventoData.mesas)) {
           eventoData.mesas = eventoData.mesas.map(m => ({
             ...m,
-            width: m.width || 40,
-            height: m.height || 40
+            width: m.ancho || m.width || 40,
+            height: m.alto || m.height || 40
           }));
         }
         // Verificar si el evento está en estado "proximamente"
@@ -128,6 +213,9 @@ const Compra = () => {
         }
         
         setEvento(eventoData);
+        if (eventoData.tipo_evento === 'especial') {
+          eventoCompletoRef.current = { ...eventoData, asientos: [...(eventoData.asientos || [])], mesas: [...(eventoData.mesas || [])] };
+        }
 
         // Inicializar cantidades por tipo para evento general con múltiples precios (VIP, General, Gradería)
         if (eventoData.tipo_evento === 'general' && eventoData.tipos_precio?.length > 0) {
@@ -191,6 +279,36 @@ const Compra = () => {
     return mapa;
   };
 
+  const puntoDentroDeArea = (x, y, area) => {
+    if (!area || area.posicion_x == null || area.posicion_y == null || area.ancho == null || area.alto == null) {
+      return false;
+    }
+    return (
+      x >= area.posicion_x &&
+      x <= area.posicion_x + area.ancho &&
+      y >= area.posicion_y &&
+      y <= area.posicion_y + area.alto
+    );
+  };
+
+  const estaEnZonaSeleccionada = (x, y) => {
+    if (!zonaSeleccionadaId || !evento || !Array.isArray(evento.areas) || evento.areas.length === 0) {
+      return true; // Sin filtro, mostrar todo
+    }
+    const areaSeleccionada = evento.areas.find(
+      (area) => String(area.id) === String(zonaSeleccionadaId)
+    );
+    if (!areaSeleccionada) {
+      return true;
+    }
+    return puntoDentroDeArea(x, y, areaSeleccionada);
+  };
+
+  const cumpleFiltroTipoPrecio = (tipoPrecioId) => {
+    if (!filtroTipoPrecioId) return true;
+    return String(tipoPrecioId) === String(filtroTipoPrecioId);
+  };
+
   const obtenerPosicionAsiento = (asiento, mesasMap) => {
     const baseX = asiento.x ?? asiento.posicion_x;
     const baseY = asiento.y ?? asiento.posicion_y;
@@ -219,6 +337,46 @@ const Compra = () => {
     };
   };
 
+  const construirSeleccionAsiento = (asiento) => {
+    const tipoPrecio = evento.tipos_precio?.find(tp => tp.id === asiento.tipo_precio_id);
+    let nombreArea = asiento.area_nombre;
+
+    if (!nombreArea && evento.areas && Array.isArray(evento.areas) && evento.areas.length > 0) {
+      const asientoX = asiento.x || asiento.posicion_x;
+      const asientoY = asiento.y || asiento.posicion_y;
+      if (asientoX !== null && asientoY !== null) {
+        const areaEncontrada = evento.areas.find(area => {
+          if (!area.posicion_x || !area.posicion_y || !area.ancho || !area.alto) return false;
+          return asientoX >= area.posicion_x &&
+                 asientoX <= (area.posicion_x + area.ancho) &&
+                 asientoY >= area.posicion_y &&
+                 asientoY <= (area.posicion_y + area.alto);
+        });
+        if (areaEncontrada && areaEncontrada.nombre) {
+          nombreArea = areaEncontrada.nombre;
+        }
+      }
+    }
+
+    let textoMesa = '';
+    if (asiento.mesa_id) {
+      const mesaDelAsiento = evento.mesas?.find(m => m.id === asiento.mesa_id);
+      if (mesaDelAsiento) {
+        textoMesa = ` de Mesa ${mesaDelAsiento.numero_mesa}`;
+      }
+    }
+
+    const textoArea = nombreArea ? ` - ${nombreArea}` : '';
+    return {
+      type: 'asiento',
+      id: asiento.id,
+      tipo_precio_id: asiento.tipo_precio_id,
+      precio: tipoPrecio?.precio || 0,
+      nombre: `Asiento ${asiento.numero_asiento}${textoMesa}${textoArea}`,
+      area_nombre: nombreArea || null
+    };
+  };
+
   const dibujarCanvas = () => {
     const canvas = canvasRef.current;
     if (!canvas || !evento) return;
@@ -231,26 +389,31 @@ const Compra = () => {
     // Limpiar canvas
     ctx.clearRect(0, 0, width, height);
 
-    // Calcular bounds del contenido para escalar a todo el canvas
-    const elementos = [];
-    if (evento.escenario_x !== null && evento.escenario_y !== null && evento.escenario_width && evento.escenario_height) {
-      elementos.push({ x: evento.escenario_x, y: evento.escenario_y, w: evento.escenario_width, h: evento.escenario_height });
-    }
-    (evento.areas || []).forEach(a => elementos.push({ x: a.posicion_x, y: a.posicion_y, w: a.ancho, h: a.alto }));
-    (evento.mesas || []).forEach(m => elementos.push({ x: m.posicion_x || 0, y: m.posicion_y || 0, w: m.ancho || 30, h: m.alto || 30 }));
-    (evento.asientos || []).forEach(s => elementos.push({ x: (s.x ?? s.posicion_x) || 0, y: (s.y ?? s.posicion_y) || 0, w: s.mesa_id ? 12 : 16, h: s.mesa_id ? 12 : 16 }));
-    let minX = 10, minY = 10, maxX = width - 10, maxY = height - 10;
-    if (elementos.length > 0) {
-      minX = Math.min(...elementos.map(e => e.x)) - 20;
-      minY = Math.min(...elementos.map(e => e.y)) - 20;
-      maxX = Math.max(...elementos.map(e => e.x + e.w)) + 20;
-      maxY = Math.max(...elementos.map(e => e.y + e.h)) + 20;
-    }
     // Mundo desde el evento (persistido en admin). Fallback 1000x600
-    const worldW = (evento.hoja_ancho && Number(evento.hoja_ancho)) ? Number(evento.hoja_ancho) : 1000;
-    const worldH = (evento.hoja_alto && Number(evento.hoja_alto)) ? Number(evento.hoja_alto) : 600;
-    minX = 0;
-    minY = 0;
+    const hojaAncho = (evento.hoja_ancho && Number(evento.hoja_ancho)) ? Number(evento.hoja_ancho) : 1000;
+    const hojaAlto = (evento.hoja_alto && Number(evento.hoja_alto)) ? Number(evento.hoja_alto) : 600;
+
+    // Si hay una zona seleccionada, hacer zoom/centrar sobre esa zona; si no, usar toda la hoja
+    let minX = 0;
+    let minY = 0;
+    let worldW = hojaAncho;
+    let worldH = hojaAlto;
+
+    if (zonaSeleccionadaId && evento.areas && Array.isArray(evento.areas) && evento.areas.length > 0) {
+      const areaSeleccionada = evento.areas.find(
+        (area) => String(area.id) === String(zonaSeleccionadaId)
+      );
+      if (areaSeleccionada && areaSeleccionada.posicion_x != null && areaSeleccionada.posicion_y != null) {
+        const padding = 40; // margen alrededor de la zona
+        minX = Math.max(0, areaSeleccionada.posicion_x - padding);
+        minY = Math.max(0, areaSeleccionada.posicion_y - padding);
+        const maxX = Math.min(hojaAncho, areaSeleccionada.posicion_x + areaSeleccionada.ancho + padding);
+        const maxY = Math.min(hojaAlto, areaSeleccionada.posicion_y + areaSeleccionada.alto + padding);
+        worldW = Math.max(100, maxX - minX);
+        worldH = Math.max(100, maxY - minY);
+      }
+    }
+
     const sx = (width - 20) / worldW;
     const sy = (height - 20) / worldH;
     const s = Math.min(sx, sy);
@@ -260,9 +423,9 @@ const Compra = () => {
     const oy = 10 + (height - 20 - contentH) / 2 - minY * s;
     escalaRef.current = { sx: s, sy: s, ox, oy, minX, minY, worldW, worldH };
 
-    // Dibujar fondo del espacio según la forma (blanco, igual que admin) usando mundo escalado
-    ctx.fillStyle = '#ffffff';
-    ctx.strokeStyle = '#333';
+    // Fondo del plano
+    ctx.fillStyle = PLANO_COLORS.sheetFill;
+    ctx.strokeStyle = PLANO_COLORS.sheetStroke;
     ctx.lineWidth = 2;
 
     ctx.save();
@@ -302,12 +465,12 @@ const Compra = () => {
     // Dibujar escenario (exactamente como en admin)
     if (evento.escenario_x !== null && evento.escenario_y !== null && 
         evento.escenario_width && evento.escenario_height) {
-      ctx.fillStyle = '#8B4513';
+      ctx.fillStyle = PLANO_COLORS.stageFill;
       ctx.fillRect(evento.escenario_x, evento.escenario_y, evento.escenario_width, evento.escenario_height);
-      ctx.strokeStyle = '#654321';
+      ctx.strokeStyle = PLANO_COLORS.stageStroke;
       ctx.lineWidth = 3;
       ctx.strokeRect(evento.escenario_x, evento.escenario_y, evento.escenario_width, evento.escenario_height);
-      ctx.fillStyle = '#fff';
+      ctx.fillStyle = PLANO_COLORS.stageText;
       ctx.font = 'bold 16px Arial';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
@@ -317,14 +480,30 @@ const Compra = () => {
     // Dibujar áreas (exactamente como en admin)
     if (evento.areas && Array.isArray(evento.areas)) {
       evento.areas.forEach(area => {
-        ctx.fillStyle = area.color || '#CCCCCC';
+        const hayFiltroZona = !!zonaSeleccionadaId;
+        const esZonaSeleccionada =
+          hayFiltroZona && String(area.id) === String(zonaSeleccionadaId);
+
+        ctx.save();
+        // Área: relleno suave (tinte) + borde fuerte para que se note el límite
+        const baseArea = area.color || '#cbd5e1';
+        const alpha = hayFiltroZona && !esZonaSeleccionada ? 0.08 : 0.18;
+        ctx.fillStyle = hexToRgba(baseArea, alpha);
+        if (hayFiltroZona && !esZonaSeleccionada) {
+          ctx.globalAlpha = 0.15;
+        }
         ctx.fillRect(area.posicion_x, area.posicion_y, area.ancho, area.alto);
-        ctx.strokeStyle = '#666';
-        ctx.lineWidth = 2;
+        ctx.globalAlpha = 1;
+        ctx.strokeStyle = PLANO_COLORS.areaStroke;
+        ctx.lineWidth = esZonaSeleccionada ? 4 : 3;
         ctx.strokeRect(area.posicion_x, area.posicion_y, area.ancho, area.alto);
+        // Borde interior claro (da “relieve”)
+        ctx.strokeStyle = PLANO_COLORS.areaStrokeInner;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(area.posicion_x + 2, area.posicion_y + 2, area.ancho - 4, area.alto - 4);
         
         // Dibujar nombre del área en la parte superior (cabecera) - igual que admin
-        ctx.fillStyle = '#333';
+        ctx.fillStyle = '#0f172a';
         ctx.font = 'bold 14px Arial';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'bottom';
@@ -336,15 +515,16 @@ const Compra = () => {
         const textHeight = 16;
         
         // Fondo blanco con borde para el texto
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+        ctx.fillStyle = PLANO_COLORS.areaLabelBg;
         ctx.fillRect(textX - textWidth / 2 - 4, textY - textHeight - 2, textWidth + 8, textHeight + 4);
-        ctx.strokeStyle = '#666';
+        ctx.strokeStyle = PLANO_COLORS.areaLabelStroke;
         ctx.lineWidth = 1;
         ctx.strokeRect(textX - textWidth / 2 - 4, textY - textHeight - 2, textWidth + 8, textHeight + 4);
         
         // Dibujar el texto
-        ctx.fillStyle = '#333';
+        ctx.fillStyle = '#0f172a';
         ctx.fillText(text, textX, textY);
+        ctx.restore();
       });
     }
 
@@ -360,6 +540,11 @@ const Compra = () => {
         // En admin se usa width: 30, height: 30, pero deberíamos usar ancho y alto de BD
         const mesaWidth = mesa.ancho || 30;
         const mesaHeight = mesa.alto || 30;
+
+        const centroMesaX = mesaX + mesaWidth / 2;
+        const centroMesaY = mesaY + mesaHeight / 2;
+        if (!estaEnZonaSeleccionada(centroMesaX, centroMesaY)) return;
+        if (!cumpleFiltroTipoPrecio(mesa.tipo_precio_id)) return;
         
         // Verificar si todos los asientos de la mesa están seleccionados
         const asientosMesa = evento.asientos?.filter(a => a.mesa_id === mesa.id) || [];
@@ -370,14 +555,14 @@ const Compra = () => {
         // Dibujar la mesa: rojo si está ocupada, marrón si no
         if (mesaOcupada) {
           // Mesa ocupada - color rojo
-          ctx.fillStyle = '#e74c3c';
+          ctx.fillStyle = PLANO_COLORS.occupiedFill;
           ctx.fillRect(mesaX, mesaY, mesaWidth, mesaHeight);
-          ctx.strokeStyle = '#c0392b';
+          ctx.strokeStyle = PLANO_COLORS.occupiedStroke;
           ctx.lineWidth = 3;
           ctx.strokeRect(mesaX, mesaY, mesaWidth, mesaHeight);
           
           // Dibujar X en la mesa ocupada
-          ctx.strokeStyle = '#fff';
+          ctx.strokeStyle = '#ffffff';
           ctx.lineWidth = 2;
           ctx.beginPath();
           const centroX = mesaX + mesaWidth / 2;
@@ -390,15 +575,15 @@ const Compra = () => {
           ctx.stroke();
         } else {
           // Mesa disponible - color marrón normal
-          ctx.fillStyle = '#8B4513';
+          ctx.fillStyle = PLANO_COLORS.mesaFill;
           ctx.fillRect(mesaX, mesaY, mesaWidth, mesaHeight);
-          ctx.strokeStyle = todosSeleccionados ? '#FFD700' : '#654321';
+          ctx.strokeStyle = todosSeleccionados ? PLANO_COLORS.selectedStroke : PLANO_COLORS.mesaStroke;
           ctx.lineWidth = todosSeleccionados ? 3 : 2;
           ctx.strokeRect(mesaX, mesaY, mesaWidth, mesaHeight);
         }
         
         if (mostrarNumerosAsientos) {
-          ctx.fillStyle = '#FFD700';
+          ctx.fillStyle = PLANO_COLORS.mesaText;
           ctx.font = 'bold 11px Arial';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
@@ -414,6 +599,8 @@ const Compra = () => {
         // Usar posicion_x y posicion_y (igual que admin)
         const { x: sillaX, y: sillaY } = obtenerPosicionAsiento(silla, mesasMap);
         if (sillaX === null || sillaY === null) return;
+        if (!estaEnZonaSeleccionada(sillaX, sillaY)) return;
+        if (!cumpleFiltroTipoPrecio(silla.tipo_precio_id)) return;
         const tipoPrecio = evento.tipos_precio?.find(tp => tp.id === silla.tipo_precio_id);
         const estaSeleccionada = selecciones.some(sel => sel.type === 'asiento' && sel.id === silla.id);
         const estaOcupada = asientosOcupados.includes(silla.id);
@@ -422,17 +609,19 @@ const Compra = () => {
         const sillaOcupada = estaOcupada || mesaOcupada;
         
         // Color de la silla: rojo si está ocupada (individual o por mesa), color normal si no
-        const colorSilla = sillaOcupada ? '#e74c3c' : (tipoPrecio?.color || '#2196F3');
+        const colorSilla = sillaOcupada
+          ? PLANO_COLORS.occupiedFill
+          : (tipoPrecio?.color || PLANO_COLORS.mesaChairFillDefault);
         
         // Dibujar silla 8x8 (más pequeña)
         ctx.fillStyle = colorSilla;
         ctx.fillRect(sillaX - 4, sillaY - 4, 8, 8);
-        ctx.strokeStyle = estaSeleccionada ? '#FFD700' : (sillaOcupada ? '#c0392b' : '#333');
+        ctx.strokeStyle = estaSeleccionada ? PLANO_COLORS.selectedStroke : (sillaOcupada ? PLANO_COLORS.occupiedStroke : PLANO_COLORS.seatStroke);
         ctx.lineWidth = estaSeleccionada ? 2 : (sillaOcupada ? 2 : 1);
         ctx.strokeRect(sillaX - 4, sillaY - 4, 8, 8);
         
         if (mostrarNumerosAsientos) {
-          ctx.fillStyle = '#0d0d0d';
+          ctx.fillStyle = '#0f172a';
           ctx.font = 'bold 10px Arial';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
@@ -468,19 +657,23 @@ const Compra = () => {
       asientosSillas.forEach(asiento => {
         const asientoX = asiento.posicion_x !== null && asiento.posicion_x !== undefined ? asiento.posicion_x : 50;
         const asientoY = asiento.posicion_y !== null && asiento.posicion_y !== undefined ? asiento.posicion_y : 50;
+        if (!estaEnZonaSeleccionada(asientoX, asientoY)) return;
+        if (!cumpleFiltroTipoPrecio(asiento.tipo_precio_id)) return;
         const tipoPrecio = evento.tipos_precio?.find(tp => tp.id === asiento.tipo_precio_id);
         const estaSeleccionado = selecciones.some(sel => sel.type === 'asiento' && sel.id === asiento.id);
         const estaOcupado = asientosOcupados.includes(asiento.id);
-        const colorAsiento = estaOcupado ? '#e74c3c' : (tipoPrecio?.color || '#2196F3');
+        const colorAsiento = estaOcupado
+          ? PLANO_COLORS.occupiedFill
+          : (tipoPrecio?.color || PLANO_COLORS.seatFillDefault);
         
         ctx.fillStyle = colorAsiento;
         ctx.fillRect(asientoX - 5, asientoY - 5, 10, 10);
-        ctx.strokeStyle = estaSeleccionado ? '#FFD700' : (estaOcupado ? '#c0392b' : '#333');
+        ctx.strokeStyle = estaSeleccionado ? PLANO_COLORS.selectedStroke : (estaOcupado ? PLANO_COLORS.occupiedStroke : PLANO_COLORS.seatStroke);
         ctx.lineWidth = estaSeleccionado ? 3 : (estaOcupado ? 2 : 1);
         ctx.strokeRect(asientoX - 5, asientoY - 5, 10, 10);
         
         if (mostrarNumerosAsientos) {
-          ctx.fillStyle = '#0d0d0d';
+          ctx.fillStyle = '#0f172a';
           ctx.font = 'bold 11px Arial';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
@@ -506,22 +699,26 @@ const Compra = () => {
       personas.forEach(persona => {
         const px = persona.posicion_x !== null && persona.posicion_x !== undefined ? persona.posicion_x : 50;
         const py = persona.posicion_y !== null && persona.posicion_y !== undefined ? persona.posicion_y : 50;
+        if (!estaEnZonaSeleccionada(px, py)) return;
+        if (!cumpleFiltroTipoPrecio(persona.tipo_precio_id)) return;
         const tipoPrecio = evento.tipos_precio?.find(tp => tp.id === persona.tipo_precio_id);
         const estaSeleccionado = selecciones.some(sel => sel.type === 'asiento' && sel.id === persona.id);
         const estaOcupado = asientosOcupados.includes(persona.id);
-        const colorPersona = estaOcupado ? '#e74c3c' : (tipoPrecio?.color || '#4CAF50');
+        const colorPersona = estaOcupado
+          ? PLANO_COLORS.occupiedFill
+          : (tipoPrecio?.color || PLANO_COLORS.personaFillDefault);
         const radio = 5;
         
         ctx.fillStyle = colorPersona;
         ctx.beginPath();
         ctx.arc(px, py, radio, 0, 2 * Math.PI);
         ctx.fill();
-        ctx.strokeStyle = estaSeleccionado ? '#FFD700' : (estaOcupado ? '#c0392b' : '#333');
+        ctx.strokeStyle = estaSeleccionado ? PLANO_COLORS.selectedStroke : (estaOcupado ? PLANO_COLORS.occupiedStroke : PLANO_COLORS.seatStroke);
         ctx.lineWidth = estaSeleccionado ? 3 : (estaOcupado ? 2 : 1);
         ctx.stroke();
         
         if (mostrarNumerosAsientos) {
-          ctx.fillStyle = '#0d0d0d';
+          ctx.fillStyle = '#0f172a';
           ctx.font = 'bold 11px Arial';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
@@ -545,6 +742,192 @@ const Compra = () => {
     ctx.restore();
   };
 
+  const seleccionarMejorAsientoDisponible = () => {
+    if (!evento || evento.tipo_evento !== 'especial' || !Array.isArray(evento.asientos)) return;
+
+    const asientosDisponibles = evento.asientos
+      .filter((asiento) => {
+        if (asiento.mesa_id) return false; // Por simplicidad, solo asientos individuales
+        if (asientosOcupados.includes(asiento.id)) return false;
+        if (asiento.estado && asiento.estado !== 'disponible') return false;
+        const yaSeleccionado = selecciones.some((sel) => sel.type === 'asiento' && sel.id === asiento.id);
+        if (yaSeleccionado) return false;
+        const mesasMap = crearMapaMesas();
+        const { x, y } = obtenerPosicionAsiento(asiento, mesasMap);
+        if (x == null || y == null) return false;
+        if (!estaEnZonaSeleccionada(x, y)) return false;
+        if (!cumpleFiltroTipoPrecio(asiento.tipo_precio_id)) return false;
+        return true;
+      });
+
+    if (asientosDisponibles.length === 0) {
+      showAlert('No hay asientos disponibles con los filtros seleccionados.', { type: 'warning' });
+      return;
+    }
+
+    let mejor = null;
+    let mejorDistancia = Infinity;
+
+    let centroX = 0;
+    let centroY = 0;
+    if (evento.escenario_x != null && evento.escenario_y != null && evento.escenario_width && evento.escenario_height) {
+      centroX = evento.escenario_x + evento.escenario_width / 2;
+      centroY = evento.escenario_y + evento.escenario_height;
+    }
+
+    const mesasMap = crearMapaMesas();
+    asientosDisponibles.forEach((asiento) => {
+      const { x, y } = obtenerPosicionAsiento(asiento, mesasMap);
+      if (x == null || y == null) return;
+      const dx = x - centroX;
+      const dy = y - centroY;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < mejorDistancia) {
+        mejorDistancia = dist;
+        mejor = asiento;
+      }
+    });
+
+    if (!mejor) {
+      showAlert('No se encontró un asiento adecuado.', { type: 'warning' });
+      return;
+    }
+
+    const nuevaSeleccion = construirSeleccionAsiento(mejor);
+    setSelecciones((prev) => [...prev, nuevaSeleccion]);
+  };
+
+  const seleccionarNAsientosJuntos = () => {
+    if (!evento || evento.tipo_evento !== 'especial' || !Array.isArray(evento.asientos)) return;
+    const n = parseInt(cantidadJuntos, 10) || 0;
+    if (n < 2) {
+      showAlert('Indica una cantidad de asientos juntos de al menos 2.', { type: 'warning' });
+      return;
+    }
+
+    const mesasMap = crearMapaMesas();
+
+    // Candidatos (asientos individuales + sillas de mesas) disponibles en la zona/filtros
+    const candidatos = evento.asientos
+      .filter((asiento) => {
+        const numero = String(asiento.numero_asiento || '');
+        if (asientosOcupados.includes(asiento.id)) return false;
+        if (asiento.estado && asiento.estado !== 'disponible') return false;
+        const yaSeleccionado = selecciones.some((sel) => sel.type === 'asiento' && sel.id === asiento.id);
+        if (yaSeleccionado) return false;
+        // Si es silla de mesa, la mesa no puede estar ocupada completamente
+        if (asiento.mesa_id && mesasOcupadas.includes(asiento.mesa_id)) return false;
+        const { x, y } = obtenerPosicionAsiento(asiento, mesasMap);
+        if (x == null || y == null) return false;
+        if (!estaEnZonaSeleccionada(x, y)) return false;
+        if (!cumpleFiltroTipoPrecio(asiento.tipo_precio_id)) return false;
+        return true;
+      })
+      .map((a) => ({
+        ...a,
+        es_persona: String(a.numero_asiento || '').startsWith('P'),
+        numero_asiento_num: Number(a.numero_asiento) || 0,
+        area_nombre_normalizada: (a.area_nombre || '').toLowerCase(),
+        // Guardar posición ya calculada para agrupar por filas
+        ...(() => {
+          const { x, y } = obtenerPosicionAsiento(a, mesasMap);
+          return { x_plano: x, y_plano: y };
+        })()
+      }));
+
+    // Pools
+    const sillasMesas = candidatos.filter((c) => !!c.mesa_id && !c.es_persona);
+    const individuales = candidatos.filter((c) => !c.mesa_id && !c.es_persona && !String(c.numero_asiento || '').startsWith('P'));
+    const personas = candidatos.filter((c) => !c.mesa_id && c.es_persona);
+
+    const elegirGrupoCompactoEnFilas = (pool) => {
+      if (!pool || pool.length < n) return null;
+      const TOL_Y = 10; // píxeles
+      const filas = [];
+      const ordenados = [...pool].sort((a, b) => {
+        if (a.area_nombre_normalizada < b.area_nombre_normalizada) return -1;
+        if (a.area_nombre_normalizada > b.area_nombre_normalizada) return 1;
+        if (a.y_plano !== b.y_plano) return a.y_plano - b.y_plano;
+        return a.x_plano - b.x_plano;
+      });
+      ordenados.forEach((a) => {
+        let fila = filas.find((f) => Math.abs(f.yRef - a.y_plano) <= TOL_Y && f.area === a.area_nombre_normalizada);
+        if (!fila) {
+          fila = { yRef: a.y_plano, area: a.area_nombre_normalizada, asientos: [] };
+          filas.push(fila);
+        }
+        fila.asientos.push(a);
+      });
+      let mejorGrupo = null;
+      let mejorAnchura = Infinity;
+      filas.forEach((fila) => {
+        const arr = fila.asientos.sort((a, b) => a.x_plano - b.x_plano);
+        for (let i = 0; i <= arr.length - n; i++) {
+          const ventana = arr.slice(i, i + n);
+          const anchura = ventana[ventana.length - 1].x_plano - ventana[0].x_plano;
+          if (anchura < mejorAnchura) {
+            mejorAnchura = anchura;
+            mejorGrupo = ventana;
+          }
+        }
+      });
+      return mejorGrupo;
+    };
+
+    // 1) Preferir asientos individuales (sin mesa) por filas
+    let grupo = elegirGrupoCompactoEnFilas(individuales);
+
+    // 2) Si no hay, intentar con personas (P...) por filas
+    if (!grupo) {
+      grupo = elegirGrupoCompactoEnFilas(personas);
+    }
+
+    // 3) Si no hay, intentar con sillas de una misma mesa (misma mesa_id)
+    if (!grupo) {
+      const porMesa = new Map();
+      sillasMesas.forEach((s) => {
+        if (!porMesa.has(s.mesa_id)) porMesa.set(s.mesa_id, []);
+        porMesa.get(s.mesa_id).push(s);
+      });
+
+      let mejorMesa = null;
+      let mejorScore = Infinity;
+
+      // Centro del escenario para preferir mesas más cercanas (opcional)
+      let centroEscX = 0;
+      let centroEscY = 0;
+      if (evento.escenario_x != null && evento.escenario_y != null && evento.escenario_width && evento.escenario_height) {
+        centroEscX = evento.escenario_x + evento.escenario_width / 2;
+        centroEscY = evento.escenario_y + evento.escenario_height;
+      }
+
+      porMesa.forEach((sillas, mesaId) => {
+        if (sillas.length < n) return;
+        const mesa = (evento.mesas || []).find((m) => String(m.id) === String(mesaId));
+        const mx = (mesa?.posicion_x ?? mesa?.x ?? 0) + ((mesa?.ancho ?? mesa?.width ?? 30) / 2);
+        const my = (mesa?.posicion_y ?? mesa?.y ?? 0) + ((mesa?.alto ?? mesa?.height ?? 30) / 2);
+        const d = Math.hypot(mx - centroEscX, my - centroEscY);
+        if (d < mejorScore) {
+          mejorScore = d;
+          mejorMesa = { mesaId, sillas };
+        }
+      });
+
+      if (mejorMesa) {
+        const sillasOrdenadas = [...mejorMesa.sillas].sort((a, b) => (a.numero_asiento_num || 0) - (b.numero_asiento_num || 0));
+        grupo = sillasOrdenadas.slice(0, n);
+      }
+    }
+
+    if (!grupo || grupo.length < n) {
+      showAlert('No hay suficientes asientos/mesas disponibles con los filtros seleccionados.', { type: 'warning' });
+      return;
+    }
+
+    const nuevasSelecciones = grupo.map((asiento) => construirSeleccionAsiento(asiento));
+    setSelecciones((prev) => [...prev, ...nuevasSelecciones]);
+  };
+
 
   const getMousePos = (e) => {
     const canvas = canvasRef.current;
@@ -556,82 +939,87 @@ const Compra = () => {
     return { x: (px - ox) / sx, y: (py - oy) / sy, clientX: e.clientX, clientY: e.clientY };
   };
 
-  const handleCanvasMouseMove = (e) => {
-    // Tooltip deshabilitado - no mostrar información al hacer hover
+  const getSvgWorldPos = (e) => {
+    const svg = svgRef.current;
+    if (!svg) return null;
+    const rect = svg.getBoundingClientRect();
+    if (!rect.width || !rect.height) return null;
+    const { minX, minY, worldW, worldH } = escalaRef.current;
+    const rx = (e.clientX - rect.left) / rect.width;
+    const ry = (e.clientY - rect.top) / rect.height;
+    return { x: minX + rx * worldW, y: minY + ry * worldH };
   };
 
-
-  const handleCanvasClick = (e) => {
+  const manejarClickPlano = (x, y, opts = {}) => {
     if (!evento || evento.tipo_evento !== 'especial') return;
 
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const pos = getMousePos(e);
-    if (!pos) return;
-    
-    const x = pos.x;
-    const y = pos.y;
-
     // Primero verificar si se hizo click en una mesa
-    if (evento.mesas && Array.isArray(evento.mesas)) {
+    if (!opts.ignoreMesas && evento.mesas && Array.isArray(evento.mesas)) {
       for (const mesa of evento.mesas) {
         const mesaX = mesa.posicion_x || 50;
         const mesaY = mesa.posicion_y || 50;
-          const mesaWidth = mesa.ancho || mesa.width || 40;
-          const mesaHeight = mesa.alto || mesa.height || 40;
-        
+        const mesaWidth = mesa.ancho || mesa.width || 40;
+        const mesaHeight = mesa.alto || mesa.height || 40;
+
+        const centroMesaX = mesaX + mesaWidth / 2;
+        const centroMesaY = mesaY + mesaHeight / 2;
+        if (!estaEnZonaSeleccionada(centroMesaX, centroMesaY)) continue;
+        if (!cumpleFiltroTipoPrecio(mesa.tipo_precio_id)) continue;
+
         // Verificar si el click está dentro del área de la mesa
-        if (x >= mesaX && x <= mesaX + mesaWidth && 
+        if (x >= mesaX && x <= mesaX + mesaWidth &&
             y >= mesaY && y <= mesaY + mesaHeight) {
-          
+
           // Verificar si la mesa está ocupada
           if (mesasOcupadas.includes(mesa.id)) {
             showAlert('Esta mesa ya está ocupada y no está disponible', { type: 'warning' });
             return;
           }
-          
+
           // Obtener todos los asientos de esta mesa
           const asientosMesa = evento.asientos?.filter(a => a.mesa_id === mesa.id) || [];
-          
+
           if (asientosMesa.length === 0) {
             return; // No hay asientos en esta mesa
           }
-          
+
           // Verificar si todos los asientos ya están seleccionados
-          const todosSeleccionados = asientosMesa.every(a => 
+          const todosSeleccionados = asientosMesa.every(a =>
             selecciones.some(sel => sel.type === 'asiento' && sel.id === a.id)
           );
-          
+
           if (todosSeleccionados) {
             // Deseleccionar todos los asientos de la mesa y la entrada de mesa completa
             const idsAsientosMesa = asientosMesa.map(a => a.id);
-            setSelecciones(prev => prev.filter(sel => 
+            setSelecciones(prev => prev.filter(sel =>
               sel.type !== 'mesa_completa' || sel.mesa_id !== mesa.id
             ).filter(sel => !idsAsientosMesa.includes(sel.id)));
           } else {
             // Seleccionar todos los asientos de la mesa que estén disponibles
             const nuevasSelecciones = [];
             const asientosDisponibles = [];
-            
+
             for (const asiento of asientosMesa) {
               // Verificar si el asiento está ocupado
               if (asientosOcupados.includes(asiento.id)) {
                 continue; // Saltar asientos ocupados
               }
-              
+
               // Verificar disponibilidad
               if (asiento.estado && asiento.estado !== 'disponible') {
                 continue; // Saltar asientos no disponibles
               }
-              
+
               // Verificar si ya está seleccionado
               const yaSeleccionado = selecciones.some(sel => sel.type === 'asiento' && sel.id === asiento.id);
               if (yaSeleccionado) continue;
-              
+
+              // Respetar filtro tipo de precio también dentro de la mesa
+              if (!cumpleFiltroTipoPrecio(asiento.tipo_precio_id)) continue;
+
               const tipoPrecio = evento.tipos_precio?.find(tp => tp.id === asiento.tipo_precio_id);
               let nombreArea = asiento.area_nombre;
-              
+
               // Buscar área si no está en el asiento
               if (!nombreArea && evento.areas && Array.isArray(evento.areas) && evento.areas.length > 0) {
                 const asientoX = asiento.x || asiento.posicion_x;
@@ -639,9 +1027,9 @@ const Compra = () => {
                 if (asientoX !== null && asientoY !== null) {
                   const areaEncontrada = evento.areas.find(area => {
                     if (!area.posicion_x || !area.posicion_y || !area.ancho || !area.alto) return false;
-                    return asientoX >= area.posicion_x && 
+                    return asientoX >= area.posicion_x &&
                            asientoX <= (area.posicion_x + area.ancho) &&
-                           asientoY >= area.posicion_y && 
+                           asientoY >= area.posicion_y &&
                            asientoY <= (area.posicion_y + area.alto);
                   });
                   if (areaEncontrada && areaEncontrada.nombre) {
@@ -649,7 +1037,7 @@ const Compra = () => {
                   }
                 }
               }
-              
+
               // Obtener información de la mesa si el asiento pertenece a una
               let textoMesa = '';
               if (asiento.mesa_id) {
@@ -658,7 +1046,7 @@ const Compra = () => {
                   textoMesa = ` de Mesa ${mesaDelAsiento.numero_mesa}`;
                 }
               }
-              
+
               const textoArea = nombreArea ? ` - ${nombreArea}` : '';
               nuevasSelecciones.push({
                 type: 'asiento',
@@ -668,18 +1056,18 @@ const Compra = () => {
                 nombre: `Asiento ${asiento.numero_asiento}${textoMesa}${textoArea}`,
                 area_nombre: nombreArea || null
               });
-              
+
               asientosDisponibles.push({
                 id: asiento.id,
                 numero: asiento.numero_asiento,
                 precio: tipoPrecio?.precio || 0
               });
             }
-            
+
             if (nuevasSelecciones.length > 0) {
               // Calcular precio total de la mesa
               const precioTotal = asientosDisponibles.reduce((sum, a) => sum + a.precio, 0);
-              
+
               // Agregar entrada de mesa completa
               const entradaMesaCompleta = {
                 type: 'mesa_completa',
@@ -690,7 +1078,7 @@ const Compra = () => {
                 nombre: `MESA COMPLETA M${mesa.numero_mesa}`,
                 sillas: asientosDisponibles.map(a => a.numero).join(', ')
               };
-              
+
               setSelecciones(prev => [...prev, ...nuevasSelecciones, entradaMesaCompleta]);
             }
           }
@@ -705,33 +1093,34 @@ const Compra = () => {
       for (const asiento of evento.asientos) {
         const { x: asientoX, y: asientoY } = obtenerPosicionAsiento(asiento, mesasMap);
         if (asientoX === null || asientoY === null) continue;
-        
+        if (!estaEnZonaSeleccionada(asientoX, asientoY)) continue;
+        if (!cumpleFiltroTipoPrecio(asiento.tipo_precio_id)) continue;
+
         // Radio de detección (más pequeño para sillas de mesas)
         const tamañoAsiento = asiento.mesa_id ? 5 : 6;
         const distancia = Math.sqrt(Math.pow(x - asientoX, 2) + Math.pow(y - asientoY, 2));
-        
+
         if (distancia <= tamañoAsiento) {
           // Verificar si el asiento está ocupado
           if (asientosOcupados.includes(asiento.id)) {
             showAlert('Este asiento ya está ocupado y no está disponible', { type: 'warning' });
             return;
           }
-          
+
           // Si el asiento pertenece a una mesa, verificar si la mesa está ocupada
           if (asiento.mesa_id && mesasOcupadas.includes(asiento.mesa_id)) {
             showAlert('Esta mesa ya está ocupada completamente y no está disponible para comprar sillas individuales', { type: 'warning' });
             return;
           }
-          
+
           // Verificar disponibilidad
           if (asiento.estado && asiento.estado !== 'disponible') {
             showAlert('Este asiento no está disponible', { type: 'warning' });
             return;
           }
 
-          const tipoPrecio = evento.tipos_precio?.find(tp => tp.id === asiento.tipo_precio_id);
           const yaSeleccionado = selecciones.some(sel => sel.type === 'asiento' && sel.id === asiento.id);
-          
+
           if (yaSeleccionado) {
             // Deseleccionar
             // Al deseleccionar un asiento, también eliminar la entrada de mesa completa si existe
@@ -745,52 +1134,62 @@ const Compra = () => {
               return true;
             }));
           } else {
-            // Seleccionar - incluir información del área
-            // Primero intentar usar area_nombre del asiento, si no existe, buscar por posición
-            let nombreArea = asiento.area_nombre;
-            
-            // Si no tiene area_nombre directo, buscar por posición
-            if (!nombreArea && evento.areas && Array.isArray(evento.areas) && evento.areas.length > 0) {
-              // Buscar el área que contiene este asiento basándose en su posición
-              const asientoX = asiento.x || asiento.posicion_x;
-              const asientoY = asiento.y || asiento.posicion_y;
-              if (asientoX !== null && asientoY !== null) {
-                const areaEncontrada = evento.areas.find(area => {
-                  if (!area.posicion_x || !area.posicion_y || !area.ancho || !area.alto) return false;
-                  return asientoX >= area.posicion_x && 
-                         asientoX <= (area.posicion_x + area.ancho) &&
-                         asientoY >= area.posicion_y && 
-                         asientoY <= (area.posicion_y + area.alto);
-                });
-                if (areaEncontrada && areaEncontrada.nombre) {
-                  nombreArea = areaEncontrada.nombre;
-                }
-              }
-            }
-            
-            // Obtener información de la mesa si el asiento pertenece a una
-            let textoMesa = '';
-            if (asiento.mesa_id) {
-              const mesaDelAsiento = evento.mesas?.find(m => m.id === asiento.mesa_id);
-              if (mesaDelAsiento) {
-                textoMesa = ` de Mesa ${mesaDelAsiento.numero_mesa}`;
-              }
-            }
-            
-            const textoArea = nombreArea ? ` - ${nombreArea}` : '';
-            setSelecciones(prev => [...prev, {
-              type: 'asiento',
-              id: asiento.id,
-              tipo_precio_id: asiento.tipo_precio_id,
-              precio: tipoPrecio?.precio || 0,
-              nombre: `Asiento ${asiento.numero_asiento}${textoMesa}${textoArea}`,
-              area_nombre: nombreArea || null
-            }]);
+            // Seleccionar asiento individual (reutilizando la construcción estándar)
+            const nuevaSeleccion = construirSeleccionAsiento(asiento);
+            setSelecciones(prev => [...prev, nuevaSeleccion]);
           }
           return;
         }
       }
     }
+  };
+
+  const handleSvgClick = (e) => {
+    const pos = getSvgWorldPos(e);
+    if (!pos) return;
+    manejarClickPlano(pos.x, pos.y);
+  };
+
+  const handleSvgMouseMove = (e) => {
+    const pos = getSvgWorldPos(e);
+    if (!pos || !evento || evento.tipo_evento !== 'especial') {
+      setCursorPlano('pointer');
+      return;
+    }
+    const x = pos.x;
+    const y = pos.y;
+
+    let cursor = 'pointer';
+    if (evento.asientos && Array.isArray(evento.asientos)) {
+      const mesasMap = crearMapaMesas();
+      for (const asiento of evento.asientos) {
+        const { x: asientoX, y: asientoY } = obtenerPosicionAsiento(asiento, mesasMap);
+        if (asientoX === null || asientoY === null) continue;
+        if (!estaEnZonaSeleccionada(asientoX, asientoY)) continue;
+        if (!cumpleFiltroTipoPrecio(asiento.tipo_precio_id)) continue;
+        const tamañoAsiento = asiento.mesa_id ? 5 : 6;
+        const distancia = Math.sqrt(Math.pow(x - asientoX, 2) + Math.pow(y - asientoY, 2));
+        if (distancia <= tamañoAsiento && asientosOcupados.includes(asiento.id)) {
+          cursor = 'not-allowed';
+          break;
+        }
+      }
+    }
+    setCursorPlano(cursor);
+  };
+
+  const handleCanvasMouseMove = (e) => {
+    // Tooltip deshabilitado - no mostrar información al hacer hover
+  };
+
+
+  const handleCanvasClick = (e) => {
+    if (!evento || evento.tipo_evento !== 'especial') return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const pos = getMousePos(e);
+    if (!pos) return;
+    manejarClickPlano(pos.x, pos.y);
   };
 
   const handleSubmit = async (e) => {
@@ -902,7 +1301,7 @@ const Compra = () => {
       let totalFinal = totalConDescuento || 0;
       let tipoVenta = 'NORMAL';
       let precioOriginal = null;
-      if (canSellWithVerification && canSellWithVerification()) {
+      if ((canSellWithVerification && canSellWithVerification()) && puedeOpcionesVentaAdmin) {
         if (esRegaloAdmin) {
           totalFinal = 0;
           tipoVenta = 'REGALO_ADMIN';
@@ -913,9 +1312,11 @@ const Compra = () => {
         }
       }
 
-      if (esRegaloAdmin) totalParaBackend = 0;
-      else if (esOfertaAdmin && precioEspecial !== '' && !isNaN(parseFloat(precioEspecial))) {
-        totalParaBackend = parseFloat(precioEspecial) * cantidadReal;
+      if (puedeOpcionesVentaAdmin) {
+        if (esRegaloAdmin) totalParaBackend = 0;
+        else if (esOfertaAdmin && precioEspecial !== '' && !isNaN(parseFloat(precioEspecial))) {
+          totalParaBackend = parseFloat(precioEspecial) * cantidadReal;
+        }
       }
 
       // Crear compra en el backend
@@ -988,10 +1389,12 @@ const Compra = () => {
     const tipoPago = typeof payload === 'string' ? payload : payload.tipoPago;
     if (!tipoPago || !['QR', 'EFECTIVO'].includes(tipoPago)) return;
     const body = { tipo_pago: tipoPago };
-    if (esRegaloAdmin) body.tipo_venta = 'REGALO_ADMIN';
-    else if (esOfertaAdmin && precioEspecial && !isNaN(parseFloat(precioEspecial))) {
-      body.tipo_venta = 'OFERTA_ADMIN';
-      body.precio_original = total;
+    if (puedeOpcionesVentaAdmin) {
+      if (esRegaloAdmin) body.tipo_venta = 'REGALO_ADMIN';
+      else if (esOfertaAdmin && precioEspecial && !isNaN(parseFloat(precioEspecial))) {
+        body.tipo_venta = 'OFERTA_ADMIN';
+        body.precio_original = total;
+      }
     }
     setConfirmandoPago(true);
     try {
@@ -1061,6 +1464,30 @@ const Compra = () => {
       }
     } finally {
       setEnviandoBoleto(false);
+    }
+  };
+
+  const descargarEntradasPDFAdmin = async () => {
+    if (!compraConfirmada?.id) return;
+    try {
+      setDescargandoPDF(true);
+      const response = await api.get(`/compras/${compraConfirmada.id}/pdf`, {
+        responseType: 'blob'
+      });
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `entradas-${compraConfirmada.codigo_unico || compraConfirmada.id}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error al descargar PDF:', error);
+      showAlert(error.response?.data?.message || 'Error al descargar el PDF', { type: 'error' });
+    } finally {
+      setDescargandoPDF(false);
     }
   };
 
@@ -1232,6 +1659,14 @@ const Compra = () => {
               </button>
               <button
                 type="button"
+                onClick={descargarEntradasPDFAdmin}
+                disabled={descargandoPDF}
+                style={{ padding: '10px 18px', background: '#111827', color: 'white', border: 'none', borderRadius: '8px', cursor: descargandoPDF ? 'not-allowed' : 'pointer', fontWeight: 600 }}
+              >
+                {descargandoPDF ? 'Descargando...' : '⬇️ Descargar entradas (PDF)'}
+              </button>
+              <button
+                type="button"
                 onClick={() => { setCompraConfirmada(null); }}
                 style={{ padding: '10px 18px', background: '#6c757d', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
               >
@@ -1292,6 +1727,129 @@ const Compra = () => {
               <p className="layout-instructions">
                 Haz clic en un asiento para seleccionarlo.
               </p>
+              <div
+                style={{
+                  marginBottom: '10px',
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  alignItems: 'center',
+                  gap: '10px'
+                }}
+              >
+                <span style={{ fontWeight: 600 }}>Compra rápida:</span>
+                <button
+                  type="button"
+                  onClick={seleccionarMejorAsientoDisponible}
+                  style={{
+                    padding: '6px 10px',
+                    borderRadius: '4px',
+                    border: 'none',
+                    backgroundColor: '#2563eb',
+                    color: '#fff',
+                    fontSize: '12px',
+                    fontWeight: 'bold',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Mejor asiento disponible
+                </button>
+                
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ fontSize: '12px' }}>N juntos:</span>
+                  <input
+                    type="number"
+                    min="2"
+                    max="10"
+                    value={cantidadJuntos}
+                    onChange={(e) => setCantidadJuntos(e.target.value)}
+                    style={{
+                      width: '60px',
+                      padding: '4px 6px',
+                      borderRadius: '4px',
+                      border: '1px solid #ccc',
+                      fontSize: '12px'
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={seleccionarNAsientosJuntos}
+                    style={{
+                      padding: '6px 10px',
+                      borderRadius: '4px',
+                      border: 'none',
+                      backgroundColor: '#16a34a',
+                      color: '#fff',
+                      fontSize: '12px',
+                      fontWeight: 'bold',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Buscar
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelecciones([])}
+                  style={{
+                    padding: '6px 10px',
+                    borderRadius: '4px',
+                    border: '1px solid #e5e7eb',
+                    backgroundColor: '#f3f4f6',
+                    color: '#111827',
+                    fontSize: '12px',
+                    fontWeight: 'bold',
+                    cursor: 'pointer'
+                  }}
+                  title="Quitar todas las selecciones de asientos"
+                >
+                  Limpiar selección
+                </button>
+              </div>
+              {evento.areas && Array.isArray(evento.areas) && evento.areas.length > 0 && (
+                <div
+                  style={{
+                    marginBottom: '12px',
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    alignItems: 'center',
+                    gap: '10px'
+                  }}
+                >
+                  <span style={{ fontWeight: 600 }}>Zona:</span>
+                  <select
+                    value={zonaSeleccionadaId}
+                    onChange={(e) => setZonaSeleccionadaId(e.target.value)}
+                    style={{
+                      padding: '6px 10px',
+                      borderRadius: '4px',
+                      border: '1px solid #ccc',
+                      minWidth: '180px'
+                    }}
+                  >
+                    <option value="">Todas las zonas</option>
+                    {evento.areas.map((area) => (
+                      <option key={area.id} value={area.id}>
+                        {area.nombre}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              {evento.tipos_precio && evento.tipos_precio.length > 0 && (
+                <div style={{ marginBottom: '12px', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '10px' }}>
+                  <span style={{ fontWeight: 600 }}>Tipo de precio:</span>
+                  <select
+                    value={filtroTipoPrecioId}
+                    onChange={(e) => setFiltroTipoPrecioId(e.target.value)}
+                    style={{ padding: '6px 10px', borderRadius: '4px', border: '1px solid #ccc', minWidth: '160px' }}
+                  >
+                    <option value="">Todos</option>
+                    {evento.tipos_precio.map((tp) => (
+                      <option key={tp.id} value={tp.id}>{tp.nombre} (Bs. {parseFloat(tp.precio).toFixed(2)})</option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div className="leyenda-asientos" style={{ marginBottom: '15px', display: 'flex', gap: '20px', flexWrap: 'wrap', alignItems: 'center' }}>
                 <button
                   type="button"
@@ -1310,64 +1868,255 @@ const Compra = () => {
                   {mostrarNumerosAsientos ? '🙈 Ocultar números' : '👁️ Mostrar números'}
                 </button>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <div style={{ width: '20px', height: '20px', backgroundColor: '#2196F3', border: '1px solid #333', borderRadius: '3px' }}></div>
+                  <div style={{ width: '20px', height: '20px', backgroundColor: PLANO_COLORS.seatFillDefault, border: `1px solid ${PLANO_COLORS.seatStroke}`, borderRadius: '4px' }}></div>
                   <span>Disponible</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <div style={{ width: '20px', height: '20px', backgroundColor: '#e74c3c', border: '1px solid #c0392b', borderRadius: '3px', position: 'relative' }}>
+                  <div style={{ width: '20px', height: '20px', backgroundColor: PLANO_COLORS.occupiedFill, border: `1px solid ${PLANO_COLORS.occupiedStroke}`, borderRadius: '4px', position: 'relative' }}>
                     <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', color: '#fff', fontSize: '12px', fontWeight: 'bold' }}>✕</div>
                   </div>
                   <span>Ocupado</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <div style={{ width: '20px', height: '20px', backgroundColor: '#2196F3', border: '3px solid #FFD700', borderRadius: '3px' }}></div>
+                  <div style={{ width: '20px', height: '20px', backgroundColor: '#3b82f6', border: `3px solid ${PLANO_COLORS.selectedStroke}`, borderRadius: '4px' }}></div>
                   <span>Seleccionado</span>
                 </div>
               </div>
               <div style={{ position: 'relative', display: 'inline-block' }}>
-              <canvas
-                ref={canvasRef}
-                width={800}
-                height={600}
-                  onClick={handleCanvasClick}
-                  style={{ 
-                    border: '2px solid #ddd', 
+              {usarSvgPlano ? (
+                <svg
+                  ref={svgRef}
+                  viewBox={`${escalaRef.current.minX} ${escalaRef.current.minY} ${escalaRef.current.worldW} ${escalaRef.current.worldH}`}
+                  onClick={handleSvgClick}
+                  onMouseMove={handleSvgMouseMove}
+                  style={{
+                    border: '2px solid #ddd',
                     borderRadius: '4px',
-                    cursor: 'pointer',
+                    cursor: cursorPlano,
                     maxWidth: '100%',
                     height: 'auto',
                     display: 'block',
                     background: '#ffffff'
                   }}
-                  onMouseMove={(e) => {
-                    const canvas = canvasRef.current;
-                    if (!canvas) return;
-                    const pos = getMousePos(e);
-                    if (!pos) return;
-                    
-                    let cursor = 'pointer';
-                    const x = pos.x;
-                    const y = pos.y;
-                    
-                    // Verificar si está sobre un asiento ocupado
-                    if (evento.asientos && Array.isArray(evento.asientos)) {
-                      const mesasMap = crearMapaMesas();
-                      for (const asiento of evento.asientos) {
-                        const { x: asientoX, y: asientoY } = obtenerPosicionAsiento(asiento, mesasMap);
-                        if (asientoX === null || asientoY === null) continue;
-                        
-                        const tamañoAsiento = asiento.mesa_id ? 5 : 6;
-                        const distancia = Math.sqrt(Math.pow(x - asientoX, 2) + Math.pow(y - asientoY, 2));
-                        
-                        if (distancia <= tamañoAsiento && asientosOcupados.includes(asiento.id)) {
-                          cursor = 'not-allowed';
-                          break;
-                        }
+                  width={800}
+                  height={600}
+                >
+                  {/* Fondo */}
+                  <rect
+                    x={escalaRef.current.minX}
+                    y={escalaRef.current.minY}
+                    width={escalaRef.current.worldW}
+                    height={escalaRef.current.worldH}
+                    fill={PLANO_COLORS.sheetFill}
+                    stroke={PLANO_COLORS.sheetStroke}
+                    strokeWidth="2"
+                  />
+
+                  {/* Escenario */}
+                  {evento.escenario_x !== null && evento.escenario_y !== null && evento.escenario_width && evento.escenario_height && (
+                    <>
+                      <rect
+                        x={evento.escenario_x}
+                        y={evento.escenario_y}
+                        width={evento.escenario_width}
+                        height={evento.escenario_height}
+                        fill={PLANO_COLORS.stageFill}
+                        stroke={PLANO_COLORS.stageStroke}
+                        strokeWidth="3"
+                      />
+                      <text
+                        x={evento.escenario_x + evento.escenario_width / 2}
+                        y={evento.escenario_y + evento.escenario_height / 2}
+                        textAnchor="middle"
+                        dominantBaseline="middle"
+                        fill={PLANO_COLORS.stageText}
+                        fontSize="16"
+                        fontWeight="700"
+                      >
+                        ESCENARIO
+                      </text>
+                    </>
+                  )}
+
+                  {/* Áreas */}
+                  {Array.isArray(evento.areas) && evento.areas.map((area) => {
+                    const hayFiltroZona = !!zonaSeleccionadaId;
+                    const esZonaSel = hayFiltroZona && String(area.id) === String(zonaSeleccionadaId);
+                    const opacity = hayFiltroZona && !esZonaSel ? 0.15 : 1;
+                    const fill = area.color ? hexToRgba(area.color, hayFiltroZona && !esZonaSel ? 0.08 : 0.18) : hexToRgba('#cbd5e1', hayFiltroZona && !esZonaSel ? 0.08 : 0.18);
+                    return (
+                      <g key={`area-${area.id}`} opacity={opacity}>
+                        <rect
+                          x={area.posicion_x}
+                          y={area.posicion_y}
+                          width={area.ancho}
+                          height={area.alto}
+                          fill={fill}
+                          stroke={PLANO_COLORS.areaStroke}
+                          strokeWidth={esZonaSel ? 4 : 3}
+                        />
+                        <rect
+                          x={area.posicion_x + 2}
+                          y={area.posicion_y + 2}
+                          width={Math.max(0, area.ancho - 4)}
+                          height={Math.max(0, area.alto - 4)}
+                          fill="transparent"
+                          stroke={PLANO_COLORS.areaStrokeInner}
+                          strokeWidth="2"
+                        />
+                        <text
+                          x={area.posicion_x + area.ancho / 2}
+                          y={area.posicion_y - 8}
+                          textAnchor="middle"
+                          dominantBaseline="baseline"
+                          fill="#333"
+                          fontSize="14"
+                          fontWeight="700"
+                        >
+                          {String(area.nombre || '').toUpperCase()}
+                        </text>
+                      </g>
+                    );
+                  })}
+
+                  {/* Mesas */}
+                  {Array.isArray(evento.mesas) && evento.mesas.map((mesa) => {
+                    const mesaX = mesa.posicion_x ?? 100;
+                    const mesaY = mesa.posicion_y ?? 100;
+                    const mesaW = mesa.ancho || mesa.width || 30;
+                    const mesaH = mesa.alto || mesa.height || 30;
+                    const cx = mesaX + mesaW / 2;
+                    const cy = mesaY + mesaH / 2;
+                    if (!estaEnZonaSeleccionada(cx, cy)) return null;
+                    if (!cumpleFiltroTipoPrecio(mesa.tipo_precio_id)) return null;
+                    const ocupada = mesasOcupadas.includes(mesa.id);
+                    const fill = ocupada ? PLANO_COLORS.occupiedFill : PLANO_COLORS.mesaFill;
+                    const stroke = ocupada ? PLANO_COLORS.occupiedStroke : PLANO_COLORS.mesaStroke;
+                    return (
+                      <g key={`mesa-${mesa.id}`}>
+                        <rect
+                          x={mesaX}
+                          y={mesaY}
+                          width={mesaW}
+                          height={mesaH}
+                          fill={fill}
+                          stroke={stroke}
+                          strokeWidth={ocupada ? 3 : 2}
+                          rx="3"
+                          ry="3"
+                          pointerEvents="all"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            // Click directo a la mesa (selección exacta)
+                            manejarClickPlano(cx, cy, { ignoreMesas: false });
+                          }}
+                        />
+                        {mostrarNumerosAsientos && (
+                          <text x={cx} y={cy} textAnchor="middle" dominantBaseline="middle" fill={PLANO_COLORS.mesaText} fontSize="11" fontWeight="700" pointerEvents="none">
+                            {`M${mesa.numero_mesa}`}
+                          </text>
+                        )}
+                      </g>
+                    );
+                  })}
+
+                  {/* Asientos (incluye sillas de mesas) */}
+                  {Array.isArray(evento.asientos) && (() => {
+                    const mesasMap = crearMapaMesas();
+                    return evento.asientos.map((asiento) => {
+                      const { x, y } = obtenerPosicionAsiento(asiento, mesasMap);
+                      if (x == null || y == null) return null;
+                      if (!estaEnZonaSeleccionada(x, y)) return null;
+                      if (!cumpleFiltroTipoPrecio(asiento.tipo_precio_id)) return null;
+
+                      const estaOcupado = asientosOcupados.includes(asiento.id) || (asiento.mesa_id && mesasOcupadas.includes(asiento.mesa_id));
+                      const estaSel = selecciones.some(sel => sel.type === 'asiento' && sel.id === asiento.id);
+                      const tipoPrecio = evento.tipos_precio?.find(tp => tp.id === asiento.tipo_precio_id);
+
+                      // Personas (P*)
+                      if (!asiento.mesa_id && String(asiento.numero_asiento || '').startsWith('P')) {
+                        return (
+                          <circle
+                            key={`persona-${asiento.id}`}
+                            cx={x}
+                            cy={y}
+                            r={5}
+                            fill={estaOcupado ? PLANO_COLORS.occupiedFill : (tipoPrecio?.color || PLANO_COLORS.personaFillDefault)}
+                            stroke={estaSel ? PLANO_COLORS.selectedStroke : (estaOcupado ? PLANO_COLORS.occupiedStroke : PLANO_COLORS.seatStroke)}
+                            strokeWidth={estaSel ? 3 : 1}
+                            pointerEvents="all"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              manejarClickPlano(x, y, { ignoreMesas: true });
+                            }}
+                          />
+                        );
                       }
-                    }
-                    
-                    canvas.style.cursor = cursor;
-                  }}
+
+                      // Sillas de mesa
+                      if (asiento.mesa_id) {
+                        return (
+                          <rect
+                            key={`silla-${asiento.id}`}
+                            x={x - 4}
+                            y={y - 4}
+                            width={8}
+                            height={8}
+                            fill={estaOcupado ? PLANO_COLORS.occupiedFill : (tipoPrecio?.color || PLANO_COLORS.mesaChairFillDefault)}
+                            stroke={estaSel ? PLANO_COLORS.selectedStroke : (estaOcupado ? PLANO_COLORS.occupiedStroke : PLANO_COLORS.seatStroke)}
+                            strokeWidth={estaSel ? 2 : 1}
+                            rx="1"
+                            ry="1"
+                            pointerEvents="all"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              // Click directo a la silla (no a la mesa completa)
+                              manejarClickPlano(x, y, { ignoreMesas: true });
+                            }}
+                          />
+                        );
+                      }
+
+                      // Asiento individual
+                      return (
+                        <rect
+                          key={`asiento-${asiento.id}`}
+                          x={(asiento.posicion_x ?? x) - 5}
+                          y={(asiento.posicion_y ?? y) - 5}
+                          width={10}
+                          height={10}
+                          fill={estaOcupado ? PLANO_COLORS.occupiedFill : (tipoPrecio?.color || PLANO_COLORS.seatFillDefault)}
+                          stroke={estaSel ? PLANO_COLORS.selectedStroke : (estaOcupado ? PLANO_COLORS.occupiedStroke : PLANO_COLORS.seatStroke)}
+                          strokeWidth={estaSel ? 3 : 1}
+                          rx="2"
+                          ry="2"
+                          pointerEvents="all"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            manejarClickPlano(x, y, { ignoreMesas: true });
+                          }}
+                        />
+                      );
+                    });
+                  })()}
+                </svg>
+              ) : null}
+
+              {/* Canvas se mantiene como fallback/compatibilidad (oculto por defecto) */}
+              <canvas
+                ref={canvasRef}
+                width={800}
+                height={600}
+                onClick={handleCanvasClick}
+                style={{
+                  border: '2px solid #ddd',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  maxWidth: '100%',
+                  height: 'auto',
+                  display: usarSvgPlano ? 'none' : 'block',
+                  background: '#ffffff'
+                }}
               />
               </div>
               {selecciones.length > 0 && (
@@ -1595,7 +2344,7 @@ const Compra = () => {
                 </div>
               )}
 
-              {(canSellWithVerification && canSellWithVerification()) && (
+              {((canSellWithVerification && canSellWithVerification()) && puedeOpcionesVentaAdmin) && (
                 <div className="form-group compra-admin-opciones">
                   <label style={{ display: 'block', marginBottom: '10px', fontWeight: '600' }}>Opciones de venta (admin / vendedor)</label>
                   <div className="admin-opcion">
@@ -1738,7 +2487,7 @@ const Compra = () => {
                   <span className="resumen-total-monto">Bs. {totalConDescuento.toFixed(2)}</span>
                 </div>
               )}
-              {(canSellWithVerification && canSellWithVerification()) && (esRegaloAdmin || (esOfertaAdmin && precioEspecial !== '')) && (
+              {((canSellWithVerification && canSellWithVerification()) && puedeOpcionesVentaAdmin) && (esRegaloAdmin || (esOfertaAdmin && precioEspecial !== '')) && (
                 <div className="resumen-item">
                   <span>Precio original</span>
                   <span>Bs. {total.toFixed(2)}</span>

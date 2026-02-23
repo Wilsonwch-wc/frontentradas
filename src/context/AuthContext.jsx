@@ -274,9 +274,14 @@ export const AuthProvider = ({ children }) => {
 
   const isAdmin = () => rol === 'admin';
 
-  const isVendedor = () => rol === 'vendedor';
+  const isVendedor = () => rol === 'vendedor' || rol === 'vendedor_externo';
 
-  const canSellWithVerification = () => rol === 'admin' || rol === 'vendedor';
+  const isVendedorExterno = () => rol === 'vendedor_externo';
+
+  const canSellWithVerification = () => rol === 'admin' || rol === 'vendedor' || rol === 'vendedor_externo';
+
+  // Opciones especiales (regalo/oferta) solo para admin y vendedor interno (NO vendedor_externo)
+  const canUseAdminSaleOptions = () => rol === 'admin' || rol === 'vendedor';
 
   const hasRole = (role) => (role && (user?.rol || '').toLowerCase() === (role || '').toLowerCase());
 
@@ -287,7 +292,9 @@ export const AuthProvider = ({ children }) => {
     isAuthenticated,
     isAdmin,
     isVendedor,
+    isVendedorExterno,
     canSellWithVerification,
+    canUseAdminSaleOptions,
     hasRole,
     loading
   };

@@ -1,10 +1,14 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
 import { useAlert } from '../../context/AlertContext';
+import { useAuth } from '../../context/AuthContext';
 import './EntradasEscaneadas.css';
 
 const EntradasEscaneadas = () => {
   const { showAlert, showConfirm } = useAlert();
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [eventos, setEventos] = useState([]);
   const [eventoSeleccionado, setEventoSeleccionado] = useState(null);
   const [entradas, setEntradas] = useState({ asientos: [], mesas: [], estadisticas: null });
@@ -15,6 +19,13 @@ const EntradasEscaneadas = () => {
   useEffect(() => {
     cargarEventos();
   }, []);
+
+  useEffect(() => {
+    const rol = (user?.rol || '').toLowerCase();
+    if (rol && rol !== 'admin' && rol !== 'seguridad') {
+      navigate('/admin', { replace: true });
+    }
+  }, [user?.rol, navigate]);
 
   useEffect(() => {
     if (eventoSeleccionado) {

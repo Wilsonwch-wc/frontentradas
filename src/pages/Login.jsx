@@ -25,18 +25,33 @@ const Login = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [enviandoCodigo, setEnviandoCodigo] = useState(false);
-  const { login, isAuthenticated } = useAuth();
+  const { login, isAuthenticated, user: currentUser } = useAuth();
   const { showAlert } = useAlert();
   const navigate = useNavigate();
   const location = useLocation();
 
+  const getStaffPanelPath = (rol) => {
+    const r = (rol || '').toLowerCase();
+    if (r === 'vendedor_externo') return '/admin/mi-panel';
+    if (r === 'vendedor') return '/admin/compras';
+    if (r === 'seguridad') return '/admin/busqueda-entrada';
+    if (r === 'admin') return '/admin/dashboard';
+    return null;
+  };
+
   // Verificar si ya hay una sesión activa
   useEffect(() => {
     if (isAuthenticated()) {
-      const from = location.state?.from || '/';
-      navigate(from, { replace: true });
+      const rol = (currentUser?.rol || '').toLowerCase();
+      const staffPath = getStaffPanelPath(rol);
+      if (staffPath) {
+        navigate(staffPath, { replace: true });
+      } else {
+        const from = location.state?.from || '/';
+        navigate(from, { replace: true });
+      }
     }
-  }, [isAuthenticated, navigate, location]);
+  }, [isAuthenticated, currentUser?.rol, navigate, location]);
 
   const handleChange = (e) => {
     setFormData({
@@ -66,17 +81,25 @@ const Login = () => {
         });
 
         if (response.data.success) {
-          const { token, user } = response.data.data;
-          login(user, token);
-          const rol = (user?.rol || '').toLowerCase();
-          const esStaff = rol === 'admin' || rol === 'seguridad' || rol === 'vendedor';
+          const { token, user: loggedUser } = response.data.data;
+          login(loggedUser, token);
+          const rol = (loggedUser?.rol || '').toLowerCase();
+          const esStaff = !!getStaffPanelPath(rol);
           await showAlert('¡Sesión iniciada exitosamente!', { 
             type: 'success',
-            title: rol === 'admin' ? 'Bienvenido Administrador' : rol === 'vendedor' ? 'Bienvenido Vendedor' : rol === 'seguridad' ? 'Bienvenido Seguridad' : 'Bienvenido'
+            title: rol === 'admin'
+              ? 'Bienvenido Administrador'
+              : rol === 'vendedor'
+              ? 'Bienvenido Vendedor'
+              : rol === 'vendedor_externo'
+              ? 'Bienvenido Vendedor Externo'
+              : rol === 'seguridad'
+              ? 'Bienvenido Seguridad'
+              : 'Bienvenido'
           });
 
           if (esStaff) {
-            const panelPath = rol === 'vendedor' ? '/admin/compras' : rol === 'seguridad' ? '/admin/busqueda-entrada' : '/admin/dashboard';
+            const panelPath = getStaffPanelPath(rol);
             navigate(panelPath, { replace: true });
           } else {
             const from = location.state?.from || '/';
@@ -188,20 +211,20 @@ const Login = () => {
 
       if (apiResponse.data.success) {
         console.log('✅ Login exitoso con Google');
-        const { token, user } = apiResponse.data.data;
-        login(user, token);
+        const { token, user: googleUser } = apiResponse.data.data;
+        login(googleUser, token);
         // Mostrar notificación de éxito
         await showAlert('¡Sesión iniciada exitosamente con Google!', { 
           type: 'success',
-          title: user?.rol === 'admin' || user?.rol === 'seguridad' ? 'Bienvenido Administrador' : 'Bienvenido'
+          title: googleUser?.rol === 'admin' || googleUser?.rol === 'seguridad' ? 'Bienvenido Administrador' : 'Bienvenido'
         });
         
         // Si es staff, llevar al panel según rol
-        const rolGoogle = (user?.rol || '').toLowerCase();
-        if (rolGoogle === 'admin') navigate('/admin/dashboard', { replace: true });
-        else if (rolGoogle === 'vendedor') navigate('/admin/compras', { replace: true });
-        else if (rolGoogle === 'seguridad') navigate('/admin/busqueda-entrada', { replace: true });
-        else {
+        const rolGoogle = (googleUser?.rol || '').toLowerCase();
+        const staffPath = getStaffPanelPath(rolGoogle);
+        if (staffPath) {
+          navigate(staffPath, { replace: true });
+        } else {
           const from = location.state?.from || '/';
           navigate(from, { replace: true });
         }
@@ -253,14 +276,20 @@ const Login = () => {
       });
 
       if (response.data.success) {
-        const { token, user } = response.data.data;
-        login(user, token);
+        const { token, user: verifiedUser } = response.data.data;
+        login(verifiedUser, token);
         await showAlert('¡Correo verificado exitosamente!', {
           type: 'success',
           title: 'Verificación exitosa'
         });
-        const from = location.state?.from || '/';
-        navigate(from, { replace: true });
+        const rol = (verifiedUser?.rol || '').toLowerCase();
+        const staffPath = getStaffPanelPath(rol);
+        if (staffPath) {
+          navigate(staffPath, { replace: true });
+        } else {
+          const from = location.state?.from || '/';
+          navigate(from, { replace: true });
+        }
       } else {
         setError(response.data.message || 'Código inválido');
         setLoading(false);

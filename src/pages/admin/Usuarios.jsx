@@ -7,9 +7,14 @@ const Usuarios = () => {
   const { showAlert, showConfirm } = useAlert();
   const [usuarios, setUsuarios] = useState([]);
   const [roles, setRoles] = useState([]);
+  const [rolesGestion, setRolesGestion] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
+  const [showRolesModal, setShowRolesModal] = useState(false);
+  const [editingRole, setEditingRole] = useState(null);
+  const [roleForm, setRoleForm] = useState({ nombre: '', descripcion: '', activo: true });
+  const [roleError, setRoleError] = useState('');
   const [formData, setFormData] = useState({
     nombre_usuario: '',
     nombre_completo: '',
@@ -49,6 +54,107 @@ const Usuarios = () => {
       }
     } catch (error) {
       console.error('Error al cargar roles:', error);
+    }
+  };
+
+  const cargarRolesGestion = async () => {
+    try {
+      const response = await api.get('/usuarios/roles?todos=1');
+      if (response.data.success) {
+        setRolesGestion(response.data.data || []);
+      }
+    } catch (error) {
+      console.error('Error al cargar roles (gestión):', error);
+      showAlert('Error al cargar roles', { type: 'error' });
+    }
+  };
+
+  const abrirModalRoles = async () => {
+    setRoleError('');
+    setEditingRole(null);
+    setRoleForm({ nombre: '', descripcion: '', activo: true });
+    setShowRolesModal(true);
+    await cargarRolesGestion();
+  };
+
+  const cerrarModalRoles = () => {
+    setShowRolesModal(false);
+    setEditingRole(null);
+    setRoleForm({ nombre: '', descripcion: '', activo: true });
+    setRoleError('');
+  };
+
+  const handleRoleInput = (e) => {
+    const { name, value, type, checked } = e.target;
+    setRoleForm((prev) => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }));
+    setRoleError('');
+  };
+
+  const guardarRol = async (e) => {
+    e.preventDefault();
+    setRoleError('');
+    try {
+      if (!roleForm.nombre || !String(roleForm.nombre).trim()) {
+        setRoleError('El nombre del rol es requerido');
+        return;
+      }
+      if (editingRole) {
+        const res = await api.put(`/usuarios/roles/${editingRole.id}`, roleForm);
+        if (res.data.success) {
+          await Promise.all([cargarRolesGestion(), cargarRoles(), cargarUsuarios()]);
+          setEditingRole(null);
+          setRoleForm({ nombre: '', descripcion: '', activo: true });
+        }
+      } else {
+        const res = await api.post('/usuarios/roles', roleForm);
+        if (res.data.success) {
+          await Promise.all([cargarRolesGestion(), cargarRoles()]);
+          setRoleForm({ nombre: '', descripcion: '', activo: true });
+        }
+      }
+    } catch (error) {
+      const msg = error.response?.data?.message || 'Error al guardar el rol';
+      setRoleError(msg);
+    }
+  };
+
+  const editarRol = (rol) => {
+    setEditingRole(rol);
+    setRoleForm({
+      nombre: rol.nombre || '',
+      descripcion: rol.descripcion || '',
+      activo: !!rol.activo
+    });
+    setRoleError('');
+  };
+
+  const toggleRolActivo = async (rol) => {
+    try {
+      const res = await api.put(`/usuarios/roles/${rol.id}`, { activo: !rol.activo });
+      if (res.data.success) {
+        await Promise.all([cargarRolesGestion(), cargarRoles(), cargarUsuarios()]);
+      }
+    } catch (error) {
+      showAlert(error.response?.data?.message || 'Error al cambiar el estado del rol', { type: 'error' });
+    }
+  };
+
+  const eliminarRol = async (rol) => {
+    const confirmado = await showConfirm(`¿Eliminar el rol "${rol.nombre}"?`, {
+      type: 'warning',
+      title: 'Eliminar Rol'
+    });
+    if (!confirmado) return;
+    try {
+      const res = await api.delete(`/usuarios/roles/${rol.id}`);
+      if (res.data.success) {
+        await Promise.all([cargarRolesGestion(), cargarRoles(), cargarUsuarios()]);
+      }
+    } catch (error) {
+      showAlert(error.response?.data?.message || 'Error al eliminar el rol', { type: 'error' });
     }
   };
 
@@ -228,6 +334,9 @@ const Usuarios = () => {
                 <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
               </svg>
               Borrar Datos
+            </button>
+            <button className="btn-secondary" onClick={abrirModalRoles} title="Crear / editar roles">
+              ⚙️ Roles
             </button>
             <button className="btn-primary" onClick={abrirModalNuevo}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -430,6 +539,109 @@ const Usuarios = () => {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* Modal para gestionar roles */}
+        {showRolesModal && (
+          <div className="modal-overlay" onClick={cerrarModalRoles}>
+            <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 820 }}>
+              <div className="modal-header">
+                <h2>Gestionar Roles</h2>
+                <button className="modal-close" onClick={cerrarModalRoles}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  </svg>
+                </button>
+              </div>
+
+              <form onSubmit={guardarRol} className="modal-form">
+                {roleError && <div className="error-message">{roleError}</div>}
+
+                <div className="form-row">
+                  <div className="form-group" style={{ flex: 1 }}>
+                    <label>Nombre del rol *</label>
+                    <input name="nombre" value={roleForm.nombre} onChange={handleRoleInput} />
+                  </div>
+                  <div className="form-group" style={{ flex: 2 }}>
+                    <label>Descripción</label>
+                    <input name="descripcion" value={roleForm.descripcion} onChange={handleRoleInput} />
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label className="checkbox-label">
+                    <input type="checkbox" name="activo" checked={roleForm.activo} onChange={handleRoleInput} />
+                    Rol activo
+                  </label>
+                </div>
+
+                <div className="modal-actions" style={{ justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    {editingRole && (
+                      <button
+                        type="button"
+                        className="btn-secondary"
+                        onClick={() => { setEditingRole(null); setRoleForm({ nombre: '', descripcion: '', activo: true }); setRoleError(''); }}
+                      >
+                        Cancelar edición
+                      </button>
+                    )}
+                  </div>
+                  <button type="submit" className="btn-primary">
+                    {editingRole ? 'Actualizar rol' : 'Crear rol'}
+                  </button>
+                </div>
+              </form>
+
+              <div className="usuarios-table-container" style={{ marginTop: 14 }}>
+                <table className="usuarios-table">
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Rol</th>
+                      <th>Descripción</th>
+                      <th>Estado</th>
+                      <th>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rolesGestion.length === 0 ? (
+                      <tr>
+                        <td colSpan="5" className="no-data">No hay roles</td>
+                      </tr>
+                    ) : (
+                      rolesGestion.map((rol) => (
+                        <tr key={rol.id}>
+                          <td>{rol.id}</td>
+                          <td><strong>{rol.nombre}</strong></td>
+                          <td>{rol.descripcion || '-'}</td>
+                          <td>
+                            <span className={`badge ${rol.activo ? 'badge-active' : 'badge-inactive'}`}>
+                              {rol.activo ? 'Activo' : 'Inactivo'}
+                            </span>
+                          </td>
+                          <td>
+                            <div className="acciones">
+                              <button className="btn-edit" onClick={() => editarRol(rol)} title="Editar">
+                                ✎
+                              </button>
+                              <button className="btn-edit" onClick={() => toggleRolActivo(rol)} title={rol.activo ? 'Desactivar' : 'Activar'}>
+                                {rol.activo ? '⏸' : '▶'}
+                              </button>
+                              <button className="btn-delete" onClick={() => eliminarRol(rol)} title="Eliminar">
+                                🗑
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}

@@ -19,7 +19,7 @@ const AdminLayout = () => {
   }
 
   const rol = (user?.rol || '').toLowerCase();
-  const puedeEntrarPanel = user && (rol === 'admin' || rol === 'seguridad' || rol === 'vendedor');
+  const puedeEntrarPanel = user && (rol === 'admin' || rol === 'seguridad' || rol === 'vendedor' || rol === 'vendedor_externo');
   if (!user || !isAuthenticated() || !puedeEntrarPanel) {
     return <Navigate to="/login" replace />;
   }

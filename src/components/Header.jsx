@@ -6,7 +6,16 @@ const Header = () => {
   const { user, logout, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const rol = (user?.rol || '').toLowerCase();
-  const esStaffPanel = rol === 'admin' || rol === 'seguridad' || rol === 'vendedor';
+  const esStaffPanel = rol === 'admin' || rol === 'seguridad' || rol === 'vendedor' || rol === 'vendedor_externo';
+
+  const panelPath =
+    rol === 'vendedor_externo'
+      ? '/admin/mi-panel'
+      : rol === 'vendedor'
+      ? '/admin/compras'
+      : rol === 'seguridad'
+      ? '/admin/busqueda-entrada'
+      : '/admin/dashboard';
 
   const handleLogout = () => {
     logout();
@@ -30,14 +39,14 @@ const Header = () => {
             <Link to="/mis-compras" className="nav-link">Mis Compras</Link>
           )}
           {isAuthenticated() && esStaffPanel && (
-            <Link to={rol === 'vendedor' ? '/admin/compras' : rol === 'seguridad' ? '/admin/busqueda-entrada' : '/admin/dashboard'} className="nav-link" style={{ 
+            <Link to={panelPath} className="nav-link" style={{ 
               background: '#D4AF37', 
               color: '#000', 
               padding: '0.5rem 1rem', 
               borderRadius: '4px',
               fontWeight: 'bold'
             }}>
-              Ir al Panel
+              {rol === 'vendedor_externo' ? 'Ir a Mi Panel' : 'Ir al Panel'}
             </Link>
           )}
           {isAuthenticated() ? (

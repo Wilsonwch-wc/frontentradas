@@ -100,6 +100,16 @@
   color: #3498db;
 }
 
+.badge-active {
+  background: rgba(46, 204, 113, 0.2);
+  color: #2ecc71;
+}
+
+.badge-inactive {
+  background: rgba(231, 76, 60, 0.2);
+  color: #e74c3c;
+}
+
 .toggle-activo {
   padding: 0.5rem 1rem;
   border: none;

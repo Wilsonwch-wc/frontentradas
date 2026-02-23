@@ -6,7 +6,7 @@ const AdminSidebar = ({ isOpen, onClose }) => {
   const { logout, user } = useAuth();
   const navigate = useNavigate();
   const rol = (user?.rol || '').toLowerCase();
-  const esVendedor = rol === 'vendedor';
+  const esVendedor = rol === 'vendedor' || rol === 'vendedor_externo';
   const esSeguridad = rol === 'seguridad';
 
   const handleLogout = async () => {
@@ -58,6 +58,16 @@ const AdminSidebar = ({ isOpen, onClose }) => {
           <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
           <line x1="3" y1="9" x2="21" y2="9"></line>
           <line x1="9" y1="21" x2="9" y2="9"></line>
+        </svg>
+      )
+    },
+    {
+      path: '/admin/mi-panel',
+      label: 'Mi Panel',
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M3 3v18h18"></path>
+          <path d="M7 14l3-3 4 4 6-7"></path>
         </svg>
       )
     },
@@ -151,13 +161,16 @@ const AdminSidebar = ({ isOpen, onClose }) => {
   if (esVendedor) {
     menuItems = menuItemsFull
       .filter((item) =>
-        ['/admin/compras', '/admin/busqueda-entrada', '/admin/entradas-escaneadas'].includes(item.path)
+        ['/admin/mi-panel', '/admin/compras'].includes(item.path)
       )
       .map((item) => (item.path === '/admin/compras' ? { ...item, label: 'Mis ventas' } : item));
   } else if (esSeguridad) {
     menuItems = menuItemsFull.filter((item) =>
       ['/admin/busqueda-entrada', '/admin/entradas-escaneadas', '/admin/panel-en-vivo'].includes(item.path)
     );
+  } else {
+    // Admin: ocultar "Mi Panel" (solo tiene sentido para vendedores)
+    menuItems = menuItemsFull.filter((item) => item.path !== '/admin/mi-panel');
   }
 
   return (

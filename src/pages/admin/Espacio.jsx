@@ -101,7 +101,7 @@ const Espacio = () => {
   // Configuración de mesas
   const [cantidadMesas, setCantidadMesas] = useState(1);
   const [sillasPorMesa, setSillasPorMesa] = useState(4);
-  const [formaMesa, setFormaMesa] = useState('cuadrado'); // cuadrado, rectangulo
+  const [formaMesa, setFormaMesa] = useState('rectangulo'); // cuadrado, rectangulo
   const [mostrarModalEditarArea, setMostrarModalEditarArea] = useState(false);
   const [areaEnEdicion, setAreaEnEdicion] = useState(null); // área que se está editando (tipo, capacidad)
   const [hojaAncho, setHojaAncho] = useState(1000);
@@ -886,7 +886,19 @@ const Espacio = () => {
     setAsientos(prev => [...prev, ...nuevasPersonas]);
   };
 
-  // Generar sillas alrededor de una mesa
+  // Distribución por lados: ej. 12 → [3,3,3,3], 10 → [3,2,3,2], 6 → [2,1,2,1], 4 → [1,1,1,1]
+  const distribuirSillasPorLados = (total) => {
+    const base = Math.floor(total / 4);
+    const rem = total % 4;
+    return [
+      base + (rem >= 1 ? 1 : 0), // superior
+      base + (rem >= 2 ? 1 : 0), // derecha
+      base + (rem >= 3 ? 1 : 0), // inferior
+      base                              // izquierda
+    ];
+  };
+
+  // Generar sillas alrededor de una mesa: bien separadas por lados (ej. 3-3-3-3 para 12 sillas)
   const generarSillasAlrededorMesa = (mesa) => {
     if (!mesa || !mesa.capacidad_sillas || !mesa.tipo_precio_id) return [];
 
@@ -894,101 +906,57 @@ const Espacio = () => {
     const cantidadSillas = mesa.capacidad_sillas;
     const mesaX = mesa.x;
     const mesaY = mesa.y;
-    const mesaWidth = mesa.width;
-    const mesaHeight = mesa.height;
+    const mesaWidth = mesa.width || 30;
+    const mesaHeight = mesa.height || 30;
 
-    // Tamaño de la silla
-    const tamañoSilla = 8; // Más pequeñas para caber más
-    const distanciaMesa = 2; // Cerca de la mesa
-    const espacioEntreSillas = 2; // Más juntas
-
-    // Distribuir sillas equitativamente alrededor de la mesa
-    // Dividir en 4 lados: superior, derecho, inferior, izquierdo
-    const sillasPorLado = Math.ceil(cantidadSillas / 4);
+    const tamañoSilla = 8;
+    const distanciaMesa = 3; // Sillas cerca de la mesa pero sin pegarlas (se ve la mesa)
+    const [sillasSuperior, sillasDerecha, sillasInferior, sillasIzquierda] = distribuirSillasPorLados(cantidadSillas);
     let sillaIndex = 0;
 
-    // Lado superior
-    const sillasSuperior = Math.min(sillasPorLado, cantidadSillas - sillaIndex);
+    const colocarLado = (n, getX, getY) => {
+      for (let i = 0; i < n && sillaIndex < cantidadSillas; i++) {
+        sillas.push({
+          id: `temp_silla_${mesa.id}_${sillaIndex}`,
+          x: Math.round(getX(i)),
+          y: Math.round(getY(i)),
+          numero_asiento: `${sillaIndex + 1}`,
+          tipo_precio_id: mesa.tipo_precio_id,
+          mesa_id: mesa.id
+        });
+        sillaIndex++;
+      }
+    };
+
+    const centroX = mesaX + mesaWidth / 2;
+    const centroY = mesaY + mesaHeight / 2;
+
+    // Superior: centradas sobre el ancho de la mesa
     if (sillasSuperior > 0) {
-      // Calcular el espacio disponible para distribuir las sillas
-      const espacioDisponible = mesaWidth - (sillasSuperior * tamañoSilla);
-      const espacioEntre = sillasSuperior > 1 ? espacioDisponible / (sillasSuperior + 1) : espacioDisponible / 2;
-      for (let i = 0; i < sillasSuperior && sillaIndex < cantidadSillas; i++) {
-        const x = mesaX + espacioEntre + (i * (tamañoSilla + espacioEntre)) + tamañoSilla / 2;
-        const y = mesaY - distanciaMesa - tamañoSilla / 2;
-        sillas.push({
-          id: `temp_silla_${mesa.id}_${sillaIndex}`,
-          x: Math.round(x),
-          y: Math.round(y),
-          numero_asiento: `${sillaIndex + 1}`, // Solo número simple para sillas de mesas
-          tipo_precio_id: mesa.tipo_precio_id,
-          mesa_id: mesa.id
-        });
-        sillaIndex++;
-      }
+      const anchoTotal = sillasSuperior * tamañoSilla + Math.max(0, sillasSuperior - 1) * 4;
+      let startX = centroX - anchoTotal / 2 + tamañoSilla / 2;
+      colocarLado(sillasSuperior, (i) => startX + i * (tamañoSilla + 4), () => mesaY - distanciaMesa - tamañoSilla / 2);
     }
 
-    // Lado derecho
-    const sillasDerecha = Math.min(sillasPorLado, cantidadSillas - sillaIndex);
+    // Derecha
     if (sillasDerecha > 0) {
-      // Calcular el espacio disponible para distribuir las sillas verticalmente
-      const espacioDisponible = mesaHeight - (sillasDerecha * tamañoSilla);
-      const espacioEntre = sillasDerecha > 1 ? espacioDisponible / (sillasDerecha + 1) : espacioDisponible / 2;
-      for (let i = 0; i < sillasDerecha && sillaIndex < cantidadSillas; i++) {
-        const x = mesaX + mesaWidth + distanciaMesa + tamañoSilla / 2;
-        const y = mesaY + espacioEntre + (i * (tamañoSilla + espacioEntre)) + tamañoSilla / 2;
-        sillas.push({
-          id: `temp_silla_${mesa.id}_${sillaIndex}`,
-          x: Math.round(x),
-          y: Math.round(y),
-          numero_asiento: `${sillaIndex + 1}`, // Solo número simple para sillas de mesas
-          tipo_precio_id: mesa.tipo_precio_id,
-          mesa_id: mesa.id
-        });
-        sillaIndex++;
-      }
+      const altoTotal = sillasDerecha * tamañoSilla + Math.max(0, sillasDerecha - 1) * 4;
+      let startY = centroY - altoTotal / 2 + tamañoSilla / 2;
+      colocarLado(sillasDerecha, () => mesaX + mesaWidth + distanciaMesa + tamañoSilla / 2, (i) => startY + i * (tamañoSilla + 4));
     }
 
-    // Lado inferior
-    const sillasInferior = Math.min(sillasPorLado, cantidadSillas - sillaIndex);
+    // Inferior
     if (sillasInferior > 0) {
-      // Calcular el espacio disponible para distribuir las sillas
-      const espacioDisponible = mesaWidth - (sillasInferior * tamañoSilla);
-      const espacioEntre = sillasInferior > 1 ? espacioDisponible / (sillasInferior + 1) : espacioDisponible / 2;
-      for (let i = 0; i < sillasInferior && sillaIndex < cantidadSillas; i++) {
-        const x = mesaX + espacioEntre + (i * (tamañoSilla + espacioEntre)) + tamañoSilla / 2;
-        const y = mesaY + mesaHeight + distanciaMesa + tamañoSilla / 2;
-        sillas.push({
-          id: `temp_silla_${mesa.id}_${sillaIndex}`,
-          x: Math.round(x),
-          y: Math.round(y),
-          numero_asiento: `${sillaIndex + 1}`, // Solo número simple para sillas de mesas
-          tipo_precio_id: mesa.tipo_precio_id,
-          mesa_id: mesa.id
-        });
-        sillaIndex++;
-      }
+      const anchoTotal = sillasInferior * tamañoSilla + Math.max(0, sillasInferior - 1) * 4;
+      let startX = centroX - anchoTotal / 2 + tamañoSilla / 2;
+      colocarLado(sillasInferior, (i) => startX + i * (tamañoSilla + 4), () => mesaY + mesaHeight + distanciaMesa + tamañoSilla / 2);
     }
 
-    // Lado izquierdo (resto de sillas)
-    const sillasIzquierda = cantidadSillas - sillaIndex;
+    // Izquierda
     if (sillasIzquierda > 0) {
-      // Calcular el espacio disponible para distribuir las sillas verticalmente
-      const espacioDisponible = mesaHeight - (sillasIzquierda * tamañoSilla);
-      const espacioEntre = sillasIzquierda > 1 ? espacioDisponible / (sillasIzquierda + 1) : espacioDisponible / 2;
-      for (let i = 0; i < sillasIzquierda && sillaIndex < cantidadSillas; i++) {
-        const x = mesaX - distanciaMesa - tamañoSilla / 2;
-        const y = mesaY + espacioEntre + (i * (tamañoSilla + espacioEntre)) + tamañoSilla / 2;
-        sillas.push({
-          id: `temp_silla_${mesa.id}_${sillaIndex}`,
-          x: Math.round(x),
-          y: Math.round(y),
-          numero_asiento: `${sillaIndex + 1}`, // Solo número simple para sillas de mesas
-          tipo_precio_id: mesa.tipo_precio_id,
-          mesa_id: mesa.id
-        });
-        sillaIndex++;
-      }
+      const altoTotal = sillasIzquierda * tamañoSilla + Math.max(0, sillasIzquierda - 1) * 4;
+      let startY = centroY - altoTotal / 2 + tamañoSilla / 2;
+      colocarLado(sillasIzquierda, () => mesaX - distanciaMesa - tamañoSilla / 2, (i) => startY + i * (tamañoSilla + 4));
     }
 
     return sillas;
@@ -1009,12 +977,14 @@ const Espacio = () => {
     const columnas = Math.ceil(Math.sqrt(cantidadMesas));
     const filas = Math.ceil(cantidadMesas / columnas);
     
-    const tamañoMesa = 20; // Más pequeñas para caber más
+    // Mesas un poco más largas en rectángulo para que no se pisen las sillas
+    const mesaW = formaMesa === 'cuadrado' ? 26 : 34;
+    const mesaH = formaMesa === 'cuadrado' ? 26 : 22;
     const padding = 15; // Padding para no chocar con bordes
     const espacioEntreMesas = 28; // Espacio para no chocar con lo de abajo
     
-    const anchoDisponible = anchoZona - (2 * padding) - (columnas * tamañoMesa);
-    const altoDisponible = altoZona - (2 * padding) - (filas * tamañoMesa);
+    const anchoDisponible = anchoZona - (2 * padding) - (columnas * mesaW);
+    const altoDisponible = altoZona - (2 * padding) - (filas * mesaH);
     
     const espacioX = columnas > 1 ? Math.max(espacioEntreMesas, anchoDisponible / (columnas - 1)) : 0;
     const espacioY = filas > 1 ? Math.max(espacioEntreMesas, altoDisponible / (filas - 1)) : 0;
@@ -1027,16 +997,16 @@ const Espacio = () => {
       const fila = Math.floor(i / columnas);
       const columna = i % columnas;
       
-      let x = xInicio + padding + (columna * (tamañoMesa + espacioX)) + tamañoMesa / 2;
-      let y = yInicio + padding + (fila * (tamañoMesa + espacioY)) + tamañoMesa / 2;
-      const { x: mx, y: my } = clampMesaToSheet(x - tamañoMesa / 2, y - tamañoMesa / 2, tamañoMesa, tamañoMesa);
+      let x = xInicio + padding + (columna * (mesaW + espacioX)) + mesaW / 2;
+      let y = yInicio + padding + (fila * (mesaH + espacioY)) + mesaH / 2;
+      const { x: mx, y: my } = clampMesaToSheet(x - mesaW / 2, y - mesaH / 2, mesaW, mesaH);
 
       const nuevaMesa = {
         id: `temp_mesa_${Date.now()}_${i}`,
         x: Math.round(mx),
         y: Math.round(my),
-        width: tamañoMesa,
-        height: tamañoMesa,
+        width: mesaW,
+        height: mesaH,
         numero_mesa: numeroMesa,
         capacidad_sillas: sillasPorMesa,
         tipo_precio_id: zona.tipo_precio_id
@@ -1300,38 +1270,44 @@ const Espacio = () => {
       ctx.fillText(`ZONA MESAS (${zonaMesas.cantidad || 0} mesas, ${zonaMesas.sillasPorMesa || 0} sillas/mesa)`, zonaMesas.x + zonaMesas.width / 2, zonaMesas.y + 20);
     }
 
-    // Dibujar mesas con sus sillas
+    // Dibujar mesas con sus sillas (mesa visible como tabla, sillas alrededor por lados)
     mesas.forEach(mesa => {
       const estaSeleccionada = elementosSeleccionados.some(sel => sel.type === 'mesa' && sel.id === mesa.id);
-      
-      // Dibujar la mesa
-      ctx.fillStyle = '#8B4513';
-      ctx.fillRect(mesa.x, mesa.y, mesa.width, mesa.height);
+      const mw = mesa.width || 30;
+      const mh = mesa.height || 30;
+
+      // Mesa: fondo marrón tipo “tabla” y borde para que se distinga de las sillas
+      ctx.fillStyle = '#A0522D';
+      ctx.fillRect(mesa.x, mesa.y, mw, mh);
       ctx.strokeStyle = estaSeleccionada ? '#FFD700' : '#654321';
       ctx.lineWidth = estaSeleccionada ? 3 : 2;
-      ctx.strokeRect(mesa.x, mesa.y, mesa.width, mesa.height);
-      
+      ctx.strokeRect(mesa.x, mesa.y, mw, mh);
+      // Borde interior claro para que se vea como superficie de mesa
+      ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(mesa.x + 2, mesa.y + 2, mw - 4, mh - 4);
+
       if (mostrarNumerosAsientos) {
         ctx.fillStyle = COLOR_TEXTO_MESA;
         ctx.font = 'bold 11px Arial';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(`M${mesa.numero_mesa}`, mesa.x + mesa.width / 2, mesa.y + mesa.height / 2);
+        ctx.fillText(`M${mesa.numero_mesa}`, mesa.x + mw / 2, mesa.y + mh / 2);
       }
-      
-      // Dibujar sillas de la mesa
+
+      // Sillas de la mesa: cuadrados pequeños bien separados de la mesa
       const sillasMesa = asientos.filter(a => a.mesa_id === mesa.id);
       sillasMesa.forEach(silla => {
         const tipoPrecio = tiposPrecio.find(tp => tp.id === silla.tipo_precio_id);
         const estaSeleccionadaSilla = elementosSeleccionados.some(sel => sel.type === 'asiento' && sel.id === silla.id);
-        
+        const sx = (silla.x || 50) - 4;
+        const sy = (silla.y || 50) - 4;
         const colorSilla = tipoPrecio?.color || getColorForTipoPrecio(silla.tipo_precio_id) || '#2196F3';
         ctx.fillStyle = colorSilla;
-        ctx.fillRect((silla.x || 50) - 4, (silla.y || 50) - 4, 8, 8);
+        ctx.fillRect(sx, sy, 8, 8);
         ctx.strokeStyle = estaSeleccionadaSilla ? '#FFD700' : '#333';
         ctx.lineWidth = estaSeleccionadaSilla ? 2 : 1;
-        ctx.strokeRect((silla.x || 50) - 4, (silla.y || 50) - 4, 8, 8);
-        
+        ctx.strokeRect(sx, sy, 8, 8);
         if (mostrarNumerosAsientos) {
           ctx.fillStyle = COLOR_TEXTO_ASIENTO;
           ctx.font = 'bold 10px Arial';
@@ -1980,16 +1956,17 @@ const Espacio = () => {
       setCurrentElement({ type: 'zona_personas', x: pos.x, y: pos.y, width: 0, height: 0 });
       setZonaPersonas({ x: pos.x, y: pos.y, width: 0, height: 0 });
     } else if ((modo === 'mesas' || modo === 'mesa_individual') && tipoPrecioSeleccionado) {
-      const tamañoMesa = formaMesa === 'cuadrado' ? 16 : 20;
-      const alturaMesa = formaMesa === 'cuadrado' ? 16 : 20;
-      const { x: mx, y: my } = clampMesaToSheet(pos.x - tamañoMesa / 2, pos.y - alturaMesa / 2, tamañoMesa, alturaMesa);
+      // Mesa por defecto más rectangular para que no se pisen las sillas
+      const mesaW = formaMesa === 'cuadrado' ? 26 : 34;
+      const mesaH = formaMesa === 'cuadrado' ? 26 : 22;
+      const { x: mx, y: my } = clampMesaToSheet(pos.x - mesaW / 2, pos.y - mesaH / 2, mesaW, mesaH);
       const numeroMesa = mesas.length + 1;
       const nuevaMesa = {
         id: `temp_mesa_${Date.now()}`,
         x: mx,
         y: my,
-        width: tamañoMesa,
-        height: alturaMesa,
+        width: mesaW,
+        height: mesaH,
         numero_mesa: numeroMesa,
         capacidad_sillas: sillasPorMesa,
         tipo_precio_id: tipoPrecioSeleccionado

@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Html5Qrcode } from 'html5-qrcode';
 import api from '../../api/axios';
 import { useAlert } from '../../context/AlertContext';
+import { useAuth } from '../../context/AuthContext';
 import './BusquedaEntrada.css';
 
 const FEEDBACK_DURATION_MS = 1800;
@@ -24,6 +26,8 @@ const playBeep = (type) => {
 
 const BusquedaEntrada = () => {
   const { showAlert } = useAlert();
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [codigo, setCodigo] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -37,6 +41,14 @@ const BusquedaEntrada = () => {
   const qrCodeRegionId = 'qr-reader';
   const html5QrCodeRef = useRef(null);
   const lastProcessedScanRef = useRef({ code: null, time: 0 });
+
+  useEffect(() => {
+    const rol = (user?.rol || '').toLowerCase();
+    if (rol && rol !== 'admin' && rol !== 'seguridad') {
+      // Solo seguridad/admin pueden tickear/buscar entradas
+      navigate('/admin', { replace: true });
+    }
+  }, [user?.rol, navigate]);
 
   const tickearEntrada = async () => {
     if (!datosEntrada) return;

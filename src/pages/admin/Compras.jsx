@@ -7,7 +7,7 @@ import './Compras.css';
 
 const Compras = () => {
   const { showAlert, showConfirm } = useAlert();
-  const { isAdmin } = useAuth();
+  const { isAdmin, canUseAdminSaleOptions } = useAuth();
   const [compras, setCompras] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -862,6 +862,7 @@ const Compras = () => {
         title="Confirmar Pago"
         disabled={confirmando}
         compraTotal={compraSeleccionada?.id === compraAConfirmar ? (compraSeleccionada?.total ?? 0) : (compras.find((c) => c.id === compraAConfirmar)?.total ?? 0)}
+        permitirExtrasAdmin={!!(canUseAdminSaleOptions && canUseAdminSaleOptions())}
       />
     </div>
   );
