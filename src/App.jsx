@@ -7,7 +7,6 @@ import DetalleEvento from './pages/DetalleEvento';
 import Eventos from './pages/Eventos';
 import Contacto from './pages/Contacto';
 import Login from './pages/Login';
-import Account from './pages/Account';
 import MiInformacion from './pages/MiInformacion';
 import MisCompras from './pages/MisCompras';
 import Compra from './pages/Compra';
@@ -69,9 +68,6 @@ function App() {
           <Route path="/login" element={<PublicLayout><Login /></PublicLayout>} />
           <Route path="/mi-informacion" element={<PublicLayout><MiInformacion /></PublicLayout>} />
           <Route path="/mis-compras" element={<PublicLayout><MisCompras /></PublicLayout>} />
-          {/* Pantalla antigua de admin (/account) se mantiene por compatibilidad,
-              pero el flujo principal de login es /login con correo/contraseña */}
-          <Route path="/account" element={<Account />} />
           <Route path="/compra/:id" element={<PublicLayout><Compra /></PublicLayout>} />
           <Route path="/pago-qr/:id" element={<PublicLayout><PagoQR /></PublicLayout>} />
         </Routes>

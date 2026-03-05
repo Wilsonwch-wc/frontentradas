@@ -213,11 +213,6 @@ const Login = () => {
         console.log('✅ Login exitoso con Google');
         const { token, user: googleUser } = apiResponse.data.data;
         login(googleUser, token);
-        // Mostrar notificación de éxito
-        await showAlert('¡Sesión iniciada exitosamente con Google!', { 
-          type: 'success',
-          title: googleUser?.rol === 'admin' || googleUser?.rol === 'seguridad' ? 'Bienvenido Administrador' : 'Bienvenido'
-        });
         
         // Si es staff, llevar al panel según rol
         const rolGoogle = (googleUser?.rol || '').toLowerCase();

@@ -35,6 +35,16 @@ const Reportes = () => {
   const [loadingReporte, setLoadingReporte] = useState(false);
   const [error, setError] = useState('');
 
+  // Filtros
+  const [filtroTipoPago, setFiltroTipoPago] = useState('todos');
+  const [filtroTipoEntrada, setFiltroTipoEntrada] = useState('todos');
+  const [filtroEstado, setFiltroEstado] = useState('todos');
+  const [filtroCliente, setFiltroCliente] = useState('');
+
+  // Paginación
+  const [paginaActual, setPaginaActual] = useState(1);
+  const registrosPorPagina = 10;
+
   useEffect(() => {
     cargarEventos();
   }, []);
@@ -42,6 +52,12 @@ const Reportes = () => {
   useEffect(() => {
     if (eventoSeleccionado) {
       cargarReporte(eventoSeleccionado);
+      // Resetear filtros y paginación al cambiar de evento
+      setFiltroTipoPago('todos');
+      setFiltroTipoEntrada('todos');
+      setFiltroEstado('todos');
+      setFiltroCliente('');
+      setPaginaActual(1);
     }
   }, [eventoSeleccionado]);
 
@@ -191,6 +207,78 @@ const Reportes = () => {
     );
   }, [reporte]);
 
+  // Extraer tipos de entrada únicos del detalle de las compras
+  const tiposEntradaDisponibles = useMemo(() => {
+    if (!reporte?.compras?.length) return [];
+    const tipos = new Set();
+    reporte.compras.forEach((compra) => {
+      const detalle = compra.detalle_compra || '';
+      // Extraer tipos como "5 GENERAL", "3 VIP", etc.
+      const matches = detalle.match(/\d+\s+([A-Za-zÁÉÍÓÚáéíóúñÑ\s]+)/g);
+      if (matches) {
+        matches.forEach((match) => {
+          const tipo = match.replace(/^\d+\s+/, '').trim().toUpperCase();
+          if (tipo && tipo !== 'ENTRADA(S)' && tipo !== 'ENTRADA(S) GENERAL') {
+            tipos.add(tipo);
+          }
+        });
+      }
+    });
+    return Array.from(tipos).sort();
+  }, [reporte]);
+
+  // Filtrar compras según los filtros seleccionados
+  const comprasFiltradas = useMemo(() => {
+    if (!reporte?.compras?.length) return [];
+    
+    return reporte.compras.filter((compra) => {
+      // Filtro por tipo de pago
+      if (filtroTipoPago !== 'todos') {
+        if (filtroTipoPago === 'QR' && compra.tipo_pago !== 'QR') return false;
+        if (filtroTipoPago === 'EFECTIVO' && compra.tipo_pago !== 'EFECTIVO') return false;
+        if (filtroTipoPago === 'SIN_PAGO' && compra.tipo_pago) return false;
+      }
+
+      // Filtro por estado
+      if (filtroEstado !== 'todos' && compra.estado !== filtroEstado) return false;
+
+      // Filtro por tipo de entrada
+      if (filtroTipoEntrada !== 'todos') {
+        const detalle = (compra.detalle_compra || '').toUpperCase();
+        if (!detalle.includes(filtroTipoEntrada.toUpperCase())) return false;
+      }
+
+      // Filtro por cliente (nombre o teléfono)
+      if (filtroCliente.trim()) {
+        const busqueda = filtroCliente.trim().toLowerCase();
+        const nombre = (compra.cliente_nombre || '').toLowerCase();
+        const telefono = (compra.cliente_telefono || '').replace(/[^\d]/g, '');
+        const email = (compra.cliente_email || '').toLowerCase();
+        const codigo = (compra.codigo_unico || '').toLowerCase();
+        
+        const coincide = nombre.includes(busqueda) || 
+                        telefono.includes(busqueda.replace(/[^\d]/g, '')) ||
+                        email.includes(busqueda) ||
+                        codigo.includes(busqueda);
+        if (!coincide) return false;
+      }
+
+      return true;
+    });
+  }, [reporte, filtroTipoPago, filtroTipoEntrada, filtroEstado, filtroCliente]);
+
+  // Paginación
+  const totalPaginas = Math.ceil(comprasFiltradas.length / registrosPorPagina);
+  const comprasPaginadas = useMemo(() => {
+    const inicio = (paginaActual - 1) * registrosPorPagina;
+    return comprasFiltradas.slice(inicio, inicio + registrosPorPagina);
+  }, [comprasFiltradas, paginaActual]);
+
+  // Resetear página al cambiar filtros
+  useEffect(() => {
+    setPaginaActual(1);
+  }, [filtroTipoPago, filtroTipoEntrada, filtroEstado, filtroCliente]);
+
   const estadoEventoActual = reporte?.evento?.habilitado ? 'Habilitado' : 'Finalizado';
 
   const buildWhatsAppLink = (telefono, nombre, eventoTitulo) => {
@@ -326,6 +414,78 @@ const Reportes = () => {
 
         {loadingReporte && <div className="loading">Cargando reporte...</div>}
 
+        {/* Filtros de la tabla */}
+        {!loadingReporte && reporte && (
+          <div className="reportes-filtros-tabla">
+            <div className="campo campo-busqueda">
+              <label>🔍 Buscar cliente</label>
+              <input
+                type="text"
+                value={filtroCliente}
+                onChange={(e) => setFiltroCliente(e.target.value)}
+                placeholder="Nombre, teléfono, email o código..."
+              />
+            </div>
+
+            <div className="campo">
+              <label>Tipo de pago</label>
+              <select
+                value={filtroTipoPago}
+                onChange={(e) => setFiltroTipoPago(e.target.value)}
+              >
+                <option value="todos">Todos</option>
+                <option value="QR">📱 QR</option>
+                <option value="EFECTIVO">💵 Efectivo</option>
+                <option value="SIN_PAGO">Sin pago</option>
+              </select>
+            </div>
+
+            <div className="campo">
+              <label>Estado</label>
+              <select
+                value={filtroEstado}
+                onChange={(e) => setFiltroEstado(e.target.value)}
+              >
+                <option value="todos">Todos</option>
+                <option value="PAGO_REALIZADO">Pago realizado</option>
+                <option value="PAGO_PENDIENTE">Pago pendiente</option>
+                <option value="ENTRADA_USADA">Entrada usada</option>
+                <option value="CANCELADO">Cancelado</option>
+              </select>
+            </div>
+
+            {tiposEntradaDisponibles.length > 0 && (
+              <div className="campo">
+                <label>Tipo de entrada</label>
+                <select
+                  value={filtroTipoEntrada}
+                  onChange={(e) => setFiltroTipoEntrada(e.target.value)}
+                >
+                  <option value="todos">Todos</option>
+                  {tiposEntradaDisponibles.map((tipo) => (
+                    <option key={tipo} value={tipo}>
+                      {tipo}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <button
+              className="btn-limpiar-filtros"
+              onClick={() => {
+                setFiltroTipoPago('todos');
+                setFiltroTipoEntrada('todos');
+                setFiltroEstado('todos');
+                setFiltroCliente('');
+              }}
+              title="Limpiar filtros"
+            >
+              Limpiar filtros
+            </button>
+          </div>
+        )}
+
         {!loadingReporte && reporte && (
           <>
             <div className="resumen-cards">
@@ -348,14 +508,28 @@ const Reportes = () => {
                 </strong>
                 <span className="card-sub">Por confirmar</span>
               </div>
-              <div className="card-resumen">
+              <div className="card-resumen card-entradas-total">
                 <span className="card-label">Entradas totales</span>
                 <strong className="card-value">{resumenEntradas.total}</strong>
-                <span className="card-sub">
-                  {reporte.evento?.tipo_evento === 'especial'
-                    ? 'Mesas / sillas asignadas'
-                    : 'Entradas generales'}
-                </span>
+                {estadisticas?.desglose_tipos?.length > 0 ? (
+                  <div className="desglose-mini">
+                    {estadisticas.desglose_tipos.map((tipo, idx) => (
+                      <span 
+                        key={tipo.tipo_id} 
+                        className={`desglose-badge desglose-color-${idx % 6}`}
+                        title={`${tipo.nombre}: ${tipo.vendidas} vendidas`}
+                      >
+                        {tipo.vendidas} {tipo.nombre}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <span className="card-sub">
+                    {reporte.evento?.tipo_evento === 'especial'
+                      ? 'Mesas / sillas asignadas'
+                      : 'Entradas generales'}
+                  </span>
+                )}
               </div>
               <div className="card-resumen card-qr">
                 <span className="card-label">📱 Pagos QR</span>
@@ -394,41 +568,49 @@ const Reportes = () => {
               <div className="estadisticas-ventas">
                 <h3>Estadísticas de Ventas y Disponibilidad</h3>
                 <div className="estadisticas-grid">
-                  {/* Para eventos generales */}
-                  {estadisticas.tipo_evento === 'general' && estadisticas.generales && (
-                    <div className="stat-card-detail">
-                      <h4>Entradas Generales</h4>
-                      <div className="stat-row">
-                        <span>Límite total:</span>
-                        <strong>{estadisticas.generales.limite_total !== null ? estadisticas.generales.limite_total : 'Sin límite'}</strong>
-                      </div>
-                      <div className="stat-row">
-                        <span>Vendidas:</span>
-                        <strong className="text-primary">{estadisticas.generales.vendidas}</strong>
-                      </div>
-                      <div className="stat-row">
-                        <span>Disponibles:</span>
-                        <strong className={estadisticas.generales.disponibles !== null && estadisticas.generales.disponibles < 10 ? 'text-warning' : 'text-success'}>
-                          {estadisticas.generales.disponibles !== null ? estadisticas.generales.disponibles : '-'}
-                        </strong>
-                      </div>
-                      <div className="stat-row">
-                        <span>Escaneadas:</span>
-                        <strong className="text-info">{estadisticas.generales.escaneadas}</strong>
-                      </div>
-                      {estadisticas.generales.limite_total !== null && (
-                        <div className="stat-progress">
-                          <div className="progress-bar">
-                            <div 
-                              className="progress-fill" 
-                              style={{ width: `${Math.min(100, (estadisticas.generales.vendidas / estadisticas.generales.limite_total) * 100)}%` }}
-                            ></div>
+                  {/* Desglose por tipo de entrada (VIP, General, Gradería, etc.) */}
+                  {estadisticas.tipo_evento === 'general' && estadisticas.desglose_tipos?.length > 0 && (
+                    <div className="stat-card-detail stat-card-wide">
+                      <h4>Ventas por Tipo de Entrada</h4>
+                      <div className="desglose-tipos-grid">
+                        {estadisticas.desglose_tipos.map((tipo) => (
+                          <div key={tipo.tipo_id} className="tipo-entrada-item">
+                            <div className="tipo-entrada-header">
+                              <span className="tipo-nombre">{tipo.nombre}</span>
+                              <span className="tipo-precio">Bs. {tipo.precio.toFixed(2)}</span>
+                            </div>
+                            <div className="tipo-entrada-stats">
+                              <div className="stat-mini">
+                                <span className="stat-mini-label">Vendidas</span>
+                                <strong className="text-primary">{tipo.vendidas}</strong>
+                              </div>
+                              <div className="stat-mini">
+                                <span className="stat-mini-label">Escaneadas</span>
+                                <strong className="text-info">{tipo.escaneadas}</strong>
+                              </div>
+                              <div className="stat-mini">
+                                <span className="stat-mini-label">Disponibles</span>
+                                <strong className={tipo.disponibles !== null && tipo.disponibles < 10 ? 'text-warning' : 'text-success'}>
+                                  {tipo.disponibles !== null ? tipo.disponibles : 'Sin límite'}
+                                </strong>
+                              </div>
+                            </div>
+                            {tipo.limite !== null && (
+                              <div className="stat-progress">
+                                <div className="progress-bar">
+                                  <div 
+                                    className="progress-fill" 
+                                    style={{ width: `${Math.min(100, (tipo.vendidas / tipo.limite) * 100)}%` }}
+                                  ></div>
+                                </div>
+                                <span className="progress-text">
+                                  {Math.round((tipo.vendidas / tipo.limite) * 100)}% vendidas ({tipo.vendidas}/{tipo.limite})
+                                </span>
+                              </div>
+                            )}
                           </div>
-                          <span className="progress-text">
-                            {Math.round((estadisticas.generales.vendidas / estadisticas.generales.limite_total) * 100)}% vendidas
-                          </span>
-                        </div>
-                      )}
+                        ))}
+                      </div>
                     </div>
                   )}
 
@@ -549,11 +731,14 @@ const Reportes = () => {
               <div className="tabla-header">
                 <h3>Compras del evento</h3>
                 <span className="tabla-sub">
-                  {reporte.compras?.length || 0} registros encontrados
+                  {comprasFiltradas.length === reporte.compras?.length
+                    ? `${reporte.compras?.length || 0} registros`
+                    : `${comprasFiltradas.length} de ${reporte.compras?.length || 0} registros (filtrados)`}
                 </span>
               </div>
 
-              {reporte.compras?.length ? (
+              {comprasFiltradas.length ? (
+                <>
                 <table className="tabla-reportes">
                   <thead>
                     <tr>
@@ -570,7 +755,7 @@ const Reportes = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {reporte.compras.map((compra) => {
+                    {comprasPaginadas.map((compra) => {
                       const whatsapp = buildWhatsAppLink(
                         compra.cliente_telefono,
                         compra.cliente_nombre,
@@ -645,8 +830,54 @@ const Reportes = () => {
                     })}
                   </tbody>
                 </table>
+
+                {/* Paginación */}
+                {totalPaginas > 1 && (
+                  <div className="paginacion">
+                    <button
+                      className="btn-pag"
+                      onClick={() => setPaginaActual(1)}
+                      disabled={paginaActual === 1}
+                      title="Primera página"
+                    >
+                      ««
+                    </button>
+                    <button
+                      className="btn-pag"
+                      onClick={() => setPaginaActual((p) => Math.max(1, p - 1))}
+                      disabled={paginaActual === 1}
+                      title="Página anterior"
+                    >
+                      «
+                    </button>
+                    <span className="pag-info">
+                      Página {paginaActual} de {totalPaginas}
+                    </span>
+                    <button
+                      className="btn-pag"
+                      onClick={() => setPaginaActual((p) => Math.min(totalPaginas, p + 1))}
+                      disabled={paginaActual === totalPaginas}
+                      title="Página siguiente"
+                    >
+                      »
+                    </button>
+                    <button
+                      className="btn-pag"
+                      onClick={() => setPaginaActual(totalPaginas)}
+                      disabled={paginaActual === totalPaginas}
+                      title="Última página"
+                    >
+                      »»
+                    </button>
+                  </div>
+                )}
+              </>
               ) : (
-                <div className="sin-datos">No hay compras registradas para este evento.</div>
+                <div className="sin-datos">
+                  {reporte.compras?.length
+                    ? 'No hay compras que coincidan con los filtros seleccionados.'
+                    : 'No hay compras registradas para este evento.'}
+                </div>
               )}
             </div>
           </>

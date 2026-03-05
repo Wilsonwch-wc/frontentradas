@@ -49,6 +49,11 @@ const Dashboard = () => {
     activo: true
   });
 
+  // Modal de pagos pendientes
+  const [showPendientesModal, setShowPendientesModal] = useState(false);
+  const [comprasPendientes, setComprasPendientes] = useState([]);
+  const [loadingPendientes, setLoadingPendientes] = useState(false);
+
   useEffect(() => {
     if (isVendedor && isVendedor()) {
       navigate('/admin/compras', { replace: true });
@@ -161,6 +166,48 @@ const Dashboard = () => {
     }
   };
 
+  // Cargar compras pendientes
+  const cargarComprasPendientes = async () => {
+    setLoadingPendientes(true);
+    try {
+      const eventoParam = eventoSeleccionado ? `&evento_id=${eventoSeleccionado}` : '';
+      const res = await api.get(`/compras?estado=PAGO_PENDIENTE${eventoParam}`);
+      if (res.data.success) {
+        setComprasPendientes(res.data.data || []);
+      }
+    } catch (err) {
+      console.error('Error al cargar compras pendientes:', err);
+      showAlert('Error al cargar las compras pendientes', { type: 'error' });
+    } finally {
+      setLoadingPendientes(false);
+    }
+  };
+
+  const handleAbrirModalPendientes = () => {
+    if (data?.pagos_pendientes > 0) {
+      setShowPendientesModal(true);
+      cargarComprasPendientes();
+    }
+  };
+
+  const handleVerDetalleCompra = (compraId) => {
+    setShowPendientesModal(false);
+    navigate(`/admin/compras?buscar=${compraId}`);
+  };
+
+  const formatearFecha = (fecha) => {
+    if (!fecha) return '-';
+    const date = new Date(fecha);
+    if (Number.isNaN(date.getTime())) return '-';
+    return date.toLocaleDateString('es-ES', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
   useEffect(() => {
     loadData();
   }, []);
@@ -256,6 +303,7 @@ const Dashboard = () => {
                 subtitle={`${fmtNumber(data.entradas_pendientes)} entradas`}
                 tone="amber"
                 icon="⏳"
+                onClick={data.pagos_pendientes > 0 ? handleAbrirModalPendientes : undefined}
               />
             </div>
 
@@ -591,6 +639,109 @@ const Dashboard = () => {
                     </tbody>
                   </table>
                 </div>
+              </>
+            )}
+          </div>
+        </Modal>
+
+        {/* Modal de Pagos Pendientes */}
+        <Modal
+          isOpen={showPendientesModal}
+          onClose={() => setShowPendientesModal(false)}
+          title="Compras con Pago Pendiente"
+          wide
+        >
+          <div style={{ padding: '20px' }}>
+            {loadingPendientes ? (
+              <div style={{ textAlign: 'center', padding: '40px' }}>Cargando compras pendientes...</div>
+            ) : (
+              <>
+                <p style={{ marginBottom: '20px', color: '#667085' }}>
+                  {comprasPendientes.length} compra(s) pendiente(s) de verificación
+                  {eventoSeleccionado && data?.evento_activo_nombres?.length > 0 && (
+                    <span> para el evento: <strong>{data.evento_activo_nombres.join(', ')}</strong></span>
+                  )}
+                </p>
+
+                {comprasPendientes.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '40px', color: '#98a2b3' }}>
+                    No hay compras pendientes de verificación
+                  </div>
+                ) : (
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr style={{ background: '#f8f9fa', borderBottom: '2px solid #dee2e6' }}>
+                          <th style={{ padding: '12px', textAlign: 'left', fontWeight: 'bold' }}>Código</th>
+                          <th style={{ padding: '12px', textAlign: 'left', fontWeight: 'bold' }}>Cliente</th>
+                          <th style={{ padding: '12px', textAlign: 'left', fontWeight: 'bold' }}>Evento</th>
+                          <th style={{ padding: '12px', textAlign: 'left', fontWeight: 'bold' }}>Entradas</th>
+                          <th style={{ padding: '12px', textAlign: 'left', fontWeight: 'bold' }}>Total</th>
+                          <th style={{ padding: '12px', textAlign: 'left', fontWeight: 'bold' }}>Fecha</th>
+                          <th style={{ padding: '12px', textAlign: 'center', fontWeight: 'bold' }}>Acción</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {comprasPendientes.map((compra) => (
+                          <tr key={compra.id} style={{ borderBottom: '1px solid #dee2e6' }}>
+                            <td style={{ padding: '12px' }}>
+                              <code style={{ 
+                                background: '#f4f5f7', 
+                                padding: '4px 8px', 
+                                borderRadius: '4px',
+                                fontSize: '0.85rem'
+                              }}>
+                                {compra.codigo_unico}
+                              </code>
+                            </td>
+                            <td style={{ padding: '12px' }}>
+                              <div>
+                                <strong>{compra.cliente_nombre}</strong>
+                                {compra.cliente_telefono && (
+                                  <div style={{ fontSize: '0.85rem', color: '#667085' }}>
+                                    {compra.cliente_telefono}
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                            <td style={{ padding: '12px', fontSize: '0.9rem' }}>
+                              {compra.evento_titulo || '-'}
+                            </td>
+                            <td style={{ padding: '12px', textAlign: 'center', fontWeight: 'bold' }}>
+                              {compra.cantidad || compra.total_entradas || '-'}
+                            </td>
+                            <td style={{ padding: '12px', fontWeight: 'bold', color: '#b54708' }}>
+                              Bs. {parseFloat(compra.total || 0).toFixed(2)}
+                            </td>
+                            <td style={{ padding: '12px', fontSize: '0.85rem', color: '#667085' }}>
+                              {formatearFecha(compra.fecha_compra)}
+                            </td>
+                            <td style={{ padding: '12px', textAlign: 'center' }}>
+                              <button
+                                onClick={() => handleVerDetalleCompra(compra.codigo_unico)}
+                                style={{
+                                  padding: '8px 16px',
+                                  background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: '6px',
+                                  cursor: 'pointer',
+                                  fontWeight: 'bold',
+                                  fontSize: '0.85rem',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '6px'
+                                }}
+                              >
+                                👁️ Ver / Verificar
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </>
             )}
           </div>

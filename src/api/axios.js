@@ -38,12 +38,7 @@ api.interceptors.response.use(
         if (error.response.status === 401) {
           localStorage.removeItem('token');
           localStorage.removeItem('user');
-          const currentPath = window.location.pathname;
-          if (currentPath.startsWith('/admin')) {
-            window.location.href = '/account';
-          } else {
-            window.location.href = '/login';
-          }
+          window.location.href = '/login';
           return Promise.reject(new Error('Sesión expirada. Por favor, inicia sesión nuevamente.'));
         }
         // Para otros errores HTML, crear un error más descriptivo
@@ -55,13 +50,7 @@ api.interceptors.response.use(
       // Token expirado o inválido
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      // Redirigir según la ruta actual
-      const currentPath = window.location.pathname;
-      if (currentPath.startsWith('/admin')) {
-        window.location.href = '/account';
-      } else {
-        window.location.href = '/login';
-      }
+      window.location.href = '/login';
       return Promise.reject(new Error('Sesión expirada. Por favor, inicia sesión nuevamente.'));
     }
     

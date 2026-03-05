@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import api from '../../api/axios';
 import { useAlert } from '../../context/AlertContext';
 import { useAuth } from '../../context/AuthContext';
@@ -8,6 +9,7 @@ import './Compras.css';
 const Compras = () => {
   const { showAlert, showConfirm } = useAlert();
   const { isAdmin, canUseAdminSaleOptions } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [compras, setCompras] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -26,6 +28,36 @@ const Compras = () => {
   useEffect(() => {
     cargarCompras();
   }, [filtroEstado, eventoFiltro]);
+
+  // Buscar automáticamente si viene el parámetro "buscar" en la URL
+  useEffect(() => {
+    const codigoBuscar = searchParams.get('buscar');
+    if (codigoBuscar) {
+      setCodigoBusqueda(codigoBuscar);
+      // Buscar y abrir el detalle automáticamente
+      const buscarYAbrir = async () => {
+        try {
+          setLoading(true);
+          const response = await api.get(`/compras/codigo/${codigoBuscar.trim()}`);
+          if (response.data.success) {
+            setCompraSeleccionada(response.data.data);
+            setMostrarDetalle(true);
+            setError('');
+          } else {
+            setError('Compra no encontrada');
+          }
+        } catch (err) {
+          console.error('Error al buscar compra:', err);
+          setError('Compra no encontrada con ese código');
+        } finally {
+          setLoading(false);
+        }
+      };
+      buscarYAbrir();
+      // Limpiar el parámetro de la URL para evitar re-búsquedas
+      setSearchParams({});
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     const cargarEventos = async () => {

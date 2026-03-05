@@ -12,7 +12,7 @@ const AdminSidebar = ({ isOpen, onClose }) => {
 
   const handleLogout = async () => {
     await logout();
-    navigate('/account');
+    navigate('/login');
   };
 
   const menuItemsFull = [

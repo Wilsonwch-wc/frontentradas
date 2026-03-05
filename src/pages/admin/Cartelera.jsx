@@ -215,7 +215,7 @@ const Cartelera = () => {
     if (!token) {
       setError('No estás autenticado. Por favor, inicia sesión nuevamente.');
       setTimeout(() => {
-        window.location.href = '/account';
+        window.location.href = '/login';
       }, 2000);
       return;
     }
@@ -399,7 +399,7 @@ const Cartelera = () => {
             setTimeout(() => {
               localStorage.removeItem('token');
               localStorage.removeItem('user');
-              window.location.href = '/account';
+              window.location.href = '/login';
             }, 2000);
           } else {
             errorMessage = `Error del servidor (${error.response.status}). Por favor, verifica tu conexión o contacta al administrador.`;
@@ -411,7 +411,7 @@ const Cartelera = () => {
           setTimeout(() => {
             localStorage.removeItem('token');
             localStorage.removeItem('user');
-            window.location.href = '/account';
+            window.location.href = '/login';
           }, 2000);
         }
       } else if (error.message) {

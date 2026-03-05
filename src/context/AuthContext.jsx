@@ -53,12 +53,7 @@ export const AuthProvider = ({ children }) => {
       }
       
       // Redirigir al login
-      const currentPath = window.location.pathname;
-      if (currentPath.startsWith('/admin')) {
-        window.location.href = '/account';
-      } else {
-        window.location.href = '/login';
-      }
+      window.location.href = '/login';
     }
   };
 
