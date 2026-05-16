@@ -1653,21 +1653,34 @@ const Espacio = () => {
       ctx.fillText(`ZONA PERSONAS (máx. ${real})`, zonaPersonas.x + zonaPersonas.width / 2, zonaPersonas.y + 20);
     }
 
-    // Dibujar círculos de personas dentro de áreas tipo PERSONAS
-    areas.filter(a => a.tipo_area === 'PERSONAS').forEach(area => {
-      const posiciones = getPosicionesPersonasParaArea(area);
+    // Dibujar áreas tipo PERSONAS como zona sólida (sin círculos individuales)
+    areas.filter(a => a.tipo_area === 'PERSONAS' && a.capacidad_personas > 0).forEach(area => {
       const tipoPrecio = tiposPrecio.find(tp => tp.id === area.tipo_precio_id);
-      const colorPersona = tipoPrecio?.color || getColorForTipoPrecio(area.tipo_precio_id) || '#4CAF50';
-      const radio = layoutSizes.radioPersona;
-      posiciones.forEach(p => {
-        ctx.fillStyle = colorPersona;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, radio, 0, 2 * Math.PI);
-        ctx.fill();
-        ctx.strokeStyle = '#333';
-        ctx.lineWidth = 1;
-        ctx.stroke();
-      });
+      const colorBase = tipoPrecio?.color || getColorForTipoPrecio(area.tipo_precio_id) || '#4CAF50';
+      // Relleno semitransparente
+      ctx.fillStyle = colorBase + '55';
+      ctx.fillRect(area.x, area.y, area.width, area.height);
+      // Patrón de puntos decorativos
+      const r = Math.max(3, Math.round(Math.min(area.width, area.height) / 18));
+      const cols = Math.floor(area.width / (r * 3.2));
+      const rows2 = Math.floor(area.height / (r * 3.2));
+      const gx = cols > 1 ? area.width / cols : area.width;
+      const gy = rows2 > 1 ? area.height / rows2 : area.height;
+      ctx.fillStyle = colorBase + 'aa';
+      for (let ri = 0; ri < rows2; ri++) {
+        for (let ci = 0; ci < cols; ci++) {
+          ctx.beginPath();
+          ctx.arc(area.x + gx * 0.5 + ci * gx, area.y + gy * 0.5 + ri * gy, r, 0, 2 * Math.PI);
+          ctx.fill();
+        }
+      }
+      // Etiqueta capacidad en el centro
+      ctx.fillStyle = '#000';
+      ctx.font = `bold ${Math.min(16, Math.max(10, area.height / 4))}px Arial`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`${area.capacidad_personas} personas`, area.x + area.width / 2, area.y + area.height / 2);
+      ctx.textBaseline = 'alphabetic';
     });
 
     // Dibujar zona de mesas
@@ -1926,19 +1939,29 @@ const Espacio = () => {
         ctx.strokeRect(area.x, area.y, area.width, area.height);
       }
     });
-    areas.filter(a => a.tipo_area === 'PERSONAS').forEach(area => {
-      const posiciones = getPosicionesPersonasParaArea(area);
-      const colorPersona = tiposPrecio.find(tp => tp.id === area.tipo_precio_id)?.color || '#4CAF50';
-      const radio = layoutSizes.radioPersona;
-      posiciones.forEach(p => {
-        ctx.fillStyle = colorPersona;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, radio, 0, 2 * Math.PI);
-        ctx.fill();
-        ctx.strokeStyle = '#333';
-        ctx.lineWidth = 1;
-        ctx.stroke();
-      });
+    areas.filter(a => a.tipo_area === 'PERSONAS' && a.capacidad_personas > 0).forEach(area => {
+      const colorBase = tiposPrecio.find(tp => tp.id === area.tipo_precio_id)?.color || '#4CAF50';
+      ctx.fillStyle = colorBase + '55';
+      ctx.fillRect(area.x, area.y, area.width, area.height);
+      const r = Math.max(3, Math.round(Math.min(area.width, area.height) / 18));
+      const cols = Math.floor(area.width / (r * 3.2));
+      const rows2 = Math.floor(area.height / (r * 3.2));
+      const gx = cols > 1 ? area.width / cols : area.width;
+      const gy = rows2 > 1 ? area.height / rows2 : area.height;
+      ctx.fillStyle = colorBase + 'aa';
+      for (let ri = 0; ri < rows2; ri++) {
+        for (let ci = 0; ci < cols; ci++) {
+          ctx.beginPath();
+          ctx.arc(area.x + gx * 0.5 + ci * gx, area.y + gy * 0.5 + ri * gy, r, 0, 2 * Math.PI);
+          ctx.fill();
+        }
+      }
+      ctx.fillStyle = '#000';
+      ctx.font = `bold ${Math.min(16, Math.max(10, area.height / 4))}px Arial`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`${area.capacidad_personas} personas`, area.x + area.width / 2, area.y + area.height / 2);
+      ctx.textBaseline = 'alphabetic';
     });
     mesas.forEach(mesa => {
       ctx.fillStyle = '#8B4513';
