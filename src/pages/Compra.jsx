@@ -1,5 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
+import { calcularViewportPlano, calcularTamanoSvgPlano, escenarioVisibleEnViewport } from '../utils/planoCompra.js';
 import { useAuth } from '../context/AuthContext';
 import { useAlert } from '../context/AlertContext';
 import { getApiBase, getServerBase } from '../api/base';
@@ -113,11 +114,31 @@ const Compra = () => {
     cargarEvento();
   }, [id, isAuthenticated, navigate]);
 
+  const viewportPlano = useMemo(() => {
+    if (!evento) return { minX: 0, minY: 0, worldW: 1000, worldH: 600 };
+    return calcularViewportPlano(evento, zonaSeleccionadaId);
+  }, [evento, zonaSeleccionadaId]);
+
+  const tamanoSvgPlano = useMemo(
+    () => calcularTamanoSvgPlano(viewportPlano, zonaSeleccionadaId),
+    [viewportPlano, zonaSeleccionadaId]
+  );
+
+  const nombreZonaSeleccionada = useMemo(() => {
+    if (!zonaSeleccionadaId || !evento?.areas) return '';
+    const a = evento.areas.find((ar) => String(ar.id) === String(zonaSeleccionadaId));
+    return a?.nombre || '';
+  }, [evento, zonaSeleccionadaId]);
+
   useEffect(() => {
-    if (evento && evento.tipo_evento === 'especial' && canvasRef.current) {
-      dibujarCanvas();
+    escalaRef.current = { ...escalaRef.current, ...viewportPlano };
+  }, [viewportPlano]);
+
+  useEffect(() => {
+    if (evento && evento.tipo_evento === 'especial') {
+      if (canvasRef.current) dibujarCanvas();
     }
-  }, [evento, selecciones, asientosOcupados, mesasOcupadas, mostrarNumerosAsientos, zonaSeleccionadaId, filtroTipoPrecioId]);
+  }, [evento, selecciones, asientosOcupados, mesasOcupadas, mostrarNumerosAsientos, zonaSeleccionadaId, filtroTipoPrecioId, viewportPlano]);
 
   // Carga progresiva por zona: cuando se selecciona una zona, cargar solo asientos/mesas de esa zona
   useEffect(() => {
@@ -389,30 +410,7 @@ const Compra = () => {
     // Limpiar canvas
     ctx.clearRect(0, 0, width, height);
 
-    // Mundo desde el evento (persistido en admin). Fallback 1000x600
-    const hojaAncho = (evento.hoja_ancho && Number(evento.hoja_ancho)) ? Number(evento.hoja_ancho) : 1000;
-    const hojaAlto = (evento.hoja_alto && Number(evento.hoja_alto)) ? Number(evento.hoja_alto) : 600;
-
-    // Si hay una zona seleccionada, hacer zoom/centrar sobre esa zona; si no, usar toda la hoja
-    let minX = 0;
-    let minY = 0;
-    let worldW = hojaAncho;
-    let worldH = hojaAlto;
-
-    if (zonaSeleccionadaId && evento.areas && Array.isArray(evento.areas) && evento.areas.length > 0) {
-      const areaSeleccionada = evento.areas.find(
-        (area) => String(area.id) === String(zonaSeleccionadaId)
-      );
-      if (areaSeleccionada && areaSeleccionada.posicion_x != null && areaSeleccionada.posicion_y != null) {
-        const padding = 40; // margen alrededor de la zona
-        minX = Math.max(0, areaSeleccionada.posicion_x - padding);
-        minY = Math.max(0, areaSeleccionada.posicion_y - padding);
-        const maxX = Math.min(hojaAncho, areaSeleccionada.posicion_x + areaSeleccionada.ancho + padding);
-        const maxY = Math.min(hojaAlto, areaSeleccionada.posicion_y + areaSeleccionada.alto + padding);
-        worldW = Math.max(100, maxX - minX);
-        worldH = Math.max(100, maxY - minY);
-      }
-    }
+    const { minX, minY, worldW, worldH } = viewportPlano;
 
     const sx = (width - 20) / worldW;
     const sy = (height - 20) / worldH;
@@ -944,7 +942,7 @@ const Compra = () => {
     if (!svg) return null;
     const rect = svg.getBoundingClientRect();
     if (!rect.width || !rect.height) return null;
-    const { minX, minY, worldW, worldH } = escalaRef.current;
+    const { minX, minY, worldW, worldH } = viewportPlano;
     const rx = (e.clientX - rect.left) / rect.width;
     const ry = (e.clientY - rect.top) / rect.height;
     return { x: minX + rx * worldW, y: minY + ry * worldH };
@@ -1882,11 +1880,21 @@ const Compra = () => {
                   <span>Seleccionado</span>
                 </div>
               </div>
-              <div style={{ position: 'relative', display: 'inline-block' }}>
+              {zonaSeleccionadaId && nombreZonaSeleccionada && (
+                <p className="plano-zona-hint">
+                  Vista ampliada: <strong>{nombreZonaSeleccionada}</strong>
+                  {' '}(elige &quot;Todas las zonas&quot; para ver el plano completo)
+                </p>
+              )}
+              <div
+                className={`plano-compra-wrap${zonaSeleccionadaId ? ' plano-compra-wrap--zoom' : ''}`}
+                style={{ position: 'relative', display: 'block', width: '100%' }}
+              >
               {usarSvgPlano ? (
                 <svg
                   ref={svgRef}
-                  viewBox={`${escalaRef.current.minX} ${escalaRef.current.minY} ${escalaRef.current.worldW} ${escalaRef.current.worldH}`}
+                  viewBox={`${viewportPlano.minX} ${viewportPlano.minY} ${viewportPlano.worldW} ${viewportPlano.worldH}`}
+                  className="plano-compra-svg"
                   onClick={handleSvgClick}
                   onMouseMove={handleSvgMouseMove}
                   style={{
@@ -1894,26 +1902,27 @@ const Compra = () => {
                     borderRadius: '4px',
                     cursor: cursorPlano,
                     maxWidth: '100%',
+                    width: '100%',
                     height: 'auto',
                     display: 'block',
                     background: '#ffffff'
                   }}
-                  width={800}
-                  height={600}
+                  width={tamanoSvgPlano.width}
+                  height={tamanoSvgPlano.height}
                 >
                   {/* Fondo */}
                   <rect
-                    x={escalaRef.current.minX}
-                    y={escalaRef.current.minY}
-                    width={escalaRef.current.worldW}
-                    height={escalaRef.current.worldH}
+                    x={viewportPlano.minX}
+                    y={viewportPlano.minY}
+                    width={viewportPlano.worldW}
+                    height={viewportPlano.worldH}
                     fill={PLANO_COLORS.sheetFill}
                     stroke={PLANO_COLORS.sheetStroke}
                     strokeWidth="2"
                   />
 
-                  {/* Escenario */}
-                  {evento.escenario_x !== null && evento.escenario_y !== null && evento.escenario_width && evento.escenario_height && (
+                  {/* Escenario (solo si entra en la vista ampliada) */}
+                  {escenarioVisibleEnViewport(evento, viewportPlano) && evento.escenario_x !== null && evento.escenario_y !== null && evento.escenario_width && evento.escenario_height && (
                     <>
                       <rect
                         x={evento.escenario_x}
@@ -1938,14 +1947,14 @@ const Compra = () => {
                     </>
                   )}
 
-                  {/* Áreas */}
+                  {/* Áreas (con zoom solo la zona activa) */}
                   {Array.isArray(evento.areas) && evento.areas.map((area) => {
                     const hayFiltroZona = !!zonaSeleccionadaId;
                     const esZonaSel = hayFiltroZona && String(area.id) === String(zonaSeleccionadaId);
-                    const opacity = hayFiltroZona && !esZonaSel ? 0.15 : 1;
-                    const fill = area.color ? hexToRgba(area.color, hayFiltroZona && !esZonaSel ? 0.08 : 0.18) : hexToRgba('#cbd5e1', hayFiltroZona && !esZonaSel ? 0.08 : 0.18);
+                    if (hayFiltroZona && !esZonaSel) return null;
+                    const fill = area.color ? hexToRgba(area.color, 0.22) : hexToRgba('#cbd5e1', 0.22);
                     return (
-                      <g key={`area-${area.id}`} opacity={opacity}>
+                      <g key={`area-${area.id}`}>
                         <rect
                           x={area.posicion_x}
                           y={area.posicion_y}

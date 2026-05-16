@@ -1,9 +1,46 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import api from '../../api/axios';
 import { useAlert } from '../../context/AlertContext';
 import './Espacio.css';
 import Modal from '../../components/Modal.jsx';
-import ModalInput from '../../components/ModalInput.jsx';
+import {
+  HOJA_PRESETS,
+  HOJA_LIMITS,
+  MAX_ELEMENTOS_ZONA,
+  COLOR_AREA_DEFAULT,
+  COLORES_AREA_PRESETS,
+  clampHojaDim,
+  calcularTamanosLayout,
+  hexToRgba,
+} from '../../utils/layoutEspacio.js';
+
+const SelectorColorArea = ({ color, onChange, disabled = false }) => (
+  <div className="espacio-color-area">
+    <label className="espacio-color-area__label">Color de fondo del área</label>
+    <div className="espacio-color-presets">
+      {COLORES_AREA_PRESETS.map((preset) => (
+        <button
+          key={preset.hex}
+          type="button"
+          className={`espacio-color-swatch${color?.toUpperCase() === preset.hex.toUpperCase() ? ' espacio-color-swatch--activo' : ''}`}
+          style={{ backgroundColor: preset.hex }}
+          title={preset.nombre}
+          disabled={disabled}
+          onClick={() => onChange(preset.hex)}
+        />
+      ))}
+    </div>
+    <div className="espacio-color-custom">
+      <input
+        type="color"
+        value={color || COLOR_AREA_DEFAULT}
+        onChange={(e) => onChange(e.target.value)}
+        disabled={disabled}
+      />
+      <span className="espacio-color-hex">{color || COLOR_AREA_DEFAULT}</span>
+    </div>
+  </div>
+);
 
 const Espacio = () => {
   const { showAlert, showConfirm } = useAlert();
@@ -37,26 +74,33 @@ const Espacio = () => {
   
   // Configuración de área
   const [nombreArea, setNombreArea] = useState(''); // Nombre de la nueva área
+  const [nombreAreaModal, setNombreAreaModal] = useState('');
+  const [colorAreaNueva, setColorAreaNueva] = useState(COLOR_AREA_DEFAULT);
   const [mostrarModalNombreArea, setMostrarModalNombreArea] = useState(false); // Controlar modal de nombre de área
   const [areaPendiente, setAreaPendiente] = useState(null); // Área dibujada esperando nombre
 
+  const cambiarColorArea = (areaId, nuevoColor) => {
+    setAreas((prev) => prev.map((a) => (a.id === areaId ? { ...a, color: nuevoColor } : a)));
+  };
+
   // Handler para confirmar nombre del área
-  const handleConfirmarNombreArea = (nombre) => {
-    if (areaPendiente && nombre && nombre.trim()) {
+  const handleConfirmarNombreArea = () => {
+    const nombre = (nombreAreaModal || nombreArea).trim();
+    if (areaPendiente && nombre) {
       const nuevaArea = {
         id: `temp_area_${Date.now()}`,
-        nombre: nombre.trim(),
+        nombre,
         x: areaPendiente.x,
         y: areaPendiente.y,
         width: areaPendiente.width,
         height: areaPendiente.height,
-        color: '#CCCCCC',
+        color: colorAreaNueva || COLOR_AREA_DEFAULT,
         forma: areaPendiente.forma || 'rectangulo',
         tipo_area: 'SILLAS',
         capacidad_personas: null
       };
       setAreas([...areas, nuevaArea]);
-      setNombreArea(nombre.trim());
+      setNombreArea(nombre);
       setAreaPendiente(null);
       setCurrentElement(null);
       setMostrarModalNombreArea(false); // Cerrar el modal
@@ -104,13 +148,21 @@ const Espacio = () => {
   const [formaMesa, setFormaMesa] = useState('rectangulo'); // cuadrado, rectangulo
   const [mostrarModalEditarArea, setMostrarModalEditarArea] = useState(false);
   const [areaEnEdicion, setAreaEnEdicion] = useState(null); // área que se está editando (tipo, capacidad)
-  const [hojaAncho, setHojaAncho] = useState(1000);
-  const [hojaAlto, setHojaAlto] = useState(600);
-  
+  const [hojaAncho, setHojaAncho] = useState(2500);
+  const [hojaAlto, setHojaAlto] = useState(1800);
+  const [hojaAnchoInput, setHojaAnchoInput] = useState('2500');
+  const [hojaAltoInput, setHojaAltoInput] = useState('1800');
+  const [escalaIconos, setEscalaIconos] = useState(0.55);
+  const [guardandoTamanoHoja, setGuardandoTamanoHoja] = useState(false);
+
   const canvasRef = useRef(null);
   const miniCanvasRef = useRef(null);
   const [mostrarCanvasAmpliado, setMostrarCanvasAmpliado] = useState(false);
   const [mostrarNumerosAsientos, setMostrarNumerosAsientos] = useState(true);
+
+  const layoutSizes = useMemo(() => calcularTamanosLayout(escalaIconos), [escalaIconos]);
+  const totalElementosDibujo = asientos.length + mesas.length;
+  const dibujarNumerosEnCanvas = mostrarNumerosAsientos && totalElementosDibujo <= 2000;
 
   // Limitar coordenadas a los bordes de la hoja (todo debe quedar dentro)
   const clampRectToSheet = (rect) => {
@@ -304,18 +356,117 @@ const Espacio = () => {
   };
 
   useEffect(() => {
+    setHojaAnchoInput(String(hojaAncho));
+    setHojaAltoInput(String(hojaAlto));
+  }, [hojaAncho, hojaAlto]);
+
+  useEffect(() => {
     dibujarCanvas();
-  }, [forma, escenario, areas, zonaAsientos, asientos, mesas, eventoSeleccionado, elementosSeleccionados, seleccionCuadro, mostrarNumerosAsientos]);
+  }, [forma, escenario, areas, zonaAsientos, zonaPersonas, asientos, mesas, eventoSeleccionado, elementosSeleccionados, seleccionCuadro, mostrarNumerosAsientos, hojaAncho, hojaAlto, escalaIconos, layoutSizes, colorAreaNueva, nombreArea]);
 
   useEffect(() => {
     dibujarCanvasMini();
-  }, [forma, escenario, areas, asientos, mesas, eventoSeleccionado, mostrarNumerosAsientos]);
+  }, [forma, escenario, areas, asientos, mesas, eventoSeleccionado, mostrarNumerosAsientos, hojaAncho, hojaAlto, escalaIconos]);
 
   useEffect(() => {
     if (eventoSeleccionado) {
       setMostrarCanvasAmpliado(true);
     }
   }, [eventoSeleccionado]);
+
+  const aplicarTamanoHoja = async (ancho, alto, { guardarEnDb = false } = {}) => {
+    const { ancho: w, alto: h } = clampHojaDim(ancho, alto);
+    setHojaAncho(w);
+    setHojaAlto(h);
+    setHojaAnchoInput(String(w));
+    setHojaAltoInput(String(h));
+    if (!guardarEnDb || !eventoSeleccionado) return;
+    setGuardandoTamanoHoja(true);
+    try {
+      await api.put(`/eventos/${eventoSeleccionado.id}`, { hoja_ancho: w, hoja_alto: h });
+      showAlert(`Hoja guardada: ${w} × ${h} px`, { type: 'success' });
+    } catch (error) {
+      showAlert(error.response?.data?.message || 'Error al guardar tamaño de hoja', { type: 'error' });
+    } finally {
+      setGuardandoTamanoHoja(false);
+    }
+  };
+
+  const renderTamanoHojaSection = () => (
+    <div className="control-section espacio-hoja-section">
+      <h3>Hoja y escala</h3>
+      <p className="espacio-hoja-hint">
+        Hoja: <strong>{hojaAncho} × {hojaAlto} px</strong>
+        {totalElementosDibujo > 2000 && (
+          <span> · Usa scroll en el dibujo. Con +2000 iconos conviene ocultar números.</span>
+        )}
+      </p>
+      <div className="espacio-hoja-presets">
+        {HOJA_PRESETS.map((preset) => (
+          <button
+            key={preset.label}
+            type="button"
+            className={hojaAncho === preset.ancho && hojaAlto === preset.alto ? 'espacio-hoja-preset active' : 'espacio-hoja-preset'}
+            onClick={() => aplicarTamanoHoja(preset.ancho, preset.alto)}
+            disabled={layoutBloqueado}
+          >
+            {preset.label}
+          </button>
+        ))}
+      </div>
+      <div className="espacio-hoja-custom">
+        <div className="form-group-small">
+          <label>Ancho (px)</label>
+          <input
+            type="number"
+            min={HOJA_LIMITS.minAncho}
+            max={HOJA_LIMITS.maxAncho}
+            value={hojaAnchoInput}
+            onChange={(e) => setHojaAnchoInput(e.target.value)}
+            className="select-input"
+            disabled={layoutBloqueado}
+          />
+        </div>
+        <div className="form-group-small">
+          <label>Alto (px)</label>
+          <input
+            type="number"
+            min={HOJA_LIMITS.minAlto}
+            max={HOJA_LIMITS.maxAlto}
+            value={hojaAltoInput}
+            onChange={(e) => setHojaAltoInput(e.target.value)}
+            className="select-input"
+            disabled={layoutBloqueado}
+          />
+        </div>
+      </div>
+      <div className="espacio-hoja-actions">
+        <button type="button" className="btn-hoja-aplicar" disabled={layoutBloqueado} onClick={() => aplicarTamanoHoja(hojaAnchoInput, hojaAltoInput)}>
+          Aplicar hoja
+        </button>
+        <button
+          type="button"
+          className="btn-hoja-guardar"
+          disabled={layoutBloqueado || !eventoSeleccionado || guardandoTamanoHoja}
+          onClick={() => aplicarTamanoHoja(hojaAnchoInput, hojaAltoInput, { guardarEnDb: true })}
+        >
+          {guardandoTamanoHoja ? 'Guardando…' : 'Guardar hoja en evento'}
+        </button>
+      </div>
+      <div className="form-group-small espacio-escala-slider">
+        <label>Tamaño iconos ({Math.round(escalaIconos * 100)}%)</label>
+        <input
+          type="range"
+          min="40"
+          max="120"
+          value={Math.round(escalaIconos * 100)}
+          onChange={(e) => setEscalaIconos(Number(e.target.value) / 100)}
+          disabled={layoutBloqueado}
+        />
+        <p className="espacio-hoja-hint">Personas, sillas, mesas y asientos más pequeños = más caben en la misma zona.</p>
+      </div>
+    </div>
+  );
 
   const renderHerramientasPanel = (enModal = false) => (
       <div
@@ -333,6 +484,7 @@ const Espacio = () => {
             : undefined
         }
       >
+      {renderTamanoHojaSection()}
       <div className="control-section">
         <h3>Herramientas</h3>
         <div className="modo-buttons">
@@ -504,18 +656,21 @@ const Espacio = () => {
     const baseStyle = { padding: 0, margin: 0, width: '100%', overflow: 'auto', boxSizing: 'border-box' };
     return (
       <div
-        className="espacio-canvas-container"
-        style={
-          ampliado
-            ? { ...baseStyle, maxWidth: 'none', width: '100%', minHeight: 'calc(96vh - 100px)', flex: 1 }
-            : baseStyle
-        }
+        className={`espacio-canvas-container${ampliado ? ' espacio-canvas-container--ampliado' : ''}`}
+        style={ampliado ? { padding: 0, margin: 0, boxSizing: 'border-box' } : baseStyle}
       >
         <canvas
           ref={canvasRef}
           width={width}
           height={height}
           className="espacio-canvas"
+          style={{
+            display: 'block',
+            width: `${width}px`,
+            height: `${height}px`,
+            maxWidth: 'none',
+            flexShrink: 0,
+          }}
           onMouseDown={handleCanvasMouseDown}
           onMouseMove={handleCanvasMouseMove}
           onMouseUp={handleCanvasMouseUp}
@@ -532,7 +687,7 @@ const Espacio = () => {
               ) : (
                 <>
                   {modo === 'escenario' && 'Haz clic y arrastra para dibujar el escenario'}
-                  {modo === 'area' && 'Haz clic y arrastra para dibujar el área rectangular. Se te pedirá el nombre después de dibujar.'}
+                  {modo === 'area' && 'Elige el color de fondo, dibuja el rectángulo y confirma nombre y color al terminar.'}
                   {modo === 'seleccionar' && 'Clic para seleccionar, Shift+clic para selección múltiple, arrastra para cuadro de selección. Arrastra elementos seleccionados para moverlos todos juntos.'}
                   {modo === 'asiento_individual' && 'Haz clic en el canvas para colocar un asiento. Arrastra los asientos existentes para moverlos. Clic derecho o Ctrl+clic para eliminar.'}
                   {modo === 'persona_individual' && 'Haz clic para colocar una persona (círculo). Arrastra para mover. Clic derecho o Ctrl+clic para eliminar. Selecciona y asigna precio como los demás.'}
@@ -768,9 +923,7 @@ const Espacio = () => {
     const columnas = Math.ceil(Math.sqrt(cantidad));
     const filas = Math.ceil(cantidad / columnas);
     
-    const tamañoAsiento = 6; // Más pequeño para caber más
-    const padding = 10; // Padding reducido
-    const espacioEntreAsientos = 3; // Más juntos
+    const { asiento: tamañoAsiento, paddingZona: padding, espacioGrid: espacioEntreAsientos } = layoutSizes;
     
     const anchoDisponible = anchoZona - (2 * padding) - (columnas * tamañoAsiento);
     const altoDisponible = altoZona - (2 * padding) - (filas * tamañoAsiento);
@@ -784,7 +937,7 @@ const Espacio = () => {
       
       let x = xInicio + padding + (columna * (tamañoAsiento + espacioX)) + tamañoAsiento / 2;
       let y = yInicio + padding + (fila * (tamañoAsiento + espacioY)) + tamañoAsiento / 2;
-      const c = clampPointToSheet(x, y, 14);
+      const c = clampPointToSheet(x, y, tamañoAsiento + 2);
       x = c.x; y = c.y;
 
       nuevosAsientos.push({
@@ -801,21 +954,17 @@ const Espacio = () => {
     setAsientos(prev => [...prev, ...nuevosAsientos]);
   };
 
-  // Tamaño de persona (círculo) = mismo que asiento (cuadrado 16x16)
-  const TAMANO_PERSONA = 10;
   // Colores para etiquetas/números (más visibles que blanco/gris)
-  const COLOR_TEXTO_MESA = '#FFD700';     // Amarillo dorado sobre mesas marrones
-  const COLOR_TEXTO_ASIENTO = '#0d0d0d';  // Negro suave sobre sillas/asientos
+  const COLOR_TEXTO_MESA = '#FFD700';
+  const COLOR_TEXTO_ASIENTO = '#0d0d0d';
 
-  // Calcular cuántas personas caben en una zona (mismo algoritmo que asientos)
   const calcularCapacidadPersonas = (zona) => {
     if (!zona || zona.width <= 0 || zona.height <= 0) return 0;
-    const padding = 10;
-    const espacioEntre = 3;
+    const { persona: tam, paddingZona: padding, espacioGrid: espacioEntre } = layoutSizes;
     const anchoParaGrid = zona.width - 2 * padding;
     const altoParaGrid = zona.height - 2 * padding;
     if (anchoParaGrid <= 0 || altoParaGrid <= 0) return 0;
-    const paso = TAMANO_PERSONA + espacioEntre;
+    const paso = tam + espacioEntre;
     const columnas = Math.max(1, Math.floor((anchoParaGrid + espacioEntre) / paso));
     const filas = Math.max(1, Math.floor((altoParaGrid + espacioEntre) / paso));
     return columnas * filas;
@@ -825,20 +974,19 @@ const Espacio = () => {
   const getPosicionesPersonasParaArea = (area) => {
     if (!area || area.tipo_area !== 'PERSONAS' || !area.capacidad_personas) return [];
     const cantidad = area.capacidad_personas;
+    const { persona: tam, paddingZona: padding, espacioGrid: espacioEntre } = layoutSizes;
     const columnas = Math.ceil(Math.sqrt(cantidad));
     const filas = Math.ceil(cantidad / columnas);
-    const padding = 10;
-    const espacioEntre = 3;
-    const anchoDisponible = area.width - 2 * padding - columnas * TAMANO_PERSONA;
-    const altoDisponible = area.height - 2 * padding - filas * TAMANO_PERSONA;
+    const anchoDisponible = area.width - 2 * padding - columnas * tam;
+    const altoDisponible = area.height - 2 * padding - filas * tam;
     const espacioX = columnas > 1 ? Math.max(espacioEntre, anchoDisponible / (columnas - 1)) : 0;
     const espacioY = filas > 1 ? Math.max(espacioEntre, altoDisponible / (filas - 1)) : 0;
     const posiciones = [];
     for (let i = 0; i < cantidad; i++) {
       const fila = Math.floor(i / columnas);
       const columna = i % columnas;
-      const x = area.x + padding + (columna * (TAMANO_PERSONA + espacioX)) + TAMANO_PERSONA / 2;
-      const y = area.y + padding + (fila * (TAMANO_PERSONA + espacioY)) + TAMANO_PERSONA / 2;
+      const x = area.x + padding + (columna * (tam + espacioX)) + tam / 2;
+      const y = area.y + padding + (fila * (tam + espacioY)) + tam / 2;
       posiciones.push({ x: Math.round(x), y: Math.round(y) });
     }
     return posiciones;
@@ -855,22 +1003,21 @@ const Espacio = () => {
     const personasExistentes = asientos.filter(a => !a.mesa_id && String(a.numero_asiento || '').startsWith('P'));
     const nuevoNumero = personasExistentes.length + 1;
 
+    const { persona: tam, paddingZona: padding, espacioGrid: espacioEntre } = layoutSizes;
     const nuevasPersonas = [];
     const columnas = Math.ceil(Math.sqrt(cantidad));
     const filas = Math.ceil(cantidad / columnas);
-    const padding = 10;
-    const espacioEntre = 3;
-    const anchoDisponible = zona.width - 2 * padding - columnas * TAMANO_PERSONA;
-    const altoDisponible = zona.height - 2 * padding - filas * TAMANO_PERSONA;
+    const anchoDisponible = zona.width - 2 * padding - columnas * tam;
+    const altoDisponible = zona.height - 2 * padding - filas * tam;
     const espacioX = columnas > 1 ? Math.max(espacioEntre, anchoDisponible / (columnas - 1)) : 0;
     const espacioY = filas > 1 ? Math.max(espacioEntre, altoDisponible / (filas - 1)) : 0;
 
     for (let i = 0; i < cantidad; i++) {
       const fila = Math.floor(i / columnas);
       const columna = i % columnas;
-      let x = zona.x + padding + (columna * (TAMANO_PERSONA + espacioX)) + TAMANO_PERSONA / 2;
-      let y = zona.y + padding + (fila * (TAMANO_PERSONA + espacioY)) + TAMANO_PERSONA / 2;
-      const c = clampPointToSheet(x, y, 16);
+      let x = zona.x + padding + (columna * (tam + espacioX)) + tam / 2;
+      let y = zona.y + padding + (fila * (tam + espacioY)) + tam / 2;
+      const c = clampPointToSheet(x, y, tam + 2);
       x = c.x; y = c.y;
 
       nuevasPersonas.push({
@@ -906,11 +1053,11 @@ const Espacio = () => {
     const cantidadSillas = mesa.capacidad_sillas;
     const mesaX = mesa.x;
     const mesaY = mesa.y;
-    const mesaWidth = mesa.width || 30;
-    const mesaHeight = mesa.height || 30;
+    const mesaWidth = mesa.width || layoutSizes.mesaCuad;
+    const mesaHeight = mesa.height || layoutSizes.mesaCuad;
 
-    const tamañoSilla = 8;
-    const distanciaMesa = 3; // Sillas cerca de la mesa pero sin pegarlas (se ve la mesa)
+    const tamañoSilla = layoutSizes.silla;
+    const distanciaMesa = layoutSizes.distanciaMesaSilla;
     const [sillasSuperior, sillasDerecha, sillasInferior, sillasIzquierda] = distribuirSillasPorLados(cantidadSillas);
     let sillaIndex = 0;
 
@@ -977,11 +1124,10 @@ const Espacio = () => {
     const columnas = Math.ceil(Math.sqrt(cantidadMesas));
     const filas = Math.ceil(cantidadMesas / columnas);
     
-    // Mesas un poco más largas en rectángulo para que no se pisen las sillas
-    const mesaW = formaMesa === 'cuadrado' ? 26 : 34;
-    const mesaH = formaMesa === 'cuadrado' ? 26 : 22;
-    const padding = 15; // Padding para no chocar con bordes
-    const espacioEntreMesas = 28; // Espacio para no chocar con lo de abajo
+    const mesaW = formaMesa === 'cuadrado' ? layoutSizes.mesaCuad : layoutSizes.mesaRectW;
+    const mesaH = formaMesa === 'cuadrado' ? layoutSizes.mesaCuad : layoutSizes.mesaRectH;
+    const padding = layoutSizes.paddingZona + 4;
+    const espacioEntreMesas = layoutSizes.espacioEntreMesas;
     
     const anchoDisponible = anchoZona - (2 * padding) - (columnas * mesaW);
     const altoDisponible = altoZona - (2 * padding) - (filas * mesaH);
@@ -1016,7 +1162,7 @@ const Espacio = () => {
       
       const sillasMesa = generarSillasAlrededorMesa(nuevaMesa);
       sillasMesa.forEach(s => {
-        const c = clampPointToSheet(s.x, s.y, 14);
+        const c = clampPointToSheet(s.x, s.y, layoutSizes.silla + 2);
         nuevasSillas.push({ ...s, x: c.x, y: c.y });
       });
       
@@ -1061,8 +1207,7 @@ const Espacio = () => {
 
     // Dibujar áreas personalizadas
     areas.forEach(area => {
-      const isPersonas = area.tipo_area === 'PERSONAS';
-      ctx.fillStyle = isPersonas ? 'rgba(76, 175, 80, 0.08)' : (area.color || '#CCCCCC');
+      ctx.fillStyle = hexToRgba(area.color || COLOR_AREA_DEFAULT, 0.78);
       const isCircle = area.forma === 'circulo';
       if (isCircle) {
         const cx = area.x + area.width / 2;
@@ -1115,8 +1260,8 @@ const Espacio = () => {
         ctx.strokeRect(currentElement.x, currentElement.y, currentElement.width, currentElement.height);
         ctx.setLineDash([]);
       } else if (currentElement.type === 'area') {
-        ctx.fillStyle = 'rgba(200, 200, 200, 0.3)';
-        ctx.strokeStyle = '#999';
+        ctx.fillStyle = hexToRgba(colorAreaNueva || COLOR_AREA_DEFAULT, 0.45);
+        ctx.strokeStyle = colorAreaNueva || COLOR_AREA_DEFAULT;
         ctx.lineWidth = 2;
         ctx.setLineDash([5, 5]);
         if (currentElement.forma === 'circulo') {
@@ -1243,7 +1388,7 @@ const Espacio = () => {
       const posiciones = getPosicionesPersonasParaArea(area);
       const tipoPrecio = tiposPrecio.find(tp => tp.id === area.tipo_precio_id);
       const colorPersona = tipoPrecio?.color || getColorForTipoPrecio(area.tipo_precio_id) || '#4CAF50';
-      const radio = TAMANO_PERSONA / 2;
+      const radio = layoutSizes.radioPersona;
       posiciones.forEach(p => {
         ctx.fillStyle = colorPersona;
         ctx.beginPath();
@@ -1273,8 +1418,8 @@ const Espacio = () => {
     // Dibujar mesas con sus sillas (mesa visible como tabla, sillas alrededor por lados)
     mesas.forEach(mesa => {
       const estaSeleccionada = elementosSeleccionados.some(sel => sel.type === 'mesa' && sel.id === mesa.id);
-      const mw = mesa.width || 30;
-      const mh = mesa.height || 30;
+      const mw = mesa.width || layoutSizes.mesaCuad;
+      const mh = mesa.height || layoutSizes.mesaCuad;
 
       // Mesa: fondo marrón tipo “tabla” y borde para que se distinga de las sillas
       ctx.fillStyle = '#A0522D';
@@ -1287,28 +1432,29 @@ const Espacio = () => {
       ctx.lineWidth = 1;
       ctx.strokeRect(mesa.x + 2, mesa.y + 2, mw - 4, mh - 4);
 
-      if (mostrarNumerosAsientos) {
+      if (dibujarNumerosEnCanvas) {
         ctx.fillStyle = COLOR_TEXTO_MESA;
-        ctx.font = 'bold 11px Arial';
+        ctx.font = 'bold 9px Arial';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(`M${mesa.numero_mesa}`, mesa.x + mw / 2, mesa.y + mh / 2);
       }
 
-      // Sillas de la mesa: cuadrados pequeños bien separados de la mesa
       const sillasMesa = asientos.filter(a => a.mesa_id === mesa.id);
+      const sh = layoutSizes.silla;
+      const sh2 = layoutSizes.halfSilla;
       sillasMesa.forEach(silla => {
         const tipoPrecio = tiposPrecio.find(tp => tp.id === silla.tipo_precio_id);
         const estaSeleccionadaSilla = elementosSeleccionados.some(sel => sel.type === 'asiento' && sel.id === silla.id);
-        const sx = (silla.x || 50) - 4;
-        const sy = (silla.y || 50) - 4;
+        const sx = (silla.x || 50) - sh2;
+        const sy = (silla.y || 50) - sh2;
         const colorSilla = tipoPrecio?.color || getColorForTipoPrecio(silla.tipo_precio_id) || '#2196F3';
         ctx.fillStyle = colorSilla;
-        ctx.fillRect(sx, sy, 8, 8);
+        ctx.fillRect(sx, sy, sh, sh);
         ctx.strokeStyle = estaSeleccionadaSilla ? '#FFD700' : '#333';
         ctx.lineWidth = estaSeleccionadaSilla ? 2 : 1;
-        ctx.strokeRect(sx, sy, 8, 8);
-        if (mostrarNumerosAsientos) {
+        ctx.strokeRect(sx, sy, sh, sh);
+        if (dibujarNumerosEnCanvas) {
           ctx.fillStyle = COLOR_TEXTO_ASIENTO;
           ctx.font = 'bold 10px Arial';
           ctx.textAlign = 'center';
@@ -1324,15 +1470,17 @@ const Espacio = () => {
       const estaSeleccionado = elementosSeleccionados.some(sel => sel.type === 'asiento' && sel.id === asiento.id);
       
       const colorAsiento = tipoPrecio?.color || getColorForTipoPrecio(asiento.tipo_precio_id) || '#2196F3';
+      const ha = layoutSizes.halfAsiento;
+      const ta = layoutSizes.asiento;
       ctx.fillStyle = colorAsiento;
-      ctx.fillRect((asiento.x || 50) - 5, (asiento.y || 50) - 5, 10, 10);
+      ctx.fillRect((asiento.x || 50) - ha, (asiento.y || 50) - ha, ta, ta);
       ctx.strokeStyle = estaSeleccionado ? '#FFD700' : '#333';
-      ctx.lineWidth = estaSeleccionado ? 3 : 1;
-      ctx.strokeRect((asiento.x || 50) - 5, (asiento.y || 50) - 5, 10, 10);
+      ctx.lineWidth = estaSeleccionado ? 2 : 1;
+      ctx.strokeRect((asiento.x || 50) - ha, (asiento.y || 50) - ha, ta, ta);
       
-      if (mostrarNumerosAsientos) {
+      if (dibujarNumerosEnCanvas) {
         ctx.fillStyle = COLOR_TEXTO_ASIENTO;
-        ctx.font = 'bold 11px Arial';
+        ctx.font = 'bold 8px Arial';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(asiento.numero_asiento || '', asiento.x || 50, asiento.y || 50);
@@ -1345,18 +1493,18 @@ const Espacio = () => {
       const estaSeleccionado = elementosSeleccionados.some(sel => sel.type === 'asiento' && sel.id === persona.id);
       
       const colorPersona = tipoPrecio?.color || getColorForTipoPrecio(persona.tipo_precio_id) || '#4CAF50';
-      const radio = 5;
+      const radio = layoutSizes.radioPersona;
       ctx.fillStyle = colorPersona;
       ctx.beginPath();
       ctx.arc(persona.x || 50, persona.y || 50, radio, 0, 2 * Math.PI);
       ctx.fill();
       ctx.strokeStyle = estaSeleccionado ? '#FFD700' : '#333';
-      ctx.lineWidth = estaSeleccionado ? 3 : 1;
+      ctx.lineWidth = estaSeleccionado ? 2 : 1;
       ctx.stroke();
       
-      if (mostrarNumerosAsientos) {
+      if (dibujarNumerosEnCanvas) {
         ctx.fillStyle = COLOR_TEXTO_ASIENTO;
-        ctx.font = 'bold 11px Arial';
+        ctx.font = 'bold 8px Arial';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(persona.numero_asiento || '', persona.x || 50, persona.y || 50);
@@ -1455,8 +1603,7 @@ const Espacio = () => {
       ctx.fillText('ESCENARIO', escenario.x + escenario.width / 2, escenario.y + escenario.height / 2);
     }
     areas.forEach(area => {
-      const isPersonas = area.tipo_area === 'PERSONAS';
-      ctx.fillStyle = isPersonas ? 'rgba(76, 175, 80, 0.08)' : (area.color || '#CCCCCC');
+      ctx.fillStyle = hexToRgba(area.color || COLOR_AREA_DEFAULT, 0.78);
       if (area.forma === 'circulo') {
         const cx = area.x + area.width / 2;
         const cy = area.y + area.height / 2;
@@ -1477,7 +1624,7 @@ const Espacio = () => {
     areas.filter(a => a.tipo_area === 'PERSONAS').forEach(area => {
       const posiciones = getPosicionesPersonasParaArea(area);
       const colorPersona = tiposPrecio.find(tp => tp.id === area.tipo_precio_id)?.color || '#4CAF50';
-      const radio = TAMANO_PERSONA / 2;
+      const radio = layoutSizes.radioPersona;
       posiciones.forEach(p => {
         ctx.fillStyle = colorPersona;
         ctx.beginPath();
@@ -1957,8 +2104,8 @@ const Espacio = () => {
       setZonaPersonas({ x: pos.x, y: pos.y, width: 0, height: 0 });
     } else if ((modo === 'mesas' || modo === 'mesa_individual') && tipoPrecioSeleccionado) {
       // Mesa por defecto más rectangular para que no se pisen las sillas
-      const mesaW = formaMesa === 'cuadrado' ? 26 : 34;
-      const mesaH = formaMesa === 'cuadrado' ? 26 : 22;
+      const mesaW = formaMesa === 'cuadrado' ? layoutSizes.mesaCuad : layoutSizes.mesaRectW;
+      const mesaH = formaMesa === 'cuadrado' ? layoutSizes.mesaCuad : layoutSizes.mesaRectH;
       const { x: mx, y: my } = clampMesaToSheet(pos.x - mesaW / 2, pos.y - mesaH / 2, mesaW, mesaH);
       const numeroMesa = mesas.length + 1;
       const nuevaMesa = {
@@ -2201,6 +2348,7 @@ const Espacio = () => {
       if (currentElement.width > 10 && currentElement.height > 10) {
         // Guardar el área pendiente y mostrar el modal
         setAreaPendiente(currentElement);
+        setNombreAreaModal(nombreArea);
         setMostrarModalNombreArea(true);
         dibujarCanvas(); // Redibujar para mantener el preview
       } else {
@@ -2222,6 +2370,13 @@ const Espacio = () => {
       setZonaMesas(null);
     } else if (zonaPersonas && modo === 'zona_personas' && tipoPrecioSeleccionado) {
       if (zonaPersonas.width > 10 && zonaPersonas.height > 10) {
+        const cap = calcularCapacidadPersonas(zonaPersonas);
+        if (cantidadPersonas > cap) {
+          showAlert(
+            `En esta zona caben aprox. ${cap} personas con el tamaño de icono actual. Amplía la zona, sube el tamaño de la hoja o baja el slider de iconos.`,
+            { type: 'warning' }
+          );
+        }
         generarPersonasAutomaticas({ ...zonaPersonas, tipo_precio_id: tipoPrecioSeleccionado, cantidad: cantidadPersonas });
       }
       setZonaPersonas(null);
@@ -2970,7 +3125,7 @@ const Espacio = () => {
                           <input
                             type="number"
                             min="1"
-                            max="500"
+                            max={MAX_ELEMENTOS_ZONA}
                             value={cantidadAsientos}
                             onChange={(e) => {
                               const val = parseInt(e.target.value) || 10;
@@ -3192,6 +3347,7 @@ const Espacio = () => {
             large={true}
             tools={
               <>
+                {renderTamanoHojaSection()}
                 <div className="control-section">
                   <h3>Herramientas</h3>
                   <div className="modo-buttons">
@@ -3339,8 +3495,13 @@ const Espacio = () => {
                         className="select-input"
                       />
                     </div>
+                    <SelectorColorArea
+                      color={colorAreaNueva}
+                      onChange={setColorAreaNueva}
+                      disabled={layoutBloqueado}
+                    />
                     <p style={{ fontSize: '12px', color: '#666', marginTop: '8px' }}>
-                      Clic y arrastra para dibujar un rectángulo. Se te pedirá el nombre después.
+                      Elige el color, dibuja el rectángulo y confirma el nombre al terminar.
                     </p>
                     {areas.length > 0 && (
                       <div style={{ marginTop: '15px' }}>
@@ -3361,8 +3522,28 @@ const Espacio = () => {
                                 alignItems: 'center',
                                 marginBottom: '5px'
                               }}>
-                                <span style={{ fontWeight: 'bold' }}>{area.nombre}</span>
-                                <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
+                                <span style={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  <span
+                                    style={{
+                                      width: 14,
+                                      height: 14,
+                                      borderRadius: 3,
+                                      backgroundColor: area.color || COLOR_AREA_DEFAULT,
+                                      border: '1px solid #999',
+                                      flexShrink: 0,
+                                    }}
+                                  />
+                                  {area.nombre}
+                                </span>
+                                <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', alignItems: 'center' }}>
+                                  <span className="espacio-area-color-inline" title="Cambiar color de fondo">
+                                    <input
+                                      type="color"
+                                      value={area.color || COLOR_AREA_DEFAULT}
+                                      onChange={(e) => cambiarColorArea(area.id, e.target.value)}
+                                      disabled={layoutBloqueado}
+                                    />
+                                  </span>
                                   <button
                                     type="button"
                                     onClick={() => abrirEditarArea(area)}
@@ -3439,11 +3620,11 @@ const Espacio = () => {
                       <input
                         type="number"
                         min="1"
-                        max="500"
+                        max={MAX_ELEMENTOS_ZONA}
                         value={cantidadPersonas}
                         onChange={(e) => {
                           const val = parseInt(e.target.value) || 50;
-                          setCantidadPersonas(Math.max(1, Math.min(500, val)));
+                          setCantidadPersonas(Math.max(1, Math.min(MAX_ELEMENTOS_ZONA, val)));
                         }}
                         className="select-input"
                         placeholder="Máx. personas"
@@ -3470,7 +3651,7 @@ const Espacio = () => {
                           <input
                             type="number"
                             min="1"
-                            max="500"
+                            max={MAX_ELEMENTOS_ZONA}
                             value={cantidadAsientos}
                             onChange={(e) => {
                               const val = parseInt(e.target.value) || 10;
@@ -3801,14 +3982,7 @@ const Espacio = () => {
               </>
             }
           >
-            <div
-              style={{
-                width: '100%',
-                boxSizing: 'border-box',
-                maxHeight: 'calc(90vh - 70px)',
-                overflow: 'hidden'
-              }}
-            >
+            <div className="espacio-modal-canvas-wrap">
               {renderCanvas(true, true)}
             </div>
           </Modal>
@@ -4083,15 +4257,60 @@ const Espacio = () => {
         </div>
       )}
 
-      {/* Modal para ingresar nombre del área */}
-      <ModalInput
-        isOpen={mostrarModalNombreArea}
-        onClose={handleCancelarNombreArea}
-        onConfirm={handleConfirmarNombreArea}
-        title="Nueva Área"
-        message="Ingresa el nombre del área"
-        placeholder="Ej: PALCO, VIP, Balcón..."
-      />
+      {/* Modal para ingresar nombre y color del área */}
+      {mostrarModalNombreArea && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 2000,
+          }}
+          onClick={handleCancelarNombreArea}
+        >
+          <div
+            className="espacio-modal-nombre-area"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3>Nueva área</h3>
+            <p style={{ fontSize: '13px', color: '#666', marginBottom: '12px' }}>
+              Nombre y color de fondo para la zona que dibujaste.
+            </p>
+            <div className="form-group-small">
+              <label>Nombre</label>
+              <input
+                type="text"
+                className="select-input"
+                placeholder="Ej: PALCO, VIP, GENERAL..."
+                value={nombreAreaModal}
+                onChange={(e) => setNombreAreaModal(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleConfirmarNombreArea()}
+                autoFocus
+              />
+            </div>
+            <SelectorColorArea color={colorAreaNueva} onChange={setColorAreaNueva} />
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '16px' }}>
+              <button
+                type="button"
+                onClick={handleCancelarNombreArea}
+                style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid #ddd', cursor: 'pointer' }}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmarNombreArea}
+                style={{ padding: '8px 16px', borderRadius: '6px', border: 'none', background: '#2196F3', color: '#fff', cursor: 'pointer' }}
+              >
+                Crear área
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal para editar área (tipo, capacidad) - después de dibujar */}
       {mostrarModalEditarArea && areaEnEdicion && (
@@ -4113,8 +4332,12 @@ const Espacio = () => {
           }} onClick={e => e.stopPropagation()}>
             <h3 style={{ marginTop: 0 }}>Configurar área: {areaEnEdicion.nombre}</h3>
             <p style={{ fontSize: '13px', color: '#666', marginBottom: '16px' }}>
-              Define si esta área tendrá sillas, mesas o personas de pie, y su capacidad.
+              Color de fondo, tipo de asientos y capacidad de la zona.
             </p>
+            <SelectorColorArea
+              color={areaEnEdicion.color || COLOR_AREA_DEFAULT}
+              onChange={(hex) => setAreaEnEdicion({ ...areaEnEdicion, color: hex })}
+            />
             <div style={{ marginBottom: '12px' }}>
               <label style={{ display: 'block', marginBottom: '4px', fontWeight: 600 }}>Tipo de área</label>
               <select

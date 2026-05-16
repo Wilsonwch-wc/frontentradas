@@ -17,6 +17,9 @@ const Cartelera = () => {
     qr_pago_url: '',
     titulo: '',
     descripcion: '',
+    ubicacion: '',
+    ciudad: '',
+    ubicacion_url: '',
     hora_inicio: '',
     precio: '',
     es_nuevo: false,
@@ -429,6 +432,9 @@ const Cartelera = () => {
       qr_pago_url: evento.qr_pago_url || '',
       titulo: evento.titulo,
       descripcion: evento.descripcion,
+      ubicacion: evento.ubicacion || '',
+      ciudad: evento.ciudad || '',
+      ubicacion_url: evento.ubicacion_url || '',
       hora_inicio: evento.hora_inicio ? evento.hora_inicio.slice(0, 16) : '',
       precio: evento.precio.toString(),
       es_nuevo: evento.es_nuevo === 1 || evento.es_nuevo === true,
@@ -498,6 +504,9 @@ const Cartelera = () => {
       qr_pago_url: '',
       titulo: '',
       descripcion: '',
+      ubicacion: '',
+      ciudad: '',
+      ubicacion_url: '',
       hora_inicio: '',
       precio: '',
       es_nuevo: false,
@@ -595,6 +604,15 @@ const Cartelera = () => {
                       </svg>
                       {formatearFecha(evento.hora_inicio)}
                     </div>
+                    {(evento.ubicacion || evento.ciudad) && (
+                      <div className="evento-ubicacion-resumen" title={evento.ubicacion_url || ''}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                          <circle cx="12" cy="10" r="3"></circle>
+                        </svg>
+                        {[evento.ubicacion, evento.ciudad].filter(Boolean).join(', ')}
+                      </div>
+                    )}
                     <div className="evento-precio">
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <line x1="12" y1="1" x2="12" y2="23"></line>
@@ -872,6 +890,45 @@ const Cartelera = () => {
                     rows="4"
                     placeholder="Descripción del evento"
                   ></textarea>
+                </div>
+
+                <div className="form-section-ubicacion">
+                  <h3 className="form-section-title">Ubicación del evento</h3>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Lugar / dirección</label>
+                      <input
+                        type="text"
+                        name="ubicacion"
+                        value={formData.ubicacion}
+                        onChange={handleInputChange}
+                        placeholder="Ej: Estadio Hernando Siles, Av. Saavedra 1040"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Ciudad</label>
+                      <input
+                        type="text"
+                        name="ciudad"
+                        value={formData.ciudad}
+                        onChange={handleInputChange}
+                        placeholder="Ej: La Paz"
+                      />
+                    </div>
+                  </div>
+                  <div className="form-group">
+                    <label>URL del mapa (Google Maps, Waze, etc.)</label>
+                    <input
+                      type="url"
+                      name="ubicacion_url"
+                      value={formData.ubicacion_url}
+                      onChange={handleInputChange}
+                      placeholder="https://maps.google.com/..."
+                    />
+                    <p className="form-hint">
+                      Los clientes verán este enlace en el detalle del evento para abrir la ubicación.
+                    </p>
+                  </div>
                 </div>
 
                 <div className="form-row">

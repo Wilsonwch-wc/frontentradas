@@ -196,6 +196,27 @@ const DetalleEvento = () => {
                   <p className="fecha-valor">{hora}</p>
                 </div>
               </div>
+              {(evento.ubicacion || evento.ciudad) && (
+                <div className="fecha-item detalle-ubicacion">
+                  <span className="fecha-icon">📍</span>
+                  <div>
+                    <p className="fecha-label">Ubicación</p>
+                    <p className="fecha-valor">
+                      {[evento.ubicacion, evento.ciudad].filter(Boolean).join(', ')}
+                    </p>
+                    {evento.ubicacion_url && (
+                      <a
+                        href={evento.ubicacion_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="detalle-ubicacion-link"
+                      >
+                        Ver en mapa →
+                      </a>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
             <button 
               onClick={handleComprar} 

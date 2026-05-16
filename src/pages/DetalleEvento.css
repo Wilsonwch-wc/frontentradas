@@ -233,6 +233,23 @@
   margin: 0.25rem 0 0 0;
 }
 
+.detalle-ubicacion-link {
+  display: inline-block;
+  margin-top: 0.35rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #667eea;
+  text-decoration: none;
+}
+
+.detalle-ubicacion-link:hover {
+  text-decoration: underline;
+}
+
+.detalle-ubicacion .fecha-valor {
+  line-height: 1.35;
+}
+
 .detalle-descripcion {
   padding: 1.5rem;
   background: #f8f9fa;

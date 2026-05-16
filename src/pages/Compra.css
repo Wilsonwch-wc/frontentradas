@@ -1,3 +1,26 @@
+.plano-zona-hint {
+  margin: 0 0 10px 0;
+  padding: 8px 12px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  color: #1e40af;
+}
+
+.plano-compra-wrap {
+  width: 100%;
+  max-width: 800px;
+}
+
+.plano-compra-wrap--zoom {
+  max-width: 1100px;
+}
+
+.plano-compra-wrap--zoom .plano-compra-svg {
+  min-height: 320px;
+}
+
 .compra-page {
   min-height: 100vh;
   padding: 1rem 0 0 0;
