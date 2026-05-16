@@ -218,8 +218,12 @@ const Espacio = () => {
   const [mesasSinSillasVisibles, setMesasSinSillasVisibles] = useState(true);
   const [letraMesa, setLetraMesa] = useState('A');
   const [letraAsiento, setLetraAsiento] = useState('A');
-  const [paridadAsiento, setParidadAsiento] = useState('normal'); // 'normal' | 'impar' | 'par'
-  const [paridadMesaSola, setParidadMesaSola] = useState('normal'); // 'normal' | 'impar' | 'par'
+  const [paridadAsiento, setParidadAsientoState] = useState('normal'); // 'normal' | 'impar' | 'par'
+  const paridadAsientoRef = useRef('normal');
+  const setParidadAsiento = (v) => { paridadAsientoRef.current = v; setParidadAsientoState(v); };
+  const [paridadMesaSola, setParidadMesoSolaState] = useState('normal'); // 'normal' | 'impar' | 'par'
+  const paridadMesaSolaRef = useRef('normal');
+  const setParidadMesaSola = (v) => { paridadMesaSolaRef.current = v; setParidadMesoSolaState(v); };
   const [codigoMesaEdit, setCodigoMesaEdit] = useState('');
   const [mesaPrecioCompleta, setMesaPrecioCompleta] = useState('');
   const [mesaPrecioSilla, setMesaPrecioSilla] = useState('');
@@ -2707,7 +2711,7 @@ const Espacio = () => {
         cantidad: cantidadAsientos,
         tipo_precio_id: tipoPrecioSeleccionado,
         letraAsiento: letraAsiento,
-        paridad: paridadAsiento
+        paridad: paridadAsientoRef.current
       };
       setZonaAsientos(zona); // Solo para mostrar visualmente la última zona
       generarAsientosAutomaticos(zona);
@@ -2716,7 +2720,7 @@ const Espacio = () => {
       setZonaMesas(null);
     } else if (zonaMesasSolas && modo === 'zona_mesas_solas' && tipoPrecioSeleccionado) {
       if (zonaMesasSolas.width > 10 && zonaMesasSolas.height > 10) {
-        generarMesasSinSillasEnZona(zonaMesasSolas);
+        generarMesasSinSillasEnZona({ ...zonaMesasSolas, paridad: paridadMesaSolaRef.current });
       }
       setZonaMesasSolas(null);
     } else if (zonaPersonas && modo === 'zona_personas' && tipoPrecioSeleccionado) {
@@ -4824,6 +4828,62 @@ const Espacio = () => {
                           title="Invierte el orden horizontal: el primero va al final y el último al inicio"
                         >
                           ⇔ Invertir posición
+                        </button>
+                      )}
+                      {elementosSeleccionados.length > 1 && (
+                        <button
+                          onClick={() => {
+                            // Recopilar Y actuales de todos los seleccionados
+                            const ys = elementosSeleccionados.map(sel => {
+                              if (sel.type === 'asiento') {
+                                const a = asientos.find(x => x.id === sel.id);
+                                return a ? (a.y || 50) : 50;
+                              } else {
+                                const m = mesas.find(x => x.id === sel.id);
+                                return m ? (m.y || 100) : 100;
+                              }
+                            }).filter(Boolean);
+                            const medY = Math.round(ys.reduce((s, v) => s + v, 0) / ys.length);
+                            // Aplicar Y promedio a todos
+                            const newAsientos = asientos.map(a => {
+                              const sel = elementosSeleccionados.find(s => s.type === 'asiento' && s.id === a.id);
+                              return sel ? { ...a, y: medY } : a;
+                            });
+                            // Para mesas: alinear la mesa y sus sillas
+                            const newMesas = mesas.map(m => {
+                              const sel = elementosSeleccionados.find(s => s.type === 'mesa' && s.id === m.id);
+                              if (!sel) return m;
+                              const dy = medY - (m.y || 100);
+                              return { ...m, y: medY };
+                            });
+                            // Mover sillas de mesas alineadas
+                            let asientosAct = newAsientos;
+                            elementosSeleccionados.filter(s => s.type === 'mesa').forEach(sel => {
+                              const mesaOrig = mesas.find(m => m.id === sel.id);
+                              const mesaNueva = newMesas.find(m => m.id === sel.id);
+                              if (!mesaOrig || !mesaNueva) return;
+                              const dy = mesaNueva.y - mesaOrig.y;
+                              asientosAct = asientosAct.map(a =>
+                                a.mesa_id === sel.id ? { ...a, y: (a.y || 50) + dy } : a
+                              );
+                            });
+                            setAsientos(asientosAct);
+                            setMesas(newMesas);
+                          }}
+                          disabled={layoutBloqueado}
+                          style={{
+                            padding: '6px 10px',
+                            backgroundColor: layoutBloqueado ? '#cccccc' : '#00897b',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: layoutBloqueado ? 'not-allowed' : 'pointer',
+                            fontSize: '12px',
+                            fontWeight: 'bold'
+                          }}
+                          title="Alinea todos los elementos seleccionados en la misma fila horizontal"
+                        >
+                          ≡ Alinear fila
                         </button>
                       )}
                       <button
