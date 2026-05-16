@@ -624,7 +624,7 @@ const Compras = () => {
                   <div className="asientos-list">
                     {compraSeleccionada.asientos.map((asiento) => (
                       <div key={asiento.id} className="asiento-item">
-                        <span><strong>Asiento:</strong> {asiento.numero_asiento}</span>
+                        <span><strong>Asiento:</strong> {asiento.codigo_asiento || asiento.numero_asiento}</span>
                         {asiento.numero_mesa && (
                           <span><strong>Mesa:</strong> M{asiento.numero_mesa}</span>
                         )}

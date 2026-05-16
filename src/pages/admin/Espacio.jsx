@@ -13,6 +13,9 @@ import {
   calcularTamanosLayout,
   hexToRgba,
 } from '../../utils/layoutEspacio.js';
+import { etiquetaMesa } from '../../utils/etiquetaMesa.js';
+import { normalizarLetraMesa, obtenerSiguienteCodigoMesa } from '../../utils/codigoMesa.js';
+import { normalizarLetraAsiento, obtenerSiguienteCodigoAsiento } from '../../utils/codigoAsiento.js';
 
 const SelectorColorArea = ({ color, onChange, disabled = false }) => (
   <div className="espacio-color-area">
@@ -49,7 +52,7 @@ const Espacio = () => {
   const [tiposPrecio, setTiposPrecio] = useState([]);
   const [loading, setLoading] = useState(true);
   const [forma, setForma] = useState('rectangulo'); // rectangulo, cuadrado, triangulo, circulo
-  const [modo, setModo] = useState('escenario'); // escenario, area, asiento_individual, persona_individual, zona_asientos, zona_mesas, zona_personas, mesas, mesa_individual, seleccionar
+  const [modo, setModo] = useState('escenario'); // escenario, area, asiento_individual, persona_individual, zona_asientos, zona_mesas, zona_mesas_solas, zona_personas, mesas, mesa_individual, seleccionar
   const [tipoPrecioSeleccionado, setTipoPrecioSeleccionado] = useState(null);
   const [layoutBloqueado, setLayoutBloqueado] = useState(false); // Modo solo lectura después de guardar
   const [elementoInfo, setElementoInfo] = useState(null); // Información del elemento seleccionado para mostrar
@@ -68,6 +71,7 @@ const Espacio = () => {
   const [areas, setAreas] = useState([]); // [{id, nombre, x, y, width, height, color}]
   const [zonaAsientos, setZonaAsientos] = useState(null); // {x, y, width, height, cantidad, tipo_precio_id}
   const [zonaMesas, setZonaMesas] = useState(null); // {x, y, width, height, cantidad, sillasPorMesa, tipo_precio_id}
+  const [zonaMesasSolas, setZonaMesasSolas] = useState(null); // zona mesas sin sillas (A1, A2… auto)
   const [zonaPersonas, setZonaPersonas] = useState(null); // zona de personas dibujada (para mostrar)
   const [asientos, setAsientos] = useState([]); // [{id, x, y, numero_asiento, tipo_precio_id, mesa_id}]
   const [mesas, setMesas] = useState([]); // [{id, x, y, width, height, numero_mesa, capacidad_sillas, tipo_precio_id}]
@@ -137,18 +141,59 @@ const Espacio = () => {
       Number.isNaN(parseFloat(mesaPrecioSilla))
         ? null
         : parseFloat(mesaPrecioSilla),
-    venta_solo_mesa: mesaVentaSoloMesa ? 1 : 0,
+    venta_solo_mesa: mesasSinSillasVisibles || mesaVentaSoloMesa ? 1 : 0,
   });
+
+  const codigoMesaDuplicado = (codigo, excluirId = null) => {
+    const c = String(codigo || '').trim().toUpperCase();
+    if (!c) return false;
+    return mesas.some(
+      (m) => m.id !== excluirId && String(m.codigo_mesa || '').trim().toUpperCase() === c
+    );
+  };
+
+  const agregarSillasDeMesaAlEstado = (mesa) => {
+    if (mesasSinSillasVisibles) return;
+    const sillas = generarSillasAlrededorMesa(mesa).map((s) => {
+      const c = clampPointToSheet(s.x, s.y, 14);
+      return { ...s, x: c.x, y: c.y };
+    });
+    if (sillas.length) setAsientos((prev) => [...prev, ...sillas]);
+  };
 
   const aplicarPreciosAMesa = (mesaId) => {
     const campos = getCamposPrecioMesa();
+    const codigo = codigoMesaEdit.trim().toUpperCase() || null;
+    if (codigo && codigoMesaDuplicado(codigo, mesaId)) {
+      showAlert(`Ya existe la mesa ${codigo}`, { type: 'warning' });
+      return;
+    }
+    const payload = { ...campos, ...(codigo ? { codigo_mesa: codigo } : {}) };
     setMesas((prev) =>
-      prev.map((m) => (m.id === mesaId ? { ...m, ...campos } : m))
+      prev.map((m) => (m.id === mesaId ? { ...m, ...payload } : m))
     );
     if (typeof mesaId === 'number' && mesaId <= 1000000 && eventoSeleccionado) {
-      api.put(`/mesas/${mesaId}`, campos).catch((e) => console.warn('Precios mesa:', e));
+      api.put(`/mesas/${mesaId}`, payload).catch((e) => console.warn('Precios mesa:', e));
     }
-    showAlert('Precios de mesa actualizados', { type: 'success' });
+    showAlert('Mesa actualizada', { type: 'success' });
+  };
+
+  const resolverCodigoNuevaMesa = (listaBase = mesas, x, y) => {
+    if (mesasSinSillasVisibles || modo === 'zona_mesas_solas' || modo === 'mesa_individual' || modo === 'mesas') {
+      let acumulado = listaBase;
+      if (x !== undefined && y !== undefined) {
+        const area = detectarAreaEnPosicion(x, y);
+        if (area) {
+          acumulado = listaBase.filter(m => {
+            const mArea = detectarAreaEnPosicion((m.x || 0) + (m.width || 0) / 2, (m.y || 0) + (m.height || 0) / 2);
+            return mArea?.id === area.id;
+          });
+        }
+      }
+      return obtenerSiguienteCodigoMesa(acumulado, letraMesa);
+    }
+    const manual = codigoMesaEdit.trim().toUpperCase();
+    return manual || null;
   };
 
   const guardarEdicionArea = () => {
@@ -170,6 +215,12 @@ const Espacio = () => {
   // Configuración de mesas
   const [cantidadMesas, setCantidadMesas] = useState(1);
   const [sillasPorMesa, setSillasPorMesa] = useState(4);
+  const [mesasSinSillasVisibles, setMesasSinSillasVisibles] = useState(true);
+  const [letraMesa, setLetraMesa] = useState('A');
+  const [letraAsiento, setLetraAsiento] = useState('A');
+  const [paridadAsiento, setParidadAsiento] = useState('normal'); // 'normal' | 'impar' | 'par'
+  const [paridadMesaSola, setParidadMesaSola] = useState('normal'); // 'normal' | 'impar' | 'par'
+  const [codigoMesaEdit, setCodigoMesaEdit] = useState('');
   const [mesaPrecioCompleta, setMesaPrecioCompleta] = useState('');
   const [mesaPrecioSilla, setMesaPrecioSilla] = useState('');
   const [mesaVentaSoloMesa, setMesaVentaSoloMesa] = useState(false);
@@ -587,11 +638,12 @@ const Espacio = () => {
             onClick={() => {
               if (!layoutBloqueado) {
                 setModo('mesas');
+                setMesasSinSillasVisibles(true);
                 setElementosSeleccionados([]);
               }
             }}
             disabled={layoutBloqueado || !tipoPrecioSeleccionado}
-            title={layoutBloqueado ? 'Layout bloqueado' : 'Haz clic en el canvas para colocar una mesa con sillas alrededor'}
+            title={layoutBloqueado ? 'Layout bloqueado' : 'Coloca mesas con código automático A1, A2…'}
           >
             🪑 Mesas
           </button>
@@ -633,6 +685,20 @@ const Espacio = () => {
             title={layoutBloqueado ? 'Layout bloqueado' : 'Dibuja una zona y las mesas con sillas se generarán automáticamente'}
           >
             🪑 Mesas con Sillas (Auto)
+          </button>
+          <button
+            className={modo === 'zona_mesas_solas' ? 'active' : ''}
+            onClick={() => {
+              if (!layoutBloqueado) {
+                setModo('zona_mesas_solas');
+                setMesasSinSillasVisibles(true);
+                setElementosSeleccionados([]);
+              }
+            }}
+            disabled={layoutBloqueado || !tipoPrecioSeleccionado}
+            title={layoutBloqueado ? 'Layout bloqueado' : 'Zona: mesas A1, A2… sin sillas'}
+          >
+            📋 Mesas sin sillas (Auto)
           </button>
         </div>
         
@@ -721,6 +787,8 @@ const Espacio = () => {
                   {modo === 'persona_individual' && 'Haz clic para colocar una persona (círculo). Arrastra para mover. Clic derecho o Ctrl+clic para eliminar. Selecciona y asigna precio como los demás.'}
                   {modo === 'zona_asientos' && 'Haz clic y arrastra para dibujar la zona de asientos. Los asientos se generarán automáticamente.'}
                   {modo === 'zona_mesas' && 'Haz clic y arrastra para dibujar la zona de mesas. Las mesas con sillas se generarán automáticamente.'}
+                  {modo === 'zona_mesas_solas' && `Haz clic y arrastra una zona. Se crearán mesas ${normalizarLetraMesa(letraMesa)}1, ${normalizarLetraMesa(letraMesa)}2… sin dibujar sillas.`}
+                  {(modo === 'mesas' || modo === 'mesa_individual') && mesasSinSillasVisibles && `Coloca mesas una a una: siguiente ${obtenerSiguienteCodigoMesa(mesas, letraMesa)}.`}
                   {modo === 'zona_personas' && `Haz clic y arrastra para dibujar la zona. Se generarán hasta ${cantidadPersonas} personas (círculos).`}
                 </>
               )}
@@ -885,6 +953,7 @@ const Espacio = () => {
           width: m.ancho !== null && m.ancho !== undefined ? m.ancho : 24,
           height: m.alto !== null && m.alto !== undefined ? m.alto : 24,
           numero_mesa: m.numero_mesa,
+          codigo_mesa: m.codigo_mesa || null,
           capacidad_sillas: m.capacidad_sillas || 4, // Valor por defecto si no tiene capacidad_sillas
           tipo_precio_id: m.tipo_precio_id,
           area_id: m.area_id || null,
@@ -949,18 +1018,51 @@ const Espacio = () => {
     const altoZona = zona.height;
     const xInicio = zona.x;
     const yInicio = zona.y;
+    const letra = normalizarLetraAsiento(zona.letraAsiento ?? letraAsiento);
 
-    // Calcular distribución en grid
-    const columnas = Math.ceil(Math.sqrt(cantidad));
-    const filas = Math.ceil(cantidad / columnas);
-    
-    const { asiento: tamañoAsiento, paddingZona: padding, espacioGrid: espacioEntreAsientos } = layoutSizes;
-    
-    const anchoDisponible = anchoZona - (2 * padding) - (columnas * tamañoAsiento);
-    const altoDisponible = altoZona - (2 * padding) - (filas * tamañoAsiento);
-    
-    const espacioX = columnas > 1 ? Math.max(espacioEntreAsientos, anchoDisponible / (columnas - 1)) : 0;
-    const espacioY = filas > 1 ? Math.max(espacioEntreAsientos, altoDisponible / (filas - 1)) : 0;
+    // Fila única: todos los asientos en una sola línea horizontal
+    const columnas = cantidad;
+    const filas = 1;
+    const ESPACIO_FIJO = 3; // px entre asientos
+    const { asiento: tamañoAsiento, paddingZona: padding } = layoutSizes;
+    const espacioX = ESPACIO_FIJO;
+    const espacioY = 0;
+    // Determinar el área de la zona (centro de la zona)
+    const areaDeLaZona = detectarAreaEnPosicion(
+      xInicio + anchoZona / 2,
+      yInicio + altoZona / 2
+    );
+
+    // Si la zona está dentro de un área: contar solo los asientos de esa área como base
+    // Si está fuera de cualquier área: empezar desde 1 (solo contar los de esta llamada)
+    let acumuladoBase;
+    if (areaDeLaZona) {
+      acumuladoBase = asientos.filter(a => {
+        const aArea = detectarAreaEnPosicion(a.x || 0, a.y || 0);
+        return aArea?.id === areaDeLaZona.id;
+      });
+    } else {
+      acumuladoBase = []; // fuera de área → reinicia desde A1
+    }
+
+    let acumulado = [...acumuladoBase];
+    const paridad = zona.paridad || 'normal';
+
+    // Función para obtener siguiente código respetando paridad
+    const getCodigoConParidad = (lista, L, par) => {
+      if (par === 'normal') return obtenerSiguienteCodigoAsiento(lista, L);
+      const esPar = par === 'par';
+      let maxN = esPar ? 0 : -1;
+      (lista || []).forEach(a => {
+        const cod = String(a.codigo_asiento || a.numero_asiento || '').toUpperCase();
+        const m2 = cod.match(new RegExp(`^${L}(\\d+)$`));
+        if (m2) {
+          const n = parseInt(m2[1], 10);
+          if (esPar ? n % 2 === 0 : n % 2 !== 0) maxN = Math.max(maxN, n);
+        }
+      });
+      return `${L}${maxN + 2}`;
+    };
 
     for (let i = 0; i < cantidad; i++) {
       const fila = Math.floor(i / columnas);
@@ -971,23 +1073,38 @@ const Espacio = () => {
       const c = clampPointToSheet(x, y, tamañoAsiento + 2);
       x = c.x; y = c.y;
 
-      nuevosAsientos.push({
+      const codigo = getCodigoConParidad(acumulado, letra, paridad);
+
+      const nuevoAsiento = {
         id: `temp_asiento_${Date.now()}_${i}`,
         x: Math.round(x),
         y: Math.round(y),
-        numero_asiento: `A${i + 1}`,
+        numero_asiento: codigo,
+        codigo_asiento: codigo,
         tipo_precio_id: zona.tipo_precio_id,
-        mesa_id: null
-      });
+        mesa_id: null,
+        area_id: (() => {
+          const areaDetect = detectarAreaEnPosicion(Math.round(x), Math.round(y));
+          return areaDetect?.id ?? null;
+        })()
+      };
+      nuevosAsientos.push(nuevoAsiento);
+      acumulado = [...acumulado, nuevoAsiento];
     }
 
-    // Agregar los nuevos asientos sin mover los existentes
     setAsientos(prev => [...prev, ...nuevosAsientos]);
+    if (nuevosAsientos.length > 0) {
+      showAlert(
+        `${nuevosAsientos.length} asiento(s) creados: ${nuevosAsientos[0].codigo_asiento} … ${nuevosAsientos[nuevosAsientos.length - 1].codigo_asiento}`,
+        { type: 'success' }
+      );
+    }
   };
 
   // Colores para etiquetas/números (más visibles que blanco/gris)
   const COLOR_TEXTO_MESA = '#FFD700';
-  const COLOR_TEXTO_ASIENTO = '#0d0d0d';
+  const COLOR_TEXTO_ASIENTO = '#FFFFFF';
+  const FUENTE_ASIENTO = `bold ${Math.max(7, Math.min(11, Math.round(layoutSizes.asiento * 0.75)))}px Arial`;
 
   const calcularCapacidadPersonas = (zona) => {
     if (!zona || zona.width <= 0 || zona.height <= 0) return 0;
@@ -1185,25 +1302,117 @@ const Espacio = () => {
         width: mesaW,
         height: mesaH,
         numero_mesa: numeroMesa,
+        codigo_mesa: null,
         capacidad_sillas: sillasPorMesa,
         tipo_precio_id: zona.tipo_precio_id,
+        venta_solo_mesa: mesasSinSillasVisibles ? 1 : (mesaVentaSoloMesa ? 1 : 0),
         ...getCamposPrecioMesa(),
       };
 
       nuevasMesas.push(nuevaMesa);
-      
-      const sillasMesa = generarSillasAlrededorMesa(nuevaMesa);
-      sillasMesa.forEach(s => {
-        const c = clampPointToSheet(s.x, s.y, layoutSizes.silla + 2);
-        nuevasSillas.push({ ...s, x: c.x, y: c.y });
-      });
-      
+
+      if (!mesasSinSillasVisibles) {
+        const sillasMesa = generarSillasAlrededorMesa(nuevaMesa);
+        sillasMesa.forEach((s) => {
+          const c = clampPointToSheet(s.x, s.y, layoutSizes.silla + 2);
+          nuevasSillas.push({ ...s, x: c.x, y: c.y });
+        });
+      }
+
       numeroMesa++;
     }
 
     // Agregar las nuevas mesas y sillas
     setMesas(prev => [...prev, ...nuevasMesas]);
     setAsientos(prev => [...prev, ...nuevasSillas]);
+  };
+
+  /** Mesas sin sillas en zona: códigos A1, A2… según letra y cantidad */
+  const generarMesasSinSillasEnZona = (zona) => {
+    if (!zona || !zona.cantidad || !zona.tipo_precio_id || zona.width <= 0 || zona.height <= 0) return;
+
+    const cantidadEnZona = Math.min(Math.max(1, parseInt(zona.cantidad, 10) || 1), MAX_ELEMENTOS_ZONA);
+    const letra = normalizarLetraMesa(zona.letraMesa ?? letraMesa);
+    const cap = parseInt(zona.capacidad_sillas ?? sillasPorMesa, 10) || 4;
+
+    const mesaW = formaMesa === 'cuadrado' ? layoutSizes.mesaCuad : layoutSizes.mesaRectW;
+    const mesaH = formaMesa === 'cuadrado' ? layoutSizes.mesaCuad : layoutSizes.mesaRectH;
+    const padding = layoutSizes.paddingZona + 4;
+    const espacioEntreMesas = layoutSizes.espacioEntreMesas;
+
+    // Fila única para mesas sin sillas
+    const columnas = cantidadEnZona;
+    const filas = 1;
+    const ESPACIO_FIJO_M = 4;
+    const espacioX = ESPACIO_FIJO_M;
+    const espacioY = 0;
+
+    const nuevasMesas = [];
+    // Detectar área del centro de la zona una sola vez
+    const areaDeLaZonaMesa = detectarAreaEnPosicion(
+      zona.x + zona.width / 2,
+      zona.y + zona.height / 2
+    );
+    let acumuladoBase;
+    if (areaDeLaZonaMesa) {
+      acumuladoBase = mesas.filter(m => {
+        const mArea = detectarAreaEnPosicion((m.x || 0) + (m.width || mesaW) / 2, (m.y || 0) + (m.height || mesaH) / 2);
+        return mArea?.id === areaDeLaZonaMesa.id;
+      });
+    } else {
+      acumuladoBase = [];
+    }
+    let acumulado = [...acumuladoBase];
+    let numeroMesa = mesas.length + 1;
+    const camposPrecio = getCamposPrecioMesa();
+    const paridadM = zona.paridad || 'normal';
+    const getCodigoMesaConParidad = (lista, L, par) => {
+      if (par === 'normal') return obtenerSiguienteCodigoMesa(lista, L);
+      const esPar = par === 'par';
+      let maxN = esPar ? 0 : -1;
+      (lista || []).forEach(m => {
+        const cod = String(m.codigo_mesa || '').toUpperCase();
+        const m2 = cod.match(new RegExp(`^${L}(\\d+)$`));
+        if (m2) {
+          const n = parseInt(m2[1], 10);
+          if (esPar ? n % 2 === 0 : n % 2 !== 0) maxN = Math.max(maxN, n);
+        }
+      });
+      return `${L}${maxN + 2}`;
+    };
+
+    for (let i = 0; i < cantidadEnZona; i++) {
+      const columna = i; // fila única, columna = índice
+      const { x: mx, y: my } = clampMesaToSheet(zona.x + padding + columna * (mesaW + espacioX), zona.y + padding, mesaW, mesaH);
+      
+      const codigo = getCodigoMesaConParidad(acumulado, letra, paridadM);
+
+      const areaMesa = detectarAreaEnPosicion(Math.round(mx) + mesaW / 2, Math.round(my) + mesaH / 2);
+      const nuevaMesa = {
+        id: `temp_mesa_${Date.now()}_${i}`,
+        x: Math.round(mx),
+        y: Math.round(my),
+        width: mesaW,
+        height: mesaH,
+        numero_mesa: numeroMesa++,
+        codigo_mesa: codigo,
+        capacidad_sillas: cap,
+        tipo_precio_id: zona.tipo_precio_id,
+        venta_solo_mesa: 1,
+        area_id: areaMesa?.id ?? null,
+        ...camposPrecio,
+      };
+      nuevasMesas.push(nuevaMesa);
+      acumulado = [...acumulado, nuevaMesa];
+    }
+
+    setMesas((prev) => [...prev, ...nuevasMesas]);
+    if (nuevasMesas.length > 0) {
+      showAlert(
+        `${nuevasMesas.length} mesa(s) creadas: ${nuevasMesas[0].codigo_mesa} … ${nuevasMesas[nuevasMesas.length - 1].codigo_mesa}`,
+        { type: 'success' }
+      );
+    }
   };
 
   const dibujarCanvas = () => {
@@ -1341,6 +1550,11 @@ const Espacio = () => {
         ctx.setLineDash([5, 5]);
         ctx.strokeRect(currentElement.x, currentElement.y, currentElement.width, currentElement.height);
         ctx.setLineDash([]);
+        ctx.fillStyle = '#2196F3';
+        ctx.font = 'bold 14px Arial';
+        ctx.textAlign = 'center';
+        const LA = normalizarLetraAsiento(letraAsiento);
+        ctx.fillText(`ZONA ASIENTOS ${LA} (${cantidadAsientos || 0})`, currentElement.x + currentElement.width / 2, currentElement.y + 20);
       } else if (currentElement.type === 'zona_mesas') {
         ctx.fillStyle = 'rgba(139, 69, 19, 0.2)';
         ctx.fillRect(currentElement.x, currentElement.y, currentElement.width, currentElement.height);
@@ -1354,6 +1568,25 @@ const Espacio = () => {
           ctx.font = 'bold 14px Arial';
           ctx.textAlign = 'center';
           ctx.fillText(`ZONA MESAS (${zonaMesas.cantidad || 0} mesas, ${zonaMesas.sillasPorMesa || 0} sillas/mesa)`, currentElement.x + currentElement.width / 2, currentElement.y + 20);
+        }
+      } else if (currentElement.type === 'zona_mesas_solas') {
+        ctx.fillStyle = 'rgba(255, 193, 7, 0.25)';
+        ctx.fillRect(currentElement.x, currentElement.y, currentElement.width, currentElement.height);
+        ctx.strokeStyle = '#F57C00';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([5, 5]);
+        ctx.strokeRect(currentElement.x, currentElement.y, currentElement.width, currentElement.height);
+        ctx.setLineDash([]);
+        if (zonaMesasSolas) {
+          const L = normalizarLetraMesa(zonaMesasSolas.letraMesa ?? letraMesa);
+          ctx.fillStyle = '#E65100';
+          ctx.font = 'bold 14px Arial';
+          ctx.textAlign = 'center';
+          ctx.fillText(
+            `MESAS ${L} (${zonaMesasSolas.cantidad || 0} mesas, sin sillas)`,
+            currentElement.x + currentElement.width / 2,
+            currentElement.y + 20
+          );
         }
       } else if (currentElement.type === 'zona_personas') {
         ctx.fillStyle = 'rgba(76, 175, 80, 0.2)';
@@ -1395,7 +1628,8 @@ const Espacio = () => {
       ctx.fillStyle = '#2196F3';
       ctx.font = 'bold 14px Arial';
       ctx.textAlign = 'center';
-      ctx.fillText(`ZONA ASIENTOS (${zonaAsientos.cantidad || 0})`, zonaAsientos.x + zonaAsientos.width / 2, zonaAsientos.y + 20);
+      const L = normalizarLetraAsiento(zonaAsientos.letraAsiento ?? letraAsiento);
+      ctx.fillText(`ZONA ASIENTOS ${L} (${zonaAsientos.cantidad || 0})`, zonaAsientos.x + zonaAsientos.width / 2, zonaAsientos.y + 20);
     }
 
     // Dibujar zona de personas (preview al dibujar)
@@ -1447,6 +1681,25 @@ const Espacio = () => {
       ctx.fillText(`ZONA MESAS (${zonaMesas.cantidad || 0} mesas, ${zonaMesas.sillasPorMesa || 0} sillas/mesa)`, zonaMesas.x + zonaMesas.width / 2, zonaMesas.y + 20);
     }
 
+    if (zonaMesasSolas && (currentElement?.type === 'zona_mesas_solas' || modo === 'zona_mesas_solas')) {
+      ctx.fillStyle = 'rgba(255, 193, 7, 0.25)';
+      ctx.fillRect(zonaMesasSolas.x, zonaMesasSolas.y, zonaMesasSolas.width, zonaMesasSolas.height);
+      ctx.strokeStyle = '#F57C00';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([5, 5]);
+      ctx.strokeRect(zonaMesasSolas.x, zonaMesasSolas.y, zonaMesasSolas.width, zonaMesasSolas.height);
+      ctx.setLineDash([]);
+      const L = normalizarLetraMesa(zonaMesasSolas.letraMesa ?? letraMesa);
+      ctx.fillStyle = '#E65100';
+      ctx.font = 'bold 14px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText(
+        `MESAS ${L} (${zonaMesasSolas.cantidad || 0} sin sillas)`,
+        zonaMesasSolas.x + zonaMesasSolas.width / 2,
+        zonaMesasSolas.y + 20
+      );
+    }
+
     // Dibujar mesas con sus sillas (mesa visible como tabla, sillas alrededor por lados)
     mesas.forEach(mesa => {
       const estaSeleccionada = elementosSeleccionados.some(sel => sel.type === 'mesa' && sel.id === mesa.id);
@@ -1465,11 +1718,16 @@ const Espacio = () => {
       ctx.strokeRect(mesa.x + 2, mesa.y + 2, mw - 4, mh - 4);
 
       if (dibujarNumerosEnCanvas) {
-        ctx.fillStyle = COLOR_TEXTO_MESA;
-        ctx.font = 'bold 9px Arial';
+        const etiqMesa = etiquetaMesa(mesa);
+        const fsMesa = Math.max(9, Math.min(13, Math.round(Math.min(mw, mh) * 0.32)));
+        ctx.font = `bold ${fsMesa}px Arial`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(`M${mesa.numero_mesa}`, mesa.x + mw / 2, mesa.y + mh / 2);
+        const wMesa = ctx.measureText(etiqMesa).width;
+        ctx.fillStyle = 'rgba(0,0,0,0.55)';
+        ctx.fillRect(mesa.x + mw / 2 - wMesa / 2 - 2, mesa.y + mh / 2 - fsMesa / 2 - 1, wMesa + 4, fsMesa + 2);
+        ctx.fillStyle = COLOR_TEXTO_MESA;
+        ctx.fillText(etiqMesa, mesa.x + mw / 2, mesa.y + mh / 2);
       }
 
       const sillasMesa = asientos.filter(a => a.mesa_id === mesa.id);
@@ -1487,10 +1745,13 @@ const Espacio = () => {
         ctx.lineWidth = estaSeleccionadaSilla ? 2 : 1;
         ctx.strokeRect(sx, sy, sh, sh);
         if (dibujarNumerosEnCanvas) {
-          ctx.fillStyle = COLOR_TEXTO_ASIENTO;
-          ctx.font = 'bold 10px Arial';
+          ctx.font = FUENTE_ASIENTO;
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
+          ctx.strokeStyle = 'rgba(0,0,0,0.8)';
+          ctx.lineWidth = 2;
+          ctx.strokeText(silla.numero_asiento || '', silla.x || 50, silla.y || 50);
+          ctx.fillStyle = COLOR_TEXTO_ASIENTO;
           ctx.fillText(silla.numero_asiento || '', silla.x || 50, silla.y || 50);
         }
       });
@@ -1511,11 +1772,16 @@ const Espacio = () => {
       ctx.strokeRect((asiento.x || 50) - ha, (asiento.y || 50) - ha, ta, ta);
       
       if (dibujarNumerosEnCanvas) {
-        ctx.fillStyle = COLOR_TEXTO_ASIENTO;
-        ctx.font = 'bold 8px Arial';
+        const labelA = asiento.codigo_asiento || asiento.numero_asiento || '';
+        const fsA = Math.max(8, Math.min(12, Math.round(ta * 0.7)));
+        ctx.font = `bold ${fsA}px Arial`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(asiento.numero_asiento || '', asiento.x || 50, asiento.y || 50);
+        const wA = ctx.measureText(labelA).width;
+        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+        ctx.fillRect((asiento.x || 50) - wA / 2 - 1, (asiento.y || 50) - fsA / 2 - 1, wA + 2, fsA + 2);
+        ctx.fillStyle = COLOR_TEXTO_ASIENTO;
+        ctx.fillText(labelA, asiento.x || 50, asiento.y || 50);
       }
     });
 
@@ -1535,10 +1801,13 @@ const Espacio = () => {
       ctx.stroke();
       
       if (dibujarNumerosEnCanvas) {
-        ctx.fillStyle = COLOR_TEXTO_ASIENTO;
-        ctx.font = 'bold 8px Arial';
+        ctx.font = FUENTE_ASIENTO;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
+        ctx.strokeStyle = 'rgba(0,0,0,0.8)';
+        ctx.lineWidth = 2;
+        ctx.strokeText(persona.numero_asiento || '', persona.x || 50, persona.y || 50);
+        ctx.fillStyle = COLOR_TEXTO_ASIENTO;
         ctx.fillText(persona.numero_asiento || '', persona.x || 50, persona.y || 50);
       }
     });
@@ -1678,7 +1947,7 @@ const Espacio = () => {
         ctx.font = 'bold 9px Arial';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(`M${mesa.numero_mesa}`, mesa.x + mesa.width / 2, mesa.y + mesa.height / 2);
+        ctx.fillText(etiquetaMesa(mesa), mesa.x + mesa.width / 2, mesa.y + mesa.height / 2);
       }
     });
     asientos.forEach(asiento => {
@@ -1832,14 +2101,15 @@ const Espacio = () => {
       const asiento = asientos.find(a => a.id === elemento.id);
       if (!asiento) return 'Asiento desconocido';
       
+      const label = asiento.codigo_asiento || asiento.numero_asiento;
       const area = areas.find(a => a.id === asiento.area_id);
       const tipoPrecio = tiposPrecio.find(tp => tp.id === asiento.tipo_precio_id);
       const nombreTipo = tipoPrecio?.nombre || 'Sin precio';
       
       if (area) {
-        return `Asiento ${asiento.numero_asiento} de ${area.nombre} (${nombreTipo})`;
+        return `Asiento ${label} de ${area.nombre} (${nombreTipo})`;
       }
-      return `Asiento ${asiento.numero_asiento} (${nombreTipo})`;
+      return `Asiento ${label} (${nombreTipo})`;
     }
     return 'Elemento desconocido';
   };
@@ -1868,6 +2138,11 @@ const Espacio = () => {
             area: area,
             tipoPrecio: tipoPrecio
           });
+          setCodigoMesaEdit(mesa?.codigo_mesa || '');
+          if (mesa?.codigo_mesa) {
+            const m = String(mesa.codigo_mesa).toUpperCase().match(/^([A-Z])/);
+            if (m) setLetraMesa(m[1]);
+          }
           setIsDrawing(false);
           return;
         }
@@ -2095,13 +2370,25 @@ const Espacio = () => {
       setCurrentElement({ type: 'area', x: pos.x, y: pos.y, width: 0, height: 0, forma: 'rectangulo' });
     } else if (modo === 'asiento_individual' && tipoPrecioSeleccionado) {
       const { x: cx, y: cy } = clampPointToSheet(pos.x, pos.y, 16);
-      const numeroAsiento = asientos.length + 1;
+      
+      const area = detectarAreaEnPosicion(cx, cy);
+      let acumuladoEnArea = asientos;
+      if (area) {
+        acumuladoEnArea = asientos.filter(a => {
+          const aArea = detectarAreaEnPosicion(a.x || 0, a.y || 0);
+          return aArea?.id === area.id;
+        });
+      }
+      const codigo = obtenerSiguienteCodigoAsiento(acumuladoEnArea, letraAsiento);
+      
       const nuevoAsiento = {
         id: `temp_asiento_${Date.now()}`,
         x: cx,
         y: cy,
-        numero_asiento: `A${numeroAsiento}`,
-        tipo_precio_id: tipoPrecioSeleccionado
+        numero_asiento: codigo,
+        codigo_asiento: codigo,
+        tipo_precio_id: tipoPrecioSeleccionado,
+        area_id: area?.id ?? null
       };
       setAsientos([...asientos, nuevoAsiento]);
       setIsDrawing(false);
@@ -2131,15 +2418,34 @@ const Espacio = () => {
         sillasPorMesa: sillasPorMesa,
         tipo_precio_id: tipoPrecioSeleccionado 
       });
+    } else if (modo === 'zona_mesas_solas' && tipoPrecioSeleccionado) {
+      setCurrentElement({ type: 'zona_mesas_solas', x: pos.x, y: pos.y, width: 0, height: 0 });
+      setZonaMesasSolas({
+        x: pos.x,
+        y: pos.y,
+        width: 0,
+        height: 0,
+        cantidad: cantidadMesas,
+        letraMesa: normalizarLetraMesa(letraMesa),
+        capacidad_sillas: sillasPorMesa,
+        tipo_precio_id: tipoPrecioSeleccionado,
+      });
     } else if (modo === 'zona_personas' && tipoPrecioSeleccionado) {
       setCurrentElement({ type: 'zona_personas', x: pos.x, y: pos.y, width: 0, height: 0 });
       setZonaPersonas({ x: pos.x, y: pos.y, width: 0, height: 0 });
-    } else if ((modo === 'mesas' || modo === 'mesa_individual') && tipoPrecioSeleccionado) {
+    } else if ((modo === 'mesas' || modo === 'mesa_individual' || modo === 'zona_mesas_solas') && tipoPrecioSeleccionado && modo !== 'zona_mesas_solas') {
       // Mesa por defecto más rectangular para que no se pisen las sillas
       const mesaW = formaMesa === 'cuadrado' ? layoutSizes.mesaCuad : layoutSizes.mesaRectW;
       const mesaH = formaMesa === 'cuadrado' ? layoutSizes.mesaCuad : layoutSizes.mesaRectH;
       const { x: mx, y: my } = clampMesaToSheet(pos.x - mesaW / 2, pos.y - mesaH / 2, mesaW, mesaH);
+      const codigo = resolverCodigoNuevaMesa(mesas, mx + mesaW / 2, my + mesaH / 2);
+      if (codigo && codigoMesaDuplicado(codigo)) {
+        showAlert(`Ya existe la mesa ${codigo}`, { type: 'warning' });
+        setIsDrawing(false);
+        return;
+      }
       const numeroMesa = mesas.length + 1;
+      const areaMesaInd = detectarAreaEnPosicion(mx + mesaW / 2, my + mesaH / 2);
       const nuevaMesa = {
         id: `temp_mesa_${Date.now()}`,
         x: mx,
@@ -2147,17 +2453,15 @@ const Espacio = () => {
         width: mesaW,
         height: mesaH,
         numero_mesa: numeroMesa,
+        codigo_mesa: codigo,
         capacidad_sillas: sillasPorMesa,
         tipo_precio_id: tipoPrecioSeleccionado,
+        area_id: areaMesaInd?.id ?? null,
         ...getCamposPrecioMesa(),
       };
-      
-      const sillas = generarSillasAlrededorMesa(nuevaMesa).map(s => {
-        const c = clampPointToSheet(s.x, s.y, 14);
-        return { ...s, x: c.x, y: c.y };
-      });
+
       setMesas([...mesas, nuevaMesa]);
-      setAsientos(prev => [...prev, ...sillas]);
+      agregarSillasDeMesaAlEstado(nuevaMesa);
       setIsDrawing(false);
     }
   };
@@ -2334,6 +2638,14 @@ const Espacio = () => {
           width: w, 
           height: h 
         });
+      } else if (modo === 'zona_mesas_solas') {
+        setZonaMesasSolas({
+          ...zonaMesasSolas,
+          x,
+          y,
+          width: w,
+          height: h,
+        });
       } else if (modo === 'zona_personas') {
         setZonaPersonas({ x, y, width: w, height: h });
       }
@@ -2393,14 +2705,20 @@ const Espacio = () => {
       const zona = {
         ...currentZone,
         cantidad: cantidadAsientos,
-        tipo_precio_id: tipoPrecioSeleccionado
+        tipo_precio_id: tipoPrecioSeleccionado,
+        letraAsiento: letraAsiento,
+        paridad: paridadAsiento
       };
       setZonaAsientos(zona); // Solo para mostrar visualmente la última zona
       generarAsientosAutomaticos(zona);
     } else if (zonaMesas && modo === 'zona_mesas' && tipoPrecioSeleccionado) {
-      // Confirmar zona de mesas y generar mesas con sillas en esa zona
       generarMesasAutomaticas(zonaMesas);
       setZonaMesas(null);
+    } else if (zonaMesasSolas && modo === 'zona_mesas_solas' && tipoPrecioSeleccionado) {
+      if (zonaMesasSolas.width > 10 && zonaMesasSolas.height > 10) {
+        generarMesasSinSillasEnZona(zonaMesasSolas);
+      }
+      setZonaMesasSolas(null);
     } else if (zonaPersonas && modo === 'zona_personas' && tipoPrecioSeleccionado) {
       if (zonaPersonas.width > 10 && zonaPersonas.height > 10) {
         const cap = calcularCapacidadPersonas(zonaPersonas);
@@ -2712,7 +3030,10 @@ const Espacio = () => {
     };
 
     const mesasOrdenadas = [...mesas].sort(ordenarPorPosicion);
-    const mesasRenumeradas = mesasOrdenadas.map((m, i) => ({ ...m, numero_mesa: i + 1 }));
+    const mesasRenumeradas = mesasOrdenadas.map((m, i) => {
+      if (m.codigo_mesa && String(m.codigo_mesa).trim()) return m;
+      return { ...m, numero_mesa: i + 1 };
+    });
     setMesas(mesasRenumeradas);
 
     const asientosConMesa = asientos.filter(a => a.mesa_id);
@@ -2924,6 +3245,7 @@ const Espacio = () => {
         const response = await api.post('/mesas', {
           evento_id: eventoSeleccionado.id,
           numero_mesa: mesa.numero_mesa,
+          codigo_mesa: mesa.codigo_mesa?.trim() ? String(mesa.codigo_mesa).trim().toUpperCase() : null,
           capacidad_sillas: parseInt(mesa.capacidad_sillas) || 1, // Asegurar que sea un número entero válido
           tipo_precio_id: mesa.tipo_precio_id,
           posicion_x: Math.round(mesa.x),
@@ -2961,10 +3283,13 @@ const Espacio = () => {
           // Buscar la mesa guardada que corresponde a este asiento
           const mesaOriginal = mesas.find(m => m.id === asiento.mesa_id);
           if (mesaOriginal) {
-            const mesaGuardada = mesasGuardadas.find(m => 
-              m.numero_mesa === mesaOriginal.numero_mesa && 
-              m.tipo_precio_id === mesaOriginal.tipo_precio_id
-            );
+            const mesaGuardada = mesasGuardadas.find((m) => {
+              if (mesaOriginal.codigo_mesa && m.codigo_mesa === mesaOriginal.codigo_mesa) return true;
+              return (
+                m.numero_mesa === mesaOriginal.numero_mesa &&
+                m.tipo_precio_id === mesaOriginal.tipo_precio_id
+              );
+            });
             if (mesaGuardada) {
               mesaId = mesaGuardada.id;
             }
@@ -2976,6 +3301,7 @@ const Espacio = () => {
           evento_id: eventoSeleccionado.id,
           mesa_id: mesaId,
           numero_asiento: asiento.numero_asiento,
+          codigo_asiento: asiento.codigo_asiento || null,
           tipo_precio_id: asiento.tipo_precio_id,
           posicion_x: asiento.x ? Math.round(asiento.x) : null,
           posicion_y: asiento.y ? Math.round(asiento.y) : null,
@@ -3157,6 +3483,21 @@ const Espacio = () => {
                     {modo === 'zona_asientos' && (
                       <>
                         <div className="form-group-small">
+                          <label>Letra de fila</label>
+                          <input
+                            type="text"
+                            maxLength={1}
+                            value={letraAsiento}
+                            onChange={(e) => {
+                              const L = normalizarLetraAsiento(e.target.value);
+                              setLetraAsiento(L);
+                              if (zonaAsientos) setZonaAsientos({ ...zonaAsientos, letraAsiento: L });
+                            }}
+                            className="select-input"
+                            style={{ width: '4rem', textTransform: 'uppercase' }}
+                          />
+                        </div>
+                        <div className="form-group-small">
                           <label>Cantidad de Asientos</label>
                           <input
                             type="number"
@@ -3172,6 +3513,31 @@ const Espacio = () => {
                             }}
                             className="select-input"
                           />
+                        </div>
+                        <div className="form-group-small">
+                          <label>Numeración</label>
+                          <div style={{ display: 'flex', gap: '6px', marginTop: '4px', flexWrap: 'wrap' }}>
+                            {[['normal','Normal'],['impar','Solo impares'],['par','Solo pares']].map(([val, lbl]) => (
+                              <button
+                                key={val}
+                                type="button"
+                                onClick={() => setParidadAsiento(val)}
+                                style={{
+                                  padding: '3px 8px',
+                                  fontSize: '11px',
+                                  borderRadius: '4px',
+                                  border: '1px solid #aaa',
+                                  cursor: 'pointer',
+                                  background: paridadAsiento === val ? '#3b82f6' : '#f3f4f6',
+                                  color: paridadAsiento === val ? '#fff' : '#333',
+                                  fontWeight: paridadAsiento === val ? 'bold' : 'normal'
+                                }}
+                              >{lbl}</button>
+                            ))}
+                          </div>
+                          <p style={{ fontSize: '11px', color: '#666', marginTop: '4px' }}>
+                            {paridadAsiento === 'impar' ? `Genera: ${letraAsiento}1, ${letraAsiento}3, ${letraAsiento}5…` : paridadAsiento === 'par' ? `Genera: ${letraAsiento}2, ${letraAsiento}4, ${letraAsiento}6…` : `Genera: ${letraAsiento}1, ${letraAsiento}2, ${letraAsiento}3…`}
+                          </p>
                         </div>
                         {zonaAsientos && (
                           <button
@@ -3214,16 +3580,38 @@ const Espacio = () => {
                         </button>
                       </div>
                     </div>
+                    <label className="checkbox-label espacio-precios-mesa__check">
+                      <input
+                        type="checkbox"
+                        checked={mesasSinSillasVisibles}
+                        onChange={(e) => setMesasSinSillasVisibles(e.target.checked)}
+                      />
+                      Solo mesa en el plano (sin dibujar sillas; capacidad = personas)
+                    </label>
                     <div className="form-group-small">
-                      <label>Sillas por Mesa</label>
+                      <label>Letra de fila</label>
+                      <input
+                        type="text"
+                        maxLength={1}
+                        value={letraMesa}
+                        onChange={(e) => setLetraMesa(normalizarLetraMesa(e.target.value))}
+                        className="select-input"
+                        style={{ width: '4rem', textTransform: 'uppercase' }}
+                      />
+                      <p className="form-hint">
+                        Numeración automática al colocar: {obtenerSiguienteCodigoMesa(mesas, letraMesa)} (cambia fila con B, C… para otra hilera).
+                      </p>
+                    </div>
+                    <div className="form-group-small">
+                      <label>{mesasSinSillasVisibles ? 'Capacidad (personas)' : 'Sillas por mesa'}</label>
                       <input
                         type="number"
-                        min="2"
-                        max="20"
+                        min="1"
+                        max="30"
                         value={sillasPorMesa}
                         onChange={(e) => {
                           const val = parseInt(e.target.value) || 4;
-                          setSillasPorMesa(Math.max(2, Math.min(20, val)));
+                          setSillasPorMesa(Math.max(1, Math.min(30, val)));
                         }}
                         className="select-input"
                       />
@@ -3247,6 +3635,7 @@ const Espacio = () => {
                           type="checkbox"
                           checked={mesaVentaSoloMesa}
                           onChange={(e) => setMesaVentaSoloMesa(e.target.checked)}
+                          disabled={mesasSinSillasVisibles}
                         />
                         Solo vender mesa entera (sin sillas sueltas)
                       </label>
@@ -3269,8 +3658,93 @@ const Espacio = () => {
                       </p>
                     </div>
                     <p style={{ fontSize: '12px', color: '#666', marginTop: '8px' }}>
-                      Haz clic en el canvas para colocar una mesa. Las sillas se generarán automáticamente alrededor de la mesa.
+                      {mesasSinSillasVisibles
+                        ? 'Clic en el canvas: cada mesa recibe el siguiente código (A1, A2…).'
+                        : 'Clic en el canvas: mesa con sillas alrededor.'}
                     </p>
+                  </div>
+                )}
+
+                {modo === 'zona_mesas_solas' && (
+                  <div className="control-section">
+                    <h3>Mesas sin sillas (automático)</h3>
+                    <div className="form-group-small">
+                      <label>Letra de fila</label>
+                      <input
+                        type="text"
+                        maxLength={1}
+                        value={letraMesa}
+                        onChange={(e) => {
+                          const L = normalizarLetraMesa(e.target.value);
+                          setLetraMesa(L);
+                          if (zonaMesasSolas) setZonaMesasSolas({ ...zonaMesasSolas, letraMesa: L });
+                        }}
+                        className="select-input"
+                        style={{ width: '4rem', textTransform: 'uppercase' }}
+                      />
+                    </div>
+                    <div className="form-group-small">
+                      <label>Cantidad de mesas en la zona</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max={MAX_ELEMENTOS_ZONA}
+                        value={cantidadMesas}
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value, 10) || 1;
+                          setCantidadMesas(val);
+                          if (zonaMesasSolas) setZonaMesasSolas({ ...zonaMesasSolas, cantidad: val });
+                        }}
+                        className="select-input"
+                      />
+                    </div>
+                    <div className="form-group-small">
+                      <label>Capacidad (personas por mesa)</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="30"
+                        value={sillasPorMesa}
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value, 10) || 4;
+                          setSillasPorMesa(Math.max(1, Math.min(30, val)));
+                          if (zonaMesasSolas) setZonaMesasSolas({ ...zonaMesasSolas, capacidad_sillas: val });
+                        }}
+                        className="select-input"
+                      />
+                    </div>
+                    <div className="espacio-precios-mesa">
+                      <h4 className="espacio-precios-mesa__titulo">Precios (mesas de la zona)</h4>
+                      <div className="form-group-small">
+                        <label>Precio mesa completa (Bs.)</label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={mesaPrecioCompleta}
+                          onChange={(e) => setMesaPrecioCompleta(e.target.value)}
+                          className="select-input"
+                          placeholder="Ej: 3500"
+                        />
+                      </div>
+                    </div>
+                    <div className="form-group-small">
+                       <label>Numeración</label>
+                       <div style={{ display: 'flex', gap: '6px', marginTop: '4px', flexWrap: 'wrap' }}>
+                         {[['normal','Normal'],['impar','Solo impares'],['par','Solo pares']].map(([val, lbl]) => (
+                           <button key={val} type="button" onClick={() => setParidadMesaSola(val)}
+                             style={{ padding: '3px 8px', fontSize: '11px', borderRadius: '4px', border: '1px solid #aaa', cursor: 'pointer',
+                               background: paridadMesaSola === val ? '#f57c00' : '#f3f4f6',
+                               color: paridadMesaSola === val ? '#fff' : '#333',
+                               fontWeight: paridadMesaSola === val ? 'bold' : 'normal' }}
+                           >{lbl}</button>
+                         ))}
+                       </div>
+                       <p style={{ fontSize: '11px', color: '#666', marginTop: '4px' }}>
+                         {paridadMesaSola === 'impar' ? `Genera: ${letraMesa}1, ${letraMesa}3, ${letraMesa}5…` : paridadMesaSola === 'par' ? `Genera: ${letraMesa}2, ${letraMesa}4, ${letraMesa}6…` : `Genera: ${letraMesa}1, ${letraMesa}2, ${letraMesa}3…`}
+                       </p>
+                     </div>
+                     <p className="form-hint">Arrastra un rectángulo: se crearán {cantidadMesas} mesas en una fila</p>
                   </div>
                 )}
 
@@ -3370,8 +3844,18 @@ const Espacio = () => {
                     {elementoInfo.type === 'mesa' && elementoInfo.mesa && (
                       <div style={{ fontSize: '13px', lineHeight: '1.6' }}>
                         <p><strong>Nombre:</strong> {generarNombreDescriptivo({ type: 'mesa', id: elementoInfo.mesa.id })}</p>
-                        <p><strong>Número de Mesa:</strong> {elementoInfo.mesa.numero_mesa}</p>
-                        <p><strong>Capacidad:</strong> {elementoInfo.mesa.capacidad_sillas} sillas</p>
+                        <p><strong>Código en plano:</strong> {etiquetaMesa(elementoInfo.mesa)}</p>
+                        <p><strong>Capacidad:</strong> {elementoInfo.mesa.capacidad_sillas} personas</p>
+                        <div className="form-group-small" style={{ marginTop: '8px' }}>
+                          <label>Editar código</label>
+                          <input
+                            type="text"
+                            maxLength={20}
+                            value={codigoMesaEdit}
+                            onChange={(e) => setCodigoMesaEdit(e.target.value.toUpperCase())}
+                            className="select-input"
+                          />
+                        </div>
                         {elementoInfo.area && <p><strong>Área:</strong> {elementoInfo.area.nombre}</p>}
                         {elementoInfo.tipoPrecio && (
                           <>
@@ -3411,7 +3895,7 @@ const Espacio = () => {
                     {elementoInfo.type === 'asiento' && elementoInfo.asiento && (
                       <div style={{ fontSize: '13px', lineHeight: '1.6' }}>
                         <p><strong>Nombre:</strong> {generarNombreDescriptivo({ type: 'asiento', id: elementoInfo.asiento.id })}</p>
-                        <p><strong>Número de {elementoInfo.mesa ? 'Silla' : 'Asiento'}:</strong> {elementoInfo.asiento.numero_asiento}</p>
+                        <p><strong>Número de {elementoInfo.mesa ? 'Silla' : 'Asiento'}:</strong> {elementoInfo.asiento.codigo_asiento || elementoInfo.asiento.numero_asiento}</p>
                         {elementoInfo.mesa && (
                           <>
                             <p><strong>Mesa:</strong> Mesa {elementoInfo.mesa.numero_mesa}</p>
@@ -3605,6 +4089,20 @@ const Espacio = () => {
                       🪑 Mesas con Sillas (Auto)
                     </button>
                     <button
+                      className={modo === 'zona_mesas_solas' ? 'active' : ''}
+                      onClick={() => {
+                        if (!layoutBloqueado) {
+                          setModo('zona_mesas_solas');
+                          setMesasSinSillasVisibles(true);
+                          setElementosSeleccionados([]);
+                        }
+                      }}
+                      disabled={layoutBloqueado || !tipoPrecioSeleccionado}
+                      title={layoutBloqueado ? 'Layout bloqueado' : 'Zona: mesas A1, A2… sin sillas'}
+                    >
+                      📋 Mesas sin sillas (Auto)
+                    </button>
+                    <button
                       className={modo === 'zona_personas' ? 'active' : ''}
                       onClick={() => {
                         if (!layoutBloqueado) {
@@ -3786,6 +4284,21 @@ const Espacio = () => {
                     {modo === 'zona_asientos' && (
                       <>
                         <div className="form-group-small">
+                          <label>Letra de fila</label>
+                          <input
+                            type="text"
+                            maxLength={1}
+                            value={letraAsiento}
+                            onChange={(e) => {
+                              const L = normalizarLetraAsiento(e.target.value);
+                              setLetraAsiento(L);
+                              if (zonaAsientos) setZonaAsientos({ ...zonaAsientos, letraAsiento: L });
+                            }}
+                            className="select-input"
+                            style={{ width: '4rem', textTransform: 'uppercase' }}
+                          />
+                        </div>
+                        <div className="form-group-small">
                           <label>Cantidad de Asientos</label>
                           <input
                             type="number"
@@ -3801,6 +4314,31 @@ const Espacio = () => {
                             }}
                             className="select-input"
                           />
+                        </div>
+                        <div className="form-group-small">
+                          <label>Numeración</label>
+                          <div style={{ display: 'flex', gap: '6px', marginTop: '4px', flexWrap: 'wrap' }}>
+                            {[['normal','Normal'],['impar','Solo impares'],['par','Solo pares']].map(([val, lbl]) => (
+                              <button
+                                key={val}
+                                type="button"
+                                onClick={() => setParidadAsiento(val)}
+                                style={{
+                                  padding: '3px 8px',
+                                  fontSize: '11px',
+                                  borderRadius: '4px',
+                                  border: '1px solid #aaa',
+                                  cursor: 'pointer',
+                                  background: paridadAsiento === val ? '#3b82f6' : '#f3f4f6',
+                                  color: paridadAsiento === val ? '#fff' : '#333',
+                                  fontWeight: paridadAsiento === val ? 'bold' : 'normal'
+                                }}
+                              >{lbl}</button>
+                            ))}
+                          </div>
+                          <p style={{ fontSize: '11px', color: '#666', marginTop: '4px' }}>
+                            {paridadAsiento === 'impar' ? `Genera: ${letraAsiento}1, ${letraAsiento}3, ${letraAsiento}5…` : paridadAsiento === 'par' ? `Genera: ${letraAsiento}2, ${letraAsiento}4, ${letraAsiento}6…` : `Genera: ${letraAsiento}1, ${letraAsiento}2, ${letraAsiento}3…`}
+                          </p>
                         </div>
                         {zonaAsientos && (
                           <button
@@ -3843,16 +4381,38 @@ const Espacio = () => {
                         </button>
                       </div>
                     </div>
+                    <label className="checkbox-label espacio-precios-mesa__check">
+                      <input
+                        type="checkbox"
+                        checked={mesasSinSillasVisibles}
+                        onChange={(e) => setMesasSinSillasVisibles(e.target.checked)}
+                      />
+                      Solo mesa en el plano (sin dibujar sillas; capacidad = personas)
+                    </label>
                     <div className="form-group-small">
-                      <label>Sillas por Mesa</label>
+                      <label>Letra de fila</label>
+                      <input
+                        type="text"
+                        maxLength={1}
+                        value={letraMesa}
+                        onChange={(e) => setLetraMesa(normalizarLetraMesa(e.target.value))}
+                        className="select-input"
+                        style={{ width: '4rem', textTransform: 'uppercase' }}
+                      />
+                      <p className="form-hint">
+                        Numeración automática al colocar: {obtenerSiguienteCodigoMesa(mesas, letraMesa)} (cambia fila con B, C… para otra hilera).
+                      </p>
+                    </div>
+                    <div className="form-group-small">
+                      <label>{mesasSinSillasVisibles ? 'Capacidad (personas)' : 'Sillas por mesa'}</label>
                       <input
                         type="number"
-                        min="2"
-                        max="20"
+                        min="1"
+                        max="30"
                         value={sillasPorMesa}
                         onChange={(e) => {
                           const val = parseInt(e.target.value) || 4;
-                          setSillasPorMesa(Math.max(2, Math.min(20, val)));
+                          setSillasPorMesa(Math.max(1, Math.min(30, val)));
                         }}
                         className="select-input"
                       />
@@ -3876,6 +4436,7 @@ const Espacio = () => {
                           type="checkbox"
                           checked={mesaVentaSoloMesa}
                           onChange={(e) => setMesaVentaSoloMesa(e.target.checked)}
+                          disabled={mesasSinSillasVisibles}
                         />
                         Solo vender mesa entera (sin sillas sueltas)
                       </label>
@@ -3898,8 +4459,93 @@ const Espacio = () => {
                       </p>
                     </div>
                     <p style={{ fontSize: '12px', color: '#666', marginTop: '8px' }}>
-                      Haz clic en el canvas para colocar una mesa. Las sillas se generarán automáticamente alrededor de la mesa.
+                      {mesasSinSillasVisibles
+                        ? 'Clic en el canvas: cada mesa recibe el siguiente código (A1, A2…).'
+                        : 'Clic en el canvas: mesa con sillas alrededor.'}
                     </p>
+                  </div>
+                )}
+
+                {modo === 'zona_mesas_solas' && (
+                  <div className="control-section">
+                    <h3>Mesas sin sillas (automático)</h3>
+                    <div className="form-group-small">
+                      <label>Letra de fila</label>
+                      <input
+                        type="text"
+                        maxLength={1}
+                        value={letraMesa}
+                        onChange={(e) => {
+                          const L = normalizarLetraMesa(e.target.value);
+                          setLetraMesa(L);
+                          if (zonaMesasSolas) setZonaMesasSolas({ ...zonaMesasSolas, letraMesa: L });
+                        }}
+                        className="select-input"
+                        style={{ width: '4rem', textTransform: 'uppercase' }}
+                      />
+                    </div>
+                    <div className="form-group-small">
+                      <label>Cantidad de mesas en la zona</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max={MAX_ELEMENTOS_ZONA}
+                        value={cantidadMesas}
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value, 10) || 1;
+                          setCantidadMesas(val);
+                          if (zonaMesasSolas) setZonaMesasSolas({ ...zonaMesasSolas, cantidad: val });
+                        }}
+                        className="select-input"
+                      />
+                    </div>
+                    <div className="form-group-small">
+                      <label>Capacidad (personas por mesa)</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="30"
+                        value={sillasPorMesa}
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value, 10) || 4;
+                          setSillasPorMesa(Math.max(1, Math.min(30, val)));
+                          if (zonaMesasSolas) setZonaMesasSolas({ ...zonaMesasSolas, capacidad_sillas: val });
+                        }}
+                        className="select-input"
+                      />
+                    </div>
+                    <div className="espacio-precios-mesa">
+                      <h4 className="espacio-precios-mesa__titulo">Precios (mesas de la zona)</h4>
+                      <div className="form-group-small">
+                        <label>Precio mesa completa (Bs.)</label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={mesaPrecioCompleta}
+                          onChange={(e) => setMesaPrecioCompleta(e.target.value)}
+                          className="select-input"
+                          placeholder="Ej: 3500"
+                        />
+                      </div>
+                    </div>
+                    <div className="form-group-small">
+                       <label>Numeración</label>
+                       <div style={{ display: 'flex', gap: '6px', marginTop: '4px', flexWrap: 'wrap' }}>
+                         {[['normal','Normal'],['impar','Solo impares'],['par','Solo pares']].map(([val, lbl]) => (
+                           <button key={val} type="button" onClick={() => setParidadMesaSola(val)}
+                             style={{ padding: '3px 8px', fontSize: '11px', borderRadius: '4px', border: '1px solid #aaa', cursor: 'pointer',
+                               background: paridadMesaSola === val ? '#f57c00' : '#f3f4f6',
+                               color: paridadMesaSola === val ? '#fff' : '#333',
+                               fontWeight: paridadMesaSola === val ? 'bold' : 'normal' }}
+                           >{lbl}</button>
+                         ))}
+                       </div>
+                       <p style={{ fontSize: '11px', color: '#666', marginTop: '4px' }}>
+                         {paridadMesaSola === 'impar' ? `Genera: ${letraMesa}1, ${letraMesa}3, ${letraMesa}5…` : paridadMesaSola === 'par' ? `Genera: ${letraMesa}2, ${letraMesa}4, ${letraMesa}6…` : `Genera: ${letraMesa}1, ${letraMesa}2, ${letraMesa}3…`}
+                       </p>
+                     </div>
+                     <p className="form-hint">Arrastra un rectángulo: se crearán {cantidadMesas} mesas en una fila</p>
                   </div>
                 )}
 
@@ -4122,6 +4768,64 @@ const Espacio = () => {
                           ? `Asignar ${tiposPrecio.find(tp => tp.id === tipoPrecioSeleccionado)?.nombre}`
                           : 'Asignar Precio'}
                       </button>
+                      {elementosSeleccionados.length > 1 && (
+                        <button
+                          onClick={() => {
+                            // Recopilar posiciones actuales de todos los elementos seleccionados
+                            const items = elementosSeleccionados.map(sel => {
+                              if (sel.type === 'asiento') {
+                                const a = asientos.find(x => x.id === sel.id);
+                                return a ? { ...sel, x: a.x || 50, y: a.y || 50 } : null;
+                              } else {
+                                const m = mesas.find(x => x.id === sel.id);
+                                return m ? { ...sel, x: m.x || 100, y: m.y || 100, w: m.width || 24, h: m.height || 24 } : null;
+                              }
+                            }).filter(Boolean);
+                            // Ordenar por X
+                            const sorted = [...items].sort((a, b) => a.x - b.x);
+                            const xs = sorted.map(i => i.x);
+                            // Asignar posiciones en orden inverso
+                            const newAsientos = asientos.map(a => {
+                              const idx = sorted.findIndex(i => i.type === 'asiento' && i.id === a.id);
+                              if (idx === -1) return a;
+                              return { ...a, x: xs[sorted.length - 1 - idx] };
+                            });
+                            const newMesas = mesas.map(m => {
+                              const idx = sorted.findIndex(i => i.type === 'mesa' && i.id === m.id);
+                              if (idx === -1) return m;
+                              return { ...m, x: xs[sorted.length - 1 - idx] };
+                            });
+                            // Actualizar sillas de mesas movidas
+                            const mesasMovidas = sorted.filter(i => i.type === 'mesa');
+                            let asientosAct = newAsientos;
+                            mesasMovidas.forEach(sel => {
+                              const mesaOrig = mesas.find(m => m.id === sel.id);
+                              const mesaNueva = newMesas.find(m => m.id === sel.id);
+                              if (!mesaOrig || !mesaNueva) return;
+                              const dx = mesaNueva.x - mesaOrig.x;
+                              asientosAct = asientosAct.map(a =>
+                                a.mesa_id === sel.id ? { ...a, x: (a.x || 50) + dx } : a
+                              );
+                            });
+                            setAsientos(asientosAct);
+                            setMesas(newMesas);
+                          }}
+                          disabled={layoutBloqueado}
+                          style={{
+                            padding: '6px 10px',
+                            backgroundColor: layoutBloqueado ? '#cccccc' : '#9c27b0',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: layoutBloqueado ? 'not-allowed' : 'pointer',
+                            fontSize: '12px',
+                            fontWeight: 'bold'
+                          }}
+                          title="Invierte el orden horizontal: el primero va al final y el último al inicio"
+                        >
+                          ⇔ Invertir posición
+                        </button>
+                      )}
                       <button
                         onClick={duplicarElementosSeleccionados}
                         disabled={layoutBloqueado}
@@ -4135,7 +4839,7 @@ const Espacio = () => {
                           fontSize: '12px',
                           fontWeight: 'bold'
                         }}
-                        title={layoutBloqueado ? 'Layout bloqueado' : 'Duplicar elementos (aparecen desplazados, muévelos a donde quieras)'}
+                        title={layoutBloqueado ? 'Layout bloqueado' : 'Duplicar elementos'}
                       >
                         Duplicar
                       </button>

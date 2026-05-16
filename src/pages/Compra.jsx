@@ -6,6 +6,7 @@ import {
   calcularPrecioMesaCompleta,
   calcularPrecioSillaEnMesa,
 } from '../utils/mesaPrecios.js';
+import { etiquetaMesa } from '../utils/etiquetaMesa.js';
 import { useAuth } from '../context/AuthContext';
 import { useAlert } from '../context/AlertContext';
 import { getApiBase, getServerBase } from '../api/base';
@@ -388,7 +389,7 @@ const Compra = () => {
     if (asiento.mesa_id) {
       const mesaDelAsiento = evento.mesas?.find(m => m.id === asiento.mesa_id);
       if (mesaDelAsiento) {
-        textoMesa = ` de Mesa ${mesaDelAsiento.numero_mesa}`;
+        textoMesa = ` de Mesa ${etiquetaMesa(mesaDelAsiento)}`;
       }
     }
 
@@ -398,7 +399,7 @@ const Compra = () => {
       id: asiento.id,
       tipo_precio_id: asiento.tipo_precio_id,
       precio: tipoPrecio?.precio || 0,
-      nombre: `Asiento ${asiento.numero_asiento}${textoMesa}${textoArea}`,
+      nombre: `Asiento ${asiento.codigo_asiento || asiento.numero_asiento}${textoMesa}${textoArea}`,
       area_nombre: nombreArea || null
     };
   };
@@ -590,7 +591,7 @@ const Compra = () => {
           ctx.font = 'bold 11px Arial';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
-          ctx.fillText(`M${mesa.numero_mesa}`, mesaX + mesaWidth / 2, mesaY + mesaHeight / 2);
+          ctx.fillText(etiquetaMesa(mesa), mesaX + mesaWidth / 2, mesaY + mesaHeight / 2);
         }
       });
     }
@@ -680,7 +681,7 @@ const Compra = () => {
           ctx.font = 'bold 11px Arial';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
-          ctx.fillText(asiento.numero_asiento || '', asientoX, asientoY);
+          ctx.fillText(asiento.codigo_asiento || asiento.numero_asiento || '', asientoX, asientoY);
         }
         
         if (estaOcupado) {
@@ -979,11 +980,39 @@ const Compra = () => {
             return;
           }
 
-          // Obtener todos los asientos de esta mesa
           const asientosMesa = evento.asientos?.filter(a => a.mesa_id === mesa.id) || [];
 
           if (asientosMesa.length === 0) {
-            return; // No hay asientos en esta mesa
+            const cap = parseInt(mesa.capacidad_sillas, 10) || 0;
+            if (cap < 1) return;
+
+            const yaMesaCompleta = selecciones.some(
+              (sel) => sel.type === 'mesa_completa' && sel.mesa_id === mesa.id
+            );
+            if (yaMesaCompleta) {
+              setSelecciones((prev) =>
+                prev.filter((sel) => sel.type !== 'mesa_completa' || sel.mesa_id !== mesa.id)
+              );
+              return;
+            }
+
+            const precioTotal = calcularPrecioMesaCompleta(mesa, [], evento.tipos_precio);
+            const etiqueta = etiquetaMesa(mesa);
+            setSelecciones((prev) => [
+              ...prev,
+              {
+                type: 'mesa_completa',
+                mesa_id: mesa.id,
+                numero_mesa: mesa.numero_mesa,
+                codigo_mesa: mesa.codigo_mesa,
+                cantidad_sillas: cap,
+                precio_total: precioTotal,
+                venta_solo_mesa: true,
+                nombre: `MESA ${etiqueta}`,
+                sillas: `${cap} personas`,
+              },
+            ]);
+            return;
           }
 
           // Verificar si todos los asientos ya están seleccionados
@@ -1018,7 +1047,7 @@ const Compra = () => {
 
               asientosDisponibles.push({
                 id: asiento.id,
-                numero: asiento.numero_asiento,
+                numero: asiento.codigo_asiento || asiento.numero_asiento,
                 precio: precioSilla,
               });
 
@@ -1045,7 +1074,7 @@ const Compra = () => {
                   id: asiento.id,
                   tipo_precio_id: asiento.tipo_precio_id,
                   precio: precioSilla,
-                  nombre: `Silla ${asiento.numero_asiento} - Mesa ${mesa.numero_mesa}${textoArea}`,
+                  nombre: `Silla ${asiento.codigo_asiento || asiento.numero_asiento} - Mesa ${etiquetaMesa(mesa)}${textoArea}`,
                   area_nombre: nombreArea || null,
                 });
               }
@@ -2029,7 +2058,7 @@ const Compra = () => {
                         />
                         {mostrarNumerosAsientos && (
                           <text x={cx} y={cy} textAnchor="middle" dominantBaseline="middle" fill={PLANO_COLORS.mesaText} fontSize="11" fontWeight="700" pointerEvents="none">
-                            {`M${mesa.numero_mesa}`}
+                            {etiquetaMesa(mesa)}
                           </text>
                         )}
                       </g>
@@ -2162,7 +2191,7 @@ const Compra = () => {
                             <div className="seleccion-mesa-info">
                               <span className="seleccion-nombre seleccion-mesa-titulo">{sel.nombre}</span>
                               <span className="seleccion-mesa-detalle">
-                                Mesa M{sel.numero_mesa} • {sel.cantidad_sillas} sillas
+                                Mesa {sel.codigo_mesa || (sel.numero_mesa != null ? `M${sel.numero_mesa}` : '?')} • {sel.cantidad_sillas} personas
                               </span>
                               <span className="seleccion-mesa-sillas">
                                 Sillas: {sel.sillas}

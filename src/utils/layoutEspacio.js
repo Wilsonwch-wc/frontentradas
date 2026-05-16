@@ -51,9 +51,9 @@ export const clampHojaDim = (ancho, alto) => ({
 /** Tamaños de iconos según escala (0.4 = muy pequeño, 1.2 = grande) */
 export const calcularTamanosLayout = (escala = 0.55) => {
   const e = Math.min(1.2, Math.max(0.4, Number(escala) || 0.55));
-  const persona = Math.max(3, Math.round(5 * e));
-  const asiento = Math.max(3, Math.round(5 * e));
-  const silla = Math.max(3, Math.round(5 * e));
+  const persona = Math.max(8, Math.round(10 * e));
+  const asiento = Math.max(10, Math.round(14 * e));
+  const silla = Math.max(8, Math.round(10 * e));
   const mesaBase = Math.max(12, Math.round(16 * e));
   return {
     escala: e,
@@ -63,13 +63,13 @@ export const calcularTamanosLayout = (escala = 0.55) => {
     mesaCuad: mesaBase,
     mesaRectW: Math.max(14, Math.round(mesaBase * 1.35)),
     mesaRectH: Math.max(10, Math.round(mesaBase * 0.85)),
-    espacioGrid: Math.max(1, Math.round(2 * e)),
-    paddingZona: Math.max(4, Math.round(6 * e)),
-    distanciaMesaSilla: Math.max(2, Math.round(2 * e)),
+    espacioGrid: Math.max(3, Math.round(4 * e)),
+    paddingZona: Math.max(6, Math.round(8 * e)),
+    distanciaMesaSilla: Math.max(3, Math.round(4 * e)),
     espacioEntreMesas: Math.max(10, Math.round(14 * e)),
     radioPersona: persona / 2,
     halfAsiento: asiento / 2,
     halfSilla: silla / 2,
-    pasoGrid: persona + Math.max(1, Math.round(2 * e)),
+    pasoGrid: persona + Math.max(3, Math.round(4 * e)),
   };
 };

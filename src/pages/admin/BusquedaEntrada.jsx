@@ -570,10 +570,16 @@ const BusquedaEntrada = () => {
                         <span className="info-label">Asiento:</span>
                         <span className="info-value">{datosEntrada.entrada.numero_asiento}</span>
                       </div>
+                      {datosEntrada.entrada.area_nombre && (
+                        <div className="info-row">
+                          <span className="info-label">Área:</span>
+                          <span className="info-value" style={{ fontWeight: 'bold', color: '#7c3aed' }}>{datosEntrada.entrada.area_nombre}</span>
+                        </div>
+                      )}
                       {datosEntrada.entrada.numero_mesa && (
                         <div className="info-row">
                           <span className="info-label">Mesa:</span>
-                          <span className="info-value">M{datosEntrada.entrada.numero_mesa}</span>
+                          <span className="info-value">{datosEntrada.entrada.codigo_mesa || `M${datosEntrada.entrada.numero_mesa}`}</span>
                         </div>
                       )}
                       {datosEntrada.entrada.tipo_precio && (
@@ -589,8 +595,14 @@ const BusquedaEntrada = () => {
                     <>
                       <div className="info-row">
                         <span className="info-label">Mesa:</span>
-                        <span className="info-value">M{datosEntrada.entrada.numero_mesa}</span>
+                        <span className="info-value">{datosEntrada.entrada.codigo_mesa || `M${datosEntrada.entrada.numero_mesa}`}</span>
                       </div>
+                      {datosEntrada.entrada.area_nombre && (
+                        <div className="info-row">
+                          <span className="info-label">Área:</span>
+                          <span className="info-value" style={{ fontWeight: 'bold', color: '#7c3aed' }}>{datosEntrada.entrada.area_nombre}</span>
+                        </div>
+                      )}
                       <div className="info-row">
                         <span className="info-label">Cantidad de Sillas:</span>
                         <span className="info-value">{datosEntrada.entrada.cantidad_sillas} silla(s)</span>
