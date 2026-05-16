@@ -126,6 +126,31 @@ const Espacio = () => {
     setMostrarModalEditarArea(true);
   };
 
+  const getCamposPrecioMesa = () => ({
+    precio_mesa_completa:
+      mesaPrecioCompleta !== '' && !Number.isNaN(parseFloat(mesaPrecioCompleta))
+        ? parseFloat(mesaPrecioCompleta)
+        : null,
+    precio_silla_individual:
+      mesaVentaSoloMesa ||
+      mesaPrecioSilla === '' ||
+      Number.isNaN(parseFloat(mesaPrecioSilla))
+        ? null
+        : parseFloat(mesaPrecioSilla),
+    venta_solo_mesa: mesaVentaSoloMesa ? 1 : 0,
+  });
+
+  const aplicarPreciosAMesa = (mesaId) => {
+    const campos = getCamposPrecioMesa();
+    setMesas((prev) =>
+      prev.map((m) => (m.id === mesaId ? { ...m, ...campos } : m))
+    );
+    if (typeof mesaId === 'number' && mesaId <= 1000000 && eventoSeleccionado) {
+      api.put(`/mesas/${mesaId}`, campos).catch((e) => console.warn('Precios mesa:', e));
+    }
+    showAlert('Precios de mesa actualizados', { type: 'success' });
+  };
+
   const guardarEdicionArea = () => {
     if (!areaEnEdicion) return;
     if (areaEnEdicion.tipo_area === 'PERSONAS' && (!areaEnEdicion.capacidad_personas || areaEnEdicion.capacidad_personas < 1)) {
@@ -145,6 +170,9 @@ const Espacio = () => {
   // Configuración de mesas
   const [cantidadMesas, setCantidadMesas] = useState(1);
   const [sillasPorMesa, setSillasPorMesa] = useState(4);
+  const [mesaPrecioCompleta, setMesaPrecioCompleta] = useState('');
+  const [mesaPrecioSilla, setMesaPrecioSilla] = useState('');
+  const [mesaVentaSoloMesa, setMesaVentaSoloMesa] = useState(false);
   const [formaMesa, setFormaMesa] = useState('rectangulo'); // cuadrado, rectangulo
   const [mostrarModalEditarArea, setMostrarModalEditarArea] = useState(false);
   const [areaEnEdicion, setAreaEnEdicion] = useState(null); // área que se está editando (tipo, capacidad)
@@ -859,7 +887,10 @@ const Espacio = () => {
           numero_mesa: m.numero_mesa,
           capacidad_sillas: m.capacidad_sillas || 4, // Valor por defecto si no tiene capacidad_sillas
           tipo_precio_id: m.tipo_precio_id,
-          area_id: m.area_id || null
+          area_id: m.area_id || null,
+          precio_mesa_completa: m.precio_mesa_completa ?? null,
+          precio_silla_individual: m.precio_silla_individual ?? null,
+          venta_solo_mesa: m.venta_solo_mesa === 1 || m.venta_solo_mesa === true,
         }));
         setMesas(mesasCargadas);
       }
@@ -1155,7 +1186,8 @@ const Espacio = () => {
         height: mesaH,
         numero_mesa: numeroMesa,
         capacidad_sillas: sillasPorMesa,
-        tipo_precio_id: zona.tipo_precio_id
+        tipo_precio_id: zona.tipo_precio_id,
+        ...getCamposPrecioMesa(),
       };
 
       nuevasMesas.push(nuevaMesa);
@@ -2116,7 +2148,8 @@ const Espacio = () => {
         height: mesaH,
         numero_mesa: numeroMesa,
         capacidad_sillas: sillasPorMesa,
-        tipo_precio_id: tipoPrecioSeleccionado
+        tipo_precio_id: tipoPrecioSeleccionado,
+        ...getCamposPrecioMesa(),
       };
       
       const sillas = generarSillasAlrededorMesa(nuevaMesa).map(s => {
@@ -2897,7 +2930,10 @@ const Espacio = () => {
           posicion_y: Math.round(mesa.y),
           ancho: Math.round(mesa.width),
           alto: Math.round(mesa.height),
-          area_id: areaId
+          area_id: areaId,
+          precio_mesa_completa: mesa.precio_mesa_completa ?? null,
+          precio_silla_individual: mesa.precio_silla_individual ?? null,
+          venta_solo_mesa: mesa.venta_solo_mesa ? 1 : 0,
         });
 
         if (response.data.success) {
@@ -3192,6 +3228,46 @@ const Espacio = () => {
                         className="select-input"
                       />
                     </div>
+                    <div className="espacio-precios-mesa">
+                      <h4 className="espacio-precios-mesa__titulo">Precios de venta (mesas nuevas)</h4>
+                      <div className="form-group-small">
+                        <label>Precio mesa completa (Bs.)</label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={mesaPrecioCompleta}
+                          onChange={(e) => setMesaPrecioCompleta(e.target.value)}
+                          className="select-input"
+                          placeholder="Ej: 3500"
+                        />
+                      </div>
+                      <label className="checkbox-label espacio-precios-mesa__check">
+                        <input
+                          type="checkbox"
+                          checked={mesaVentaSoloMesa}
+                          onChange={(e) => setMesaVentaSoloMesa(e.target.checked)}
+                        />
+                        Solo vender mesa entera (sin sillas sueltas)
+                      </label>
+                      {!mesaVentaSoloMesa && (
+                        <div className="form-group-small">
+                          <label>Precio por silla suelta (Bs.)</label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={mesaPrecioSilla}
+                            onChange={(e) => setMesaPrecioSilla(e.target.value)}
+                            className="select-input"
+                            placeholder="Ej: 100"
+                          />
+                        </div>
+                      )}
+                      <p className="form-hint">
+                        Ej.: VIP 3500 solo mesa entera, o mesa 600 completa y sillas sueltas a 100.
+                      </p>
+                    </div>
                     <p style={{ fontSize: '12px', color: '#666', marginTop: '8px' }}>
                       Haz clic en el canvas para colocar una mesa. Las sillas se generarán automáticamente alrededor de la mesa.
                     </p>
@@ -3235,6 +3311,43 @@ const Espacio = () => {
                         className="select-input"
                       />
                     </div>
+                    <div className="espacio-precios-mesa">
+                      <h4 className="espacio-precios-mesa__titulo">Precios de venta (zona de mesas)</h4>
+                      <div className="form-group-small">
+                        <label>Precio mesa completa (Bs.)</label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={mesaPrecioCompleta}
+                          onChange={(e) => setMesaPrecioCompleta(e.target.value)}
+                          className="select-input"
+                          placeholder="Ej: 600"
+                        />
+                      </div>
+                      <label className="checkbox-label espacio-precios-mesa__check">
+                        <input
+                          type="checkbox"
+                          checked={mesaVentaSoloMesa}
+                          onChange={(e) => setMesaVentaSoloMesa(e.target.checked)}
+                        />
+                        Solo vender mesa entera (sin sillas sueltas)
+                      </label>
+                      {!mesaVentaSoloMesa && (
+                        <div className="form-group-small">
+                          <label>Precio por silla suelta (Bs.)</label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={mesaPrecioSilla}
+                            onChange={(e) => setMesaPrecioSilla(e.target.value)}
+                            className="select-input"
+                            placeholder="Ej: 100"
+                          />
+                        </div>
+                      )}
+                    </div>
                     <p style={{ fontSize: '12px', color: '#666', marginTop: '8px' }}>
                       Haz clic y arrastra para dibujar la zona. Las mesas con sillas se generarán automáticamente.
                     </p>
@@ -3262,10 +3375,36 @@ const Espacio = () => {
                         {elementoInfo.area && <p><strong>Área:</strong> {elementoInfo.area.nombre}</p>}
                         {elementoInfo.tipoPrecio && (
                           <>
-                            <p><strong>Tipo de Precio:</strong> {elementoInfo.tipoPrecio.nombre}</p>
-                            <p><strong>Precio:</strong> ${elementoInfo.tipoPrecio.precio}</p>
+                            <p><strong>Tipo de Precio (respaldo):</strong> {elementoInfo.tipoPrecio.nombre}</p>
+                            <p><strong>Precio tipo:</strong> Bs. {elementoInfo.tipoPrecio.precio}</p>
                           </>
                         )}
+                        <p>
+                          <strong>Mesa completa:</strong>{' '}
+                          {elementoInfo.mesa.precio_mesa_completa != null
+                            ? `Bs. ${elementoInfo.mesa.precio_mesa_completa}`
+                            : '— (suma de sillas)'}
+                        </p>
+                        <p>
+                          <strong>Venta:</strong>{' '}
+                          {elementoInfo.mesa.venta_solo_mesa ? 'Solo mesa entera' : 'Mesa completa o sillas sueltas'}
+                        </p>
+                        {!elementoInfo.mesa.venta_solo_mesa && (
+                          <p>
+                            <strong>Silla suelta:</strong>{' '}
+                            {elementoInfo.mesa.precio_silla_individual != null
+                              ? `Bs. ${elementoInfo.mesa.precio_silla_individual}`
+                              : `Bs. ${elementoInfo.tipoPrecio?.precio ?? '—'}`}
+                          </p>
+                        )}
+                        <button
+                          type="button"
+                          className="btn-secondary"
+                          style={{ marginTop: '8px' }}
+                          onClick={() => aplicarPreciosAMesa(elementoInfo.mesa.id)}
+                        >
+                          Aplicar precios del panel a esta mesa
+                        </button>
                         <p><strong>Posición:</strong> ({Math.round(elementoInfo.mesa.x || 0)}, {Math.round(elementoInfo.mesa.y || 0)})</p>
                       </div>
                     )}
@@ -3717,6 +3856,46 @@ const Espacio = () => {
                         }}
                         className="select-input"
                       />
+                    </div>
+                    <div className="espacio-precios-mesa">
+                      <h4 className="espacio-precios-mesa__titulo">Precios de venta (mesas nuevas)</h4>
+                      <div className="form-group-small">
+                        <label>Precio mesa completa (Bs.)</label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={mesaPrecioCompleta}
+                          onChange={(e) => setMesaPrecioCompleta(e.target.value)}
+                          className="select-input"
+                          placeholder="Ej: 3500"
+                        />
+                      </div>
+                      <label className="checkbox-label espacio-precios-mesa__check">
+                        <input
+                          type="checkbox"
+                          checked={mesaVentaSoloMesa}
+                          onChange={(e) => setMesaVentaSoloMesa(e.target.checked)}
+                        />
+                        Solo vender mesa entera (sin sillas sueltas)
+                      </label>
+                      {!mesaVentaSoloMesa && (
+                        <div className="form-group-small">
+                          <label>Precio por silla suelta (Bs.)</label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={mesaPrecioSilla}
+                            onChange={(e) => setMesaPrecioSilla(e.target.value)}
+                            className="select-input"
+                            placeholder="Ej: 100"
+                          />
+                        </div>
+                      )}
+                      <p className="form-hint">
+                        Ej.: VIP 3500 solo mesa entera, o mesa 600 completa y sillas sueltas a 100.
+                      </p>
                     </div>
                     <p style={{ fontSize: '12px', color: '#666', marginTop: '8px' }}>
                       Haz clic en el canvas para colocar una mesa. Las sillas se generarán automáticamente alrededor de la mesa.

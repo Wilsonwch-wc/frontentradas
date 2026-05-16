@@ -1,6 +1,11 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useEffect, useState, useRef, useMemo } from 'react';
 import { calcularViewportPlano, calcularTamanoSvgPlano, escenarioVisibleEnViewport } from '../utils/planoCompra.js';
+import {
+  esMesaSoloVentaCompleta,
+  calcularPrecioMesaCompleta,
+  calcularPrecioSillaEnMesa,
+} from '../utils/mesaPrecios.js';
 import { useAuth } from '../context/AuthContext';
 import { useAlert } from '../context/AlertContext';
 import { getApiBase, getServerBase } from '../api/base';
@@ -986,98 +991,84 @@ const Compra = () => {
             selecciones.some(sel => sel.type === 'asiento' && sel.id === a.id)
           );
 
-          if (todosSeleccionados) {
-            // Deseleccionar todos los asientos de la mesa y la entrada de mesa completa
-            const idsAsientosMesa = asientosMesa.map(a => a.id);
-            setSelecciones(prev => prev.filter(sel =>
-              sel.type !== 'mesa_completa' || sel.mesa_id !== mesa.id
-            ).filter(sel => !idsAsientosMesa.includes(sel.id)));
+          const soloMesa = esMesaSoloVentaCompleta(mesa);
+          const yaMesaCompleta = selecciones.some(
+            (sel) => sel.type === 'mesa_completa' && sel.mesa_id === mesa.id
+          );
+
+          if (todosSeleccionados || yaMesaCompleta) {
+            const idsAsientosMesa = asientosMesa.map((a) => a.id);
+            setSelecciones((prev) =>
+              prev
+                .filter((sel) => sel.type !== 'mesa_completa' || sel.mesa_id !== mesa.id)
+                .filter((sel) => !idsAsientosMesa.includes(sel.id))
+            );
           } else {
-            // Seleccionar todos los asientos de la mesa que estén disponibles
-            const nuevasSelecciones = [];
             const asientosDisponibles = [];
+            const nuevasSelecciones = [];
 
             for (const asiento of asientosMesa) {
-              // Verificar si el asiento está ocupado
-              if (asientosOcupados.includes(asiento.id)) {
-                continue; // Saltar asientos ocupados
-              }
-
-              // Verificar disponibilidad
-              if (asiento.estado && asiento.estado !== 'disponible') {
-                continue; // Saltar asientos no disponibles
-              }
-
-              // Verificar si ya está seleccionado
-              const yaSeleccionado = selecciones.some(sel => sel.type === 'asiento' && sel.id === asiento.id);
-              if (yaSeleccionado) continue;
-
-              // Respetar filtro tipo de precio también dentro de la mesa
+              if (asientosOcupados.includes(asiento.id)) continue;
+              if (asiento.estado && asiento.estado !== 'disponible') continue;
+              if (selecciones.some((sel) => sel.type === 'asiento' && sel.id === asiento.id)) continue;
               if (!cumpleFiltroTipoPrecio(asiento.tipo_precio_id)) continue;
 
-              const tipoPrecio = evento.tipos_precio?.find(tp => tp.id === asiento.tipo_precio_id);
-              let nombreArea = asiento.area_nombre;
-
-              // Buscar área si no está en el asiento
-              if (!nombreArea && evento.areas && Array.isArray(evento.areas) && evento.areas.length > 0) {
-                const asientoX = asiento.x || asiento.posicion_x;
-                const asientoY = asiento.y || asiento.posicion_y;
-                if (asientoX !== null && asientoY !== null) {
-                  const areaEncontrada = evento.areas.find(area => {
-                    if (!area.posicion_x || !area.posicion_y || !area.ancho || !area.alto) return false;
-                    return asientoX >= area.posicion_x &&
-                           asientoX <= (area.posicion_x + area.ancho) &&
-                           asientoY >= area.posicion_y &&
-                           asientoY <= (area.posicion_y + area.alto);
-                  });
-                  if (areaEncontrada && areaEncontrada.nombre) {
-                    nombreArea = areaEncontrada.nombre;
-                  }
-                }
-              }
-
-              // Obtener información de la mesa si el asiento pertenece a una
-              let textoMesa = '';
-              if (asiento.mesa_id) {
-                const mesaDelAsiento = evento.mesas?.find(m => m.id === asiento.mesa_id);
-                if (mesaDelAsiento) {
-                  textoMesa = ` de Mesa ${mesaDelAsiento.numero_mesa}`;
-                }
-              }
-
-              const textoArea = nombreArea ? ` - ${nombreArea}` : '';
-              nuevasSelecciones.push({
-                type: 'asiento',
-                id: asiento.id,
-                tipo_precio_id: asiento.tipo_precio_id,
-                precio: tipoPrecio?.precio || 0,
-                nombre: `Asiento ${asiento.numero_asiento}${textoMesa}${textoArea}`,
-                area_nombre: nombreArea || null
-              });
+              const precioSilla = calcularPrecioSillaEnMesa(mesa, asiento, evento.tipos_precio);
+              if (precioSilla == null) continue;
 
               asientosDisponibles.push({
                 id: asiento.id,
                 numero: asiento.numero_asiento,
-                precio: tipoPrecio?.precio || 0
+                precio: precioSilla,
               });
+
+              if (!soloMesa) {
+                let nombreArea = asiento.area_nombre;
+                if (!nombreArea && evento.areas?.length) {
+                  const ax = asiento.x ?? asiento.posicion_x;
+                  const ay = asiento.y ?? asiento.posicion_y;
+                  if (ax != null && ay != null) {
+                    const areaEncontrada = evento.areas.find(
+                      (area) =>
+                        area.posicion_x != null &&
+                        ax >= area.posicion_x &&
+                        ax <= area.posicion_x + area.ancho &&
+                        ay >= area.posicion_y &&
+                        ay <= area.posicion_y + area.alto
+                    );
+                    if (areaEncontrada?.nombre) nombreArea = areaEncontrada.nombre;
+                  }
+                }
+                const textoArea = nombreArea ? ` - ${nombreArea}` : '';
+                nuevasSelecciones.push({
+                  type: 'asiento',
+                  id: asiento.id,
+                  tipo_precio_id: asiento.tipo_precio_id,
+                  precio: precioSilla,
+                  nombre: `Silla ${asiento.numero_asiento} - Mesa ${mesa.numero_mesa}${textoArea}`,
+                  area_nombre: nombreArea || null,
+                });
+              }
             }
 
-            if (nuevasSelecciones.length > 0) {
-              // Calcular precio total de la mesa
-              const precioTotal = asientosDisponibles.reduce((sum, a) => sum + a.precio, 0);
-
-              // Agregar entrada de mesa completa
+            if (asientosDisponibles.length > 0) {
+              const precioTotal = calcularPrecioMesaCompleta(mesa, asientosDisponibles, evento.tipos_precio);
               const entradaMesaCompleta = {
                 type: 'mesa_completa',
                 mesa_id: mesa.id,
                 numero_mesa: mesa.numero_mesa,
                 cantidad_sillas: asientosDisponibles.length,
                 precio_total: precioTotal,
+                venta_solo_mesa: soloMesa,
                 nombre: `MESA COMPLETA M${mesa.numero_mesa}`,
-                sillas: asientosDisponibles.map(a => a.numero).join(', ')
+                sillas: asientosDisponibles.map((a) => a.numero).join(', '),
               };
 
-              setSelecciones(prev => [...prev, ...nuevasSelecciones, entradaMesaCompleta]);
+              setSelecciones((prev) => [
+                ...prev,
+                ...(soloMesa ? [] : nuevasSelecciones),
+                entradaMesaCompleta,
+              ]);
             }
           }
           return; // Ya manejamos el click, no verificar asientos individuales
@@ -1102,6 +1093,17 @@ const Compra = () => {
           // Verificar si el asiento está ocupado
           if (asientosOcupados.includes(asiento.id)) {
             showAlert('Este asiento ya está ocupado y no está disponible', { type: 'warning' });
+            return;
+          }
+
+          const mesaDelAsiento = asiento.mesa_id
+            ? evento.mesas?.find((m) => m.id === asiento.mesa_id)
+            : null;
+
+          if (mesaDelAsiento && esMesaSoloVentaCompleta(mesaDelAsiento)) {
+            showAlert('Esta mesa solo se vende completa. Haz clic sobre la mesa (no en las sillas).', {
+              type: 'info',
+            });
             return;
           }
 
@@ -1132,9 +1134,14 @@ const Compra = () => {
               return true;
             }));
           } else {
-            // Seleccionar asiento individual (reutilizando la construcción estándar)
+            const precioSilla = mesaDelAsiento
+              ? calcularPrecioSillaEnMesa(mesaDelAsiento, asiento, evento.tipos_precio)
+              : null;
             const nuevaSeleccion = construirSeleccionAsiento(asiento);
-            setSelecciones(prev => [...prev, nuevaSeleccion]);
+            if (mesaDelAsiento && precioSilla != null) {
+              nuevaSeleccion.precio = precioSilla;
+            }
+            setSelecciones((prev) => [...prev, nuevaSeleccion]);
           }
           return;
         }
