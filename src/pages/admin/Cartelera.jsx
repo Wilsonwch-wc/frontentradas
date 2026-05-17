@@ -6,6 +6,15 @@ import './Cartelera.css';
 
 const serverBase = getServerBase();
 
+const obtenerFechaLocalISO = (fechaStr) => {
+  if (!fechaStr) return '';
+  const d = new Date(fechaStr);
+  if (isNaN(d.getTime())) return '';
+  const offset = d.getTimezoneOffset();
+  const localTime = new Date(d.getTime() - (offset * 60 * 1000));
+  return localTime.toISOString().slice(0, 16);
+};
+
 const Cartelera = () => {
   const { showAlert, showConfirm } = useAlert();
   const [eventos, setEventos] = useState([]);
@@ -435,7 +444,7 @@ const Cartelera = () => {
       ubicacion: evento.ubicacion || '',
       ciudad: evento.ciudad || '',
       ubicacion_url: evento.ubicacion_url || '',
-      hora_inicio: evento.hora_inicio ? evento.hora_inicio.slice(0, 16) : '',
+      hora_inicio: obtenerFechaLocalISO(evento.hora_inicio),
       precio: evento.precio.toString(),
       es_nuevo: evento.es_nuevo === 1 || evento.es_nuevo === true,
       tipo_evento: evento.tipo_evento || 'general',
