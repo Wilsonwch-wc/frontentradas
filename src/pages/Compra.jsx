@@ -1277,7 +1277,11 @@ const Compra = () => {
         return asientoData && !idsMesasCompletas.includes(asientoData.mesa_id);
       });
       
-      cantidadReal = cantidadMesas + asientosIndividuales.length;
+      const cantidadAreaGeneral = selecciones
+        .filter(s => s.type === 'area_general')
+        .reduce((sum, s) => sum + s.cantidad, 0);
+
+      cantidadReal = cantidadMesas + asientosIndividuales.length + cantidadAreaGeneral;
     }
     
     // Registrar compra en la base de datos
@@ -1285,6 +1289,7 @@ const Compra = () => {
       // Preparar asientos para enviar al backend
       const asientosParaBackend = [];
       const mesasParaBackend = [];
+      const areasPersonasParaBackend = [];
       
       if (evento.tipo_evento === 'especial') {
         // Obtener IDs de mesas completas seleccionadas
@@ -1312,6 +1317,16 @@ const Compra = () => {
           asientosParaBackend.push({
             id: asiento.id,
             precio: asiento.precio || 0
+          });
+        });
+
+        // Agregar áreas personas (de pie)
+        const areasPersonasSeleccionadas = selecciones.filter(s => s.type === 'area_general');
+        areasPersonasSeleccionadas.forEach(ap => {
+          areasPersonasParaBackend.push({
+            area_id: ap.id,
+            cantidad: ap.cantidad,
+            precio_unitario: ap.precio
           });
         });
       } else {
@@ -1365,7 +1380,8 @@ const Compra = () => {
         precio_original: precioOriginal,
         codigo_cupon: cuponValidado ? codigoCupon.trim() : null,
         asientos: asientosParaBackend,
-        mesas: mesasParaBackend
+        mesas: mesasParaBackend,
+        areas_personas: areasPersonasParaBackend
       };
       if (entradasGeneralesPayload && entradasGeneralesPayload.length > 0) {
         compraPayload.entradas_generales = entradasGeneralesPayload;
@@ -1588,6 +1604,8 @@ const Compra = () => {
         );
         // No sumar si pertenece a una mesa completa (ya está incluido)
         return perteneceAMesaCompleta ? sum : sum + sel.precio;
+      } else if (sel.type === 'area_general') {
+        return sum + (sel.precio * sel.cantidad);
       }
       return sum;
     }, 0);
@@ -1628,7 +1646,11 @@ const Compra = () => {
       const asientoData = evento.asientos?.find((a) => a.id === s.id);
       return asientoData && !idsMesasCompletas.includes(asientoData.mesa_id);
     });
-    cantidadEntradas = cantidadMesas + asientosIndividuales.length;
+    const cantidadAreaGeneral = selecciones
+      .filter((s) => s.type === 'area_general')
+      .reduce((sum, s) => sum + s.cantidad, 0);
+
+    cantidadEntradas = cantidadMesas + asientosIndividuales.length + cantidadAreaGeneral;
   }
 
   const formatearFecha = (fechaString) => {
@@ -1989,15 +2011,58 @@ const Compra = () => {
                     const esZonaSel = hayFiltroZona && String(area.id) === String(zonaSeleccionadaId);
                     if (hayFiltroZona && !esZonaSel) return null;
                     const fill = area.color ? hexToRgba(area.color, 0.22) : hexToRgba('#cbd5e1', 0.22);
+                    const isPersonas = area.tipo_area === 'PERSONAS';
+
+                    const handleAreaClick = (e) => {
+                      if (!isPersonas) return;
+                      e.stopPropagation();
+                      
+                      const precio = parseFloat(area.precio || 0);
+                      const disponibles = area.personas_disponibles !== undefined ? area.personas_disponibles : area.capacidad_personas;
+                      const sel = selecciones.find(s => s.type === 'area_general' && s.id === area.id);
+                      const cantidadActual = sel ? sel.cantidad : 0;
+                      
+                      if (disponibles !== null && cantidadActual >= disponibles) {
+                        showAlert(`No hay más espacio disponible en la zona ${area.nombre}.`, { type: 'warning' });
+                        return;
+                      }
+                      
+                      setSelecciones(prev => {
+                        const existing = prev.find(s => s.type === 'area_general' && s.id === area.id);
+                        if (existing) {
+                          return prev.map(s => (s.type === 'area_general' && s.id === area.id)
+                            ? { ...s, cantidad: s.cantidad + 1, total: (s.cantidad + 1) * precio }
+                            : s
+                          );
+                        } else {
+                          return [...prev, {
+                            type: 'area_general',
+                            id: area.id,
+                            nombre: `Entrada General - ${area.nombre}`,
+                            cantidad: 1,
+                            precio: precio,
+                            total: precio,
+                            color: area.color
+                          }];
+                        }
+                      });
+                      
+                      showAlert(`Se agregó 1 entrada para la zona ${area.nombre}.`, { type: 'success', toast: true });
+                    };
+
                     return (
-                      <g key={`area-${area.id}`}>
+                      <g
+                        key={`area-${area.id}`}
+                        onClick={isPersonas ? handleAreaClick : undefined}
+                        style={{ cursor: isPersonas ? 'pointer' : 'default' }}
+                      >
                         <rect
                           x={area.posicion_x}
                           y={area.posicion_y}
                           width={area.ancho}
                           height={area.alto}
                           fill={fill}
-                          stroke={PLANO_COLORS.areaStroke}
+                          stroke={area.color || PLANO_COLORS.areaStroke}
                           strokeWidth={esZonaSel ? 4 : 3}
                         />
                         <rect
@@ -2009,17 +2074,96 @@ const Compra = () => {
                           stroke={PLANO_COLORS.areaStrokeInner}
                           strokeWidth="2"
                         />
-                        <text
-                          x={area.posicion_x + area.ancho / 2}
-                          y={area.posicion_y - 8}
-                          textAnchor="middle"
-                          dominantBaseline="baseline"
-                          fill="#333"
-                          fontSize="14"
-                          fontWeight="700"
-                        >
-                          {String(area.nombre || '').toUpperCase()}
-                        </text>
+                        
+                        {/* Decorative Crowd dots grid for standing area */}
+                        {isPersonas && (() => {
+                          const cols = Math.floor(area.ancho / 20);
+                          const rows = Math.floor(area.alto / 20);
+                          const dots = [];
+                          for (let r = 0; r < rows; r++) {
+                            for (let c = 0; c < cols; c++) {
+                              dots.push(
+                                <circle
+                                  key={`dot-${area.id}-${r}-${c}`}
+                                  cx={area.posicion_x + 10 + c * 20}
+                                  cy={area.posicion_y + 10 + r * 20}
+                                  r={2.5}
+                                  fill={area.color || '#4CAF50'}
+                                  opacity={0.35}
+                                  pointerEvents="none"
+                                />
+                              );
+                            }
+                          }
+                          return dots;
+                        })()}
+
+                        {/* Badges and Labels */}
+                        {isPersonas ? (
+                          <g transform={`translate(${area.posicion_x + area.ancho / 2}, ${area.posicion_y + area.alto / 2})`}>
+                            <rect
+                              x={-80}
+                              y={-25}
+                              width={160}
+                              height={50}
+                              rx={6}
+                              ry={6}
+                              fill="#ffffff"
+                              stroke={area.color || '#cbd5e1'}
+                              strokeWidth={2}
+                              style={{ filter: 'drop-shadow(0px 2px 4px rgba(0,0,0,0.1))' }}
+                              pointerEvents="none"
+                            />
+                            <text
+                              x={0}
+                              y={-8}
+                              textAnchor="middle"
+                              dominantBaseline="middle"
+                              fill="#1f2937"
+                              fontSize="12"
+                              fontWeight="800"
+                              pointerEvents="none"
+                            >
+                              {String(area.nombre || '').toUpperCase()}
+                            </text>
+                            <text
+                              x={0}
+                              y={8}
+                              textAnchor="middle"
+                              dominantBaseline="middle"
+                              fill="#16a34a"
+                              fontSize="10"
+                              fontWeight="700"
+                              pointerEvents="none"
+                            >
+                              Bs. {parseFloat(area.precio || 0).toFixed(2)}
+                            </text>
+                            <text
+                              x={0}
+                              y={18}
+                              textAnchor="middle"
+                              dominantBaseline="middle"
+                              fill="#666"
+                              fontSize="8"
+                              fontWeight="600"
+                              pointerEvents="none"
+                            >
+                              ({area.personas_disponibles !== undefined ? area.personas_disponibles : area.capacidad_personas} disp)
+                            </text>
+                          </g>
+                        ) : (
+                          <text
+                            x={area.posicion_x + area.ancho / 2}
+                            y={area.posicion_y - 8}
+                            textAnchor="middle"
+                            dominantBaseline="baseline"
+                            fill="#333"
+                            fontSize="14"
+                            fontWeight="700"
+                          >
+                            {String(area.nombre || '').toUpperCase()}
+                          </text>
+                        )}
                       </g>
                     );
                   })}
@@ -2169,7 +2313,7 @@ const Compra = () => {
                   <h4>Selecciones</h4>
                   <div className="selecciones-lista">
                     {selecciones.map((sel, index) => {
-                      // Filtrar solo asientos individuales y mesas completas
+                      // Filtrar solo asientos individuales, mesas completas y áreas generales
                       if (sel.type === 'asiento') {
                         // Verificar si este asiento pertenece a una mesa completa seleccionada
                         const perteneceAMesaCompleta = selecciones.some(s => 
@@ -2200,6 +2344,18 @@ const Compra = () => {
                             <span className="seleccion-precio seleccion-precio-mesa">Bs. {sel.precio_total.toFixed(2)}</span>
                           </div>
                         );
+                      } else if (sel.type === 'area_general') {
+                        return (
+                          <div key={index} className="seleccion-item" style={{ borderLeft: `4px solid ${sel.color || '#4CAF50'}` }}>
+                            <div className="seleccion-mesa-info">
+                              <span className="seleccion-nombre" style={{ fontWeight: 'bold' }}>{sel.nombre}</span>
+                              <span className="seleccion-mesa-detalle">
+                                Cantidad: {sel.cantidad} × Bs. {sel.precio.toFixed(2)}
+                              </span>
+                            </div>
+                            <span className="seleccion-precio">Bs. {sel.total.toFixed(2)}</span>
+                          </div>
+                        );
                       }
                       return null;
                     })}
@@ -2217,9 +2373,137 @@ const Compra = () => {
                         );
                         // No sumar si pertenece a una mesa completa (ya está incluido)
                         return perteneceAMesaCompleta ? sum : sum + sel.precio;
+                      } else if (sel.type === 'area_general') {
+                        return sum + sel.total;
                       }
                       return sum;
                     }, 0).toFixed(2)}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Zonas Generales (De Pie) para eventos especiales */}
+              {Array.isArray(evento.areas) && evento.areas.some(a => a.tipo_area === 'PERSONAS') && (
+                <div className="compra-card-cantidad" style={{ marginTop: '20px', padding: '20px', borderTop: '1px solid #eee' }}>
+                  <h3 style={{ fontSize: '1.25rem', color: '#2c3e50', marginBottom: '8px', fontWeight: 'bold' }}>Entradas de Zona General (De Pie)</h3>
+                  <p style={{ color: '#666', fontSize: '0.85rem', marginBottom: '15px' }}>
+                    Selecciona la cantidad de entradas para las zonas de pie/sin numerar (puedes hacer clic en ellas en el plano o seleccionarlas aquí abajo):
+                  </p>
+                  <div className="tipos-precio-cantidad-list">
+                    {evento.areas
+                      .filter(a => a.tipo_area === 'PERSONAS')
+                      .map((area) => {
+                        const sel = selecciones.find(s => s.type === 'area_general' && s.id === area.id);
+                        const cantidadActual = sel ? sel.cantidad : 0;
+                        const precio = parseFloat(area.precio || 0);
+                        const disponibles = area.personas_disponibles !== undefined ? area.personas_disponibles : area.capacidad_personas;
+                        
+                        const handleIncrement = () => {
+                          if (disponibles !== null && cantidadActual >= disponibles) {
+                            showAlert(`No hay más espacio disponible en la zona ${area.nombre}.`, { type: 'warning' });
+                            return;
+                          }
+                          
+                          setSelecciones(prev => {
+                            const existing = prev.find(s => s.type === 'area_general' && s.id === area.id);
+                            if (existing) {
+                              return prev.map(s => (s.type === 'area_general' && s.id === area.id)
+                                ? { ...s, cantidad: s.cantidad + 1, total: (s.cantidad + 1) * precio }
+                                : s
+                              );
+                            } else {
+                              return [...prev, {
+                                type: 'area_general',
+                                id: area.id,
+                                nombre: `Entrada General - ${area.nombre}`,
+                                cantidad: 1,
+                                precio: precio,
+                                total: precio,
+                                color: area.color
+                              }];
+                            }
+                          });
+                        };
+
+                        const handleDecrement = () => {
+                          setSelecciones(prev => {
+                            const existing = prev.find(s => s.type === 'area_general' && s.id === area.id);
+                            if (!existing) return prev;
+                            if (existing.cantidad <= 1) {
+                              return prev.filter(s => !(s.type === 'area_general' && s.id === area.id));
+                            } else {
+                              return prev.map(s => (s.type === 'area_general' && s.id === area.id)
+                                ? { ...s, cantidad: s.cantidad - 1, total: (s.cantidad - 1) * precio }
+                                : s
+                              );
+                            }
+                          });
+                        };
+
+                        return (
+                          <div key={area.id} className="tipo-precio-fila" style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem', flexWrap: 'wrap', padding: '10px 15px', background: '#f8f9fa', borderRadius: '8px', borderLeft: `5px solid ${area.color || '#4CAF50'}` }}>
+                            <div style={{ flex: 1, minWidth: '150px' }}>
+                              <span className="tipo-nombre" style={{ fontWeight: 700, fontSize: '1rem', color: '#2c3e50', display: 'block' }}>{area.nombre}</span>
+                              <span style={{ fontSize: '0.8rem', color: '#666' }}>
+                                Capacidad: {area.capacidad_personas} • Disponibles: <strong style={{ color: disponibles === 0 ? '#dc3545' : '#198754' }}>{disponibles}</strong>
+                              </span>
+                            </div>
+                            <span className="tipo-precio precio-destacado" style={{ fontWeight: 700, color: '#0d6efd', fontSize: '1rem' }}>Bs. {precio.toFixed(2)}</span>
+                            
+                            <div className="cantidad-selector" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                              <button
+                                type="button"
+                                onClick={handleDecrement}
+                                className="cantidad-btn"
+                                disabled={cantidadActual === 0}
+                                style={{
+                                  width: '32px',
+                                  height: '32px',
+                                  borderRadius: '50%',
+                                  border: 'none',
+                                  background: cantidadActual === 0 ? '#e2e8f0' : 'linear-gradient(135deg, #FFD700 0%, #D4AF37 100%)',
+                                  color: '#1a1a1a',
+                                  fontWeight: 'bold',
+                                  cursor: cantidadActual === 0 ? 'not-allowed' : 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  fontSize: '1.2rem',
+                                  boxShadow: 'none'
+                                }}
+                              >
+                                -
+                              </button>
+                              <span className="cantidad-value" style={{ minWidth: '30px', textAlign: 'center', fontWeight: 'bold', fontSize: '1.1rem', color: '#2c3e50' }}>
+                                {cantidadActual}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={handleIncrement}
+                                className="cantidad-btn"
+                                disabled={disponibles !== null && disponibles <= 0}
+                                style={{
+                                  width: '32px',
+                                  height: '32px',
+                                  borderRadius: '50%',
+                                  border: 'none',
+                                  background: (disponibles !== null && disponibles <= 0) ? '#e2e8f0' : 'linear-gradient(135deg, #FFD700 0%, #D4AF37 100%)',
+                                  color: '#1a1a1a',
+                                  fontWeight: 'bold',
+                                  cursor: (disponibles !== null && disponibles <= 0) ? 'not-allowed' : 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  fontSize: '1.2rem',
+                                  boxShadow: 'none'
+                                }}
+                              >
+                                +
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
                   </div>
                 </div>
               )}
@@ -2501,6 +2785,18 @@ const Compra = () => {
                             </span>
                           </div>
                           <span className="resumen-seleccion-precio resumen-precio-mesa">Bs. {sel.precio_total.toFixed(2)}</span>
+                        </div>
+                      );
+                    } else if (sel.type === 'area_general') {
+                      return (
+                        <div key={index} className="resumen-seleccion-item" style={{ borderLeft: `4px solid ${sel.color || '#4CAF50'}` }}>
+                          <div className="resumen-mesa-info">
+                            <span className="resumen-seleccion-nombre" style={{ fontWeight: 'bold' }}>{sel.nombre}</span>
+                            <span className="resumen-mesa-detalle" style={{ color: '#666', fontSize: '0.85rem' }}>
+                              Cantidad: {sel.cantidad} × Bs. {sel.precio.toFixed(2)}
+                            </span>
+                          </div>
+                          <span className="resumen-seleccion-precio">Bs. {sel.total.toFixed(2)}</span>
                         </div>
                       );
                     }
