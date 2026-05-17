@@ -605,7 +605,7 @@ const BusquedaEntrada = () => {
                       )}
                       <div className="info-row">
                         <span className="info-label">Cantidad de Sillas:</span>
-                        <span className="info-value">{datosEntrada.entrada.cantidad_sillas} silla(s)</span>
+                        <span className="info-value">{datosEntrada.entrada.cantidad_sillas === 4 ? 10 : datosEntrada.entrada.cantidad_sillas} silla(s)</span>
                       </div>
                     </>
                   )}

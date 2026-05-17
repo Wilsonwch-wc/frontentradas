@@ -550,11 +550,12 @@ const Compra = () => {
         if (!estaEnZonaSeleccionada(centroMesaX, centroMesaY)) return;
         if (!cumpleFiltroTipoPrecio(mesa.tipo_precio_id)) return;
         
-        // Verificar si todos los asientos de la mesa están seleccionados
+        // Verificar si todos los asientos de la mesa están seleccionados o la mesa está seleccionada completa
+        const mesaCompletaSeleccionada = selecciones.some(sel => sel.type === 'mesa_completa' && sel.mesa_id === mesa.id);
         const asientosMesa = evento.asientos?.filter(a => a.mesa_id === mesa.id) || [];
-        const todosSeleccionados = asientosMesa.length > 0 && asientosMesa.every(a => 
+        const todosSeleccionados = mesaCompletaSeleccionada || (asientosMesa.length > 0 && asientosMesa.every(a => 
           selecciones.some(sel => sel.type === 'asiento' && sel.id === a.id)
-        );
+        ));
         
         // Dibujar la mesa: rojo si está ocupada, marrón si no
         if (mesaOcupada) {
@@ -2214,8 +2215,16 @@ const Compra = () => {
                     if (!estaEnZonaSeleccionada(cx, cy)) return null;
                     if (!cumpleFiltroTipoPrecio(mesa.tipo_precio_id)) return null;
                     const ocupada = mesasOcupadas.includes(mesa.id);
+                    const mesaCompletaSeleccionada = selecciones.some(sel => sel.type === 'mesa_completa' && sel.mesa_id === mesa.id);
+                    const asientosMesa = evento.asientos?.filter(a => a.mesa_id === mesa.id) || [];
+                    const todosSeleccionados = mesaCompletaSeleccionada || (asientosMesa.length > 0 && asientosMesa.every(a => 
+                      selecciones.some(sel => sel.type === 'asiento' && sel.id === a.id)
+                    ));
+
                     const fill = ocupada ? PLANO_COLORS.occupiedFill : PLANO_COLORS.mesaFill;
-                    const stroke = ocupada ? PLANO_COLORS.occupiedStroke : PLANO_COLORS.mesaStroke;
+                    const stroke = ocupada 
+                      ? PLANO_COLORS.occupiedStroke 
+                      : (todosSeleccionados ? PLANO_COLORS.selectedStroke : PLANO_COLORS.mesaStroke);
                     return (
                       <g key={`mesa-${mesa.id}`}>
                         <rect
@@ -2225,7 +2234,7 @@ const Compra = () => {
                           height={mesaH}
                           fill={fill}
                           stroke={stroke}
-                          strokeWidth={ocupada ? 3 : 2}
+                          strokeWidth={ocupada ? 3 : (todosSeleccionados ? 3.5 : 2)}
                           rx="3"
                           ry="3"
                           pointerEvents="all"
