@@ -646,7 +646,7 @@ const Compras = () => {
                   <div className="mesas-list">
                     {compraSeleccionada.mesas.map((mesa) => (
                       <div key={mesa.id} className="mesa-item">
-                        <span><strong>Mesa:</strong> {mesa.numero_mesa}</span>
+                        <span><strong>Mesa:</strong> {mesa.codigo_mesa || mesa.numero_mesa}</span>
                         <span><strong>Cantidad de Sillas:</strong> {mesa.cantidad_sillas}</span>
                         <span><strong>Precio Total:</strong> ${parseFloat(mesa.precio_total).toFixed(2)}</span>
                         <span className={`badge badge-${mesa.estado.toLowerCase()}`}>{mesa.estado}</span>

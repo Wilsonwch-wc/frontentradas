@@ -323,7 +323,7 @@ const EntradasEscaneadas = () => {
                             <>Entrada General{entrada.area_nombre ? ` (${entrada.area_nombre})` : ''}</>
                           ) : (
                             <>
-                              Mesa {entrada.numero_mesa} ({entrada.cantidad_sillas} sillas)
+                              Mesa {entrada.codigo_mesa || entrada.numero_mesa} ({entrada.cantidad_sillas} sillas)
                             </>
                           )}
                         </td>
