@@ -2853,7 +2853,7 @@ const Compra = () => {
                           <div className="resumen-mesa-info">
                             <span className="resumen-seleccion-nombre resumen-mesa-titulo">{sel.nombre}</span>
                             <span className="resumen-mesa-detalle">
-                              Mesa M{sel.numero_mesa} • {sel.cantidad_sillas} sillas
+                              Mesa {sel.numero_mesa} • {sel.cantidad_sillas} sillas
                             </span>
                             <span className="resumen-mesa-sillas">
                               Sillas: {sel.sillas}

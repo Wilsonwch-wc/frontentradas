@@ -626,7 +626,7 @@ const Compras = () => {
                       <div key={asiento.id} className="asiento-item">
                         <span><strong>Asiento:</strong> {asiento.codigo_asiento || asiento.numero_asiento}</span>
                         {asiento.numero_mesa && (
-                          <span><strong>Mesa:</strong> M{asiento.numero_mesa}</span>
+                          <span><strong>Mesa:</strong> {asiento.numero_mesa}</span>
                         )}
                         {asiento.tipo_precio_nombre && (
                           <span><strong>Tipo:</strong> {asiento.tipo_precio_nombre}</span>
@@ -646,7 +646,7 @@ const Compras = () => {
                   <div className="mesas-list">
                     {compraSeleccionada.mesas.map((mesa) => (
                       <div key={mesa.id} className="mesa-item">
-                        <span><strong>Mesa:</strong> M{mesa.numero_mesa}</span>
+                        <span><strong>Mesa:</strong> {mesa.numero_mesa}</span>
                         <span><strong>Cantidad de Sillas:</strong> {mesa.cantidad_sillas}</span>
                         <span><strong>Precio Total:</strong> ${parseFloat(mesa.precio_total).toFixed(2)}</span>
                         <span className={`badge badge-${mesa.estado.toLowerCase()}`}>{mesa.estado}</span>
