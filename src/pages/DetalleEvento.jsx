@@ -10,7 +10,7 @@ const apiBase = getApiBase();
 const DetalleEvento = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isAdmin, canUseAdminSaleOptions } = useAuth();
   const [evento, setEvento] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -53,8 +53,8 @@ const DetalleEvento = () => {
 
   const handleComprar = () => {
     if (!evento) return;
-    // No permitir comprar si el evento está en estado "proximamente"
-    if (evento.estado === 'proximamente') {
+    // No permitir comprar si el evento está en estado "proximamente", excepto para admin/vendedor
+    if (evento.estado === 'proximamente' && !isAdmin && !canUseAdminSaleOptions) {
       return;
     }
     if (isAuthenticated()) {
@@ -64,7 +64,7 @@ const DetalleEvento = () => {
     }
   };
 
-  const esProximamente = evento?.estado === 'proximamente';
+  const esProximamente = evento?.estado === 'proximamente' && !isAdmin && !canUseAdminSaleOptions;
 
   if (loading) {
     return (

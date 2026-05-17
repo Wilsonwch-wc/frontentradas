@@ -226,8 +226,8 @@ const Compra = () => {
             height: m.alto || m.height || 40
           }));
         }
-        // Verificar si el evento está en estado "proximamente"
-        if (eventoData.estado === 'proximamente') {
+        // Verificar si el evento está en estado "proximamente", excepto para admin/vendedor
+        if (eventoData.estado === 'proximamente' && !isAdmin && !canUseAdminSaleOptions) {
           showAlert('Este evento está marcado como "Próximamente". Las entradas aún no están disponibles para la venta.', {
             type: 'warning',
             title: 'Evento Próximamente'
@@ -626,17 +626,12 @@ const Compra = () => {
         
         if (mostrarNumerosAsientos) {
           ctx.fillStyle = '#0f172a';
-          ctx.font = 'bold 10px Arial';
+          ctx.font = 'bold 9px Arial';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
-          let numeroSilla = '';
-          if (silla.numero_asiento) {
-            if (silla.numero_asiento.includes('-')) {
-              const parteSilla = silla.numero_asiento.split('-')[1];
-              numeroSilla = parteSilla.replace('S', '');
-            } else {
-              numeroSilla = silla.numero_asiento.replace(/^[A-Za-z]+/, '');
-            }
+          let numeroSilla = silla.codigo_asiento || silla.numero_asiento || '';
+          if (numeroSilla.includes('-')) {
+            numeroSilla = numeroSilla.split('-')[1];
           }
           ctx.fillText(numeroSilla || '', sillaX, sillaY);
         }
@@ -2050,30 +2045,61 @@ const Compra = () => {
                       showAlert(`Se agregó 1 entrada para la zona ${area.nombre}.`, { type: 'success', toast: true });
                     };
 
+                    const isCirculo = area.forma === 'circulo' || area.forma === 'circle';
+                    const cx = area.posicion_x + area.ancho / 2;
+                    const cy = area.posicion_y + area.alto / 2;
+                    const rx = area.ancho / 2;
+                    const ry = area.alto / 2;
+
                     return (
                       <g
                         key={`area-${area.id}`}
                         onClick={isPersonas ? handleAreaClick : undefined}
                         style={{ cursor: isPersonas ? 'pointer' : 'default' }}
                       >
-                        <rect
-                          x={area.posicion_x}
-                          y={area.posicion_y}
-                          width={area.ancho}
-                          height={area.alto}
-                          fill={fill}
-                          stroke={area.color || PLANO_COLORS.areaStroke}
-                          strokeWidth={esZonaSel ? 4 : 3}
-                        />
-                        <rect
-                          x={area.posicion_x + 2}
-                          y={area.posicion_y + 2}
-                          width={Math.max(0, area.ancho - 4)}
-                          height={Math.max(0, area.alto - 4)}
-                          fill="transparent"
-                          stroke={PLANO_COLORS.areaStrokeInner}
-                          strokeWidth="2"
-                        />
+                        {isCirculo ? (
+                          <>
+                            <ellipse
+                              cx={cx}
+                              cy={cy}
+                              rx={rx}
+                              ry={ry}
+                              fill={fill}
+                              stroke={area.color || PLANO_COLORS.areaStroke}
+                              strokeWidth={esZonaSel ? 4 : 3}
+                            />
+                            <ellipse
+                              cx={cx}
+                              cy={cy}
+                              rx={Math.max(0, rx - 2)}
+                              ry={Math.max(0, ry - 2)}
+                              fill="transparent"
+                              stroke={PLANO_COLORS.areaStrokeInner}
+                              strokeWidth="2"
+                            />
+                          </>
+                        ) : (
+                          <>
+                            <rect
+                              x={area.posicion_x}
+                              y={area.posicion_y}
+                              width={area.ancho}
+                              height={area.alto}
+                              fill={fill}
+                              stroke={area.color || PLANO_COLORS.areaStroke}
+                              strokeWidth={esZonaSel ? 4 : 3}
+                            />
+                            <rect
+                              x={area.posicion_x + 2}
+                              y={area.posicion_y + 2}
+                              width={Math.max(0, area.ancho - 4)}
+                              height={Math.max(0, area.alto - 4)}
+                              fill="transparent"
+                              stroke={PLANO_COLORS.areaStrokeInner}
+                              strokeWidth="2"
+                            />
+                          </>
+                        )}
                         
                         {/* Decorative Crowd dots grid for standing area */}
                         {isPersonas && (() => {
@@ -2082,11 +2108,20 @@ const Compra = () => {
                           const dots = [];
                           for (let r = 0; r < rows; r++) {
                             for (let c = 0; c < cols; c++) {
+                              const dotX = area.posicion_x + 10 + c * 20;
+                              const dotY = area.posicion_y + 10 + r * 20;
+                              
+                              if (isCirculo) {
+                                // Verificar si está dentro de la elipse
+                                const inside = (((dotX - cx) / rx) ** 2 + ((dotY - cy) / ry) ** 2) <= 1;
+                                if (!inside) continue;
+                              }
+                              
                               dots.push(
                                 <circle
                                   key={`dot-${area.id}-${r}-${c}`}
-                                  cx={area.posicion_x + 10 + c * 20}
-                                  cy={area.posicion_y + 10 + r * 20}
+                                  cx={dotX}
+                                  cy={dotY}
                                   r={2.5}
                                   fill={area.color || '#4CAF50'}
                                   opacity={0.35}
@@ -2244,47 +2279,87 @@ const Compra = () => {
 
                       // Sillas de mesa
                       if (asiento.mesa_id) {
+                        let numeroSilla = asiento.codigo_asiento || asiento.numero_asiento || '';
+                        if (numeroSilla.includes('-')) {
+                          numeroSilla = numeroSilla.split('-')[1];
+                        }
                         return (
-                          <rect
-                            key={`silla-${asiento.id}`}
-                            x={x - 4}
-                            y={y - 4}
-                            width={8}
-                            height={8}
-                            fill={estaOcupado ? PLANO_COLORS.occupiedFill : (tipoPrecio?.color || PLANO_COLORS.mesaChairFillDefault)}
-                            stroke={estaSel ? PLANO_COLORS.selectedStroke : (estaOcupado ? PLANO_COLORS.occupiedStroke : PLANO_COLORS.seatStroke)}
-                            strokeWidth={estaSel ? 2 : 1}
-                            rx="1"
-                            ry="1"
-                            pointerEvents="all"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              // Click directo a la silla (no a la mesa completa)
-                              manejarClickPlano(x, y, { ignoreMesas: true });
-                            }}
-                          />
+                          <g key={`g-silla-${asiento.id}`}>
+                            <rect
+                              key={`silla-${asiento.id}`}
+                              x={x - 4}
+                              y={y - 4}
+                              width={8}
+                              height={8}
+                              fill={estaOcupado ? PLANO_COLORS.occupiedFill : (tipoPrecio?.color || PLANO_COLORS.mesaChairFillDefault)}
+                              stroke={estaSel ? PLANO_COLORS.selectedStroke : (estaOcupado ? PLANO_COLORS.occupiedStroke : PLANO_COLORS.seatStroke)}
+                              strokeWidth={estaSel ? 2 : 1}
+                              rx="1"
+                              ry="1"
+                              pointerEvents="all"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                // Click directo a la silla (no a la mesa completa)
+                                manejarClickPlano(x, y, { ignoreMesas: true });
+                              }}
+                            />
+                            {mostrarNumerosAsientos && numeroSilla && (
+                              <text
+                                x={x}
+                                y={y}
+                                textAnchor="middle"
+                                dominantBaseline="middle"
+                                fill="#0f172a"
+                                fontSize="5.5"
+                                fontWeight="700"
+                                pointerEvents="none"
+                              >
+                                {numeroSilla}
+                              </text>
+                            )}
+                          </g>
                         );
                       }
 
                       // Asiento individual
+                      let numeroAsiento = asiento.codigo_asiento || asiento.numero_asiento || '';
+                      if (numeroAsiento.includes('-')) {
+                        numeroAsiento = numeroAsiento.split('-')[1];
+                      }
                       return (
-                        <rect
-                          key={`asiento-${asiento.id}`}
-                          x={(asiento.posicion_x ?? x) - 5}
-                          y={(asiento.posicion_y ?? y) - 5}
-                          width={10}
-                          height={10}
-                          fill={estaOcupado ? PLANO_COLORS.occupiedFill : (tipoPrecio?.color || PLANO_COLORS.seatFillDefault)}
-                          stroke={estaSel ? PLANO_COLORS.selectedStroke : (estaOcupado ? PLANO_COLORS.occupiedStroke : PLANO_COLORS.seatStroke)}
-                          strokeWidth={estaSel ? 3 : 1}
-                          rx="2"
-                          ry="2"
-                          pointerEvents="all"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            manejarClickPlano(x, y, { ignoreMesas: true });
-                          }}
-                        />
+                        <g key={`g-asiento-${asiento.id}`}>
+                          <rect
+                            key={`asiento-${asiento.id}`}
+                            x={(asiento.posicion_x ?? x) - 5}
+                            y={(asiento.posicion_y ?? y) - 5}
+                            width={10}
+                            height={10}
+                            fill={estaOcupado ? PLANO_COLORS.occupiedFill : (tipoPrecio?.color || PLANO_COLORS.seatFillDefault)}
+                            stroke={estaSel ? PLANO_COLORS.selectedStroke : (estaOcupado ? PLANO_COLORS.occupiedStroke : PLANO_COLORS.seatStroke)}
+                            strokeWidth={estaSel ? 3 : 1}
+                            rx="2"
+                            ry="2"
+                            pointerEvents="all"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              manejarClickPlano(x, y, { ignoreMesas: true });
+                            }}
+                          />
+                          {mostrarNumerosAsientos && numeroAsiento && (
+                            <text
+                              x={asiento.posicion_x ?? x}
+                              y={asiento.posicion_y ?? y}
+                              textAnchor="middle"
+                              dominantBaseline="middle"
+                              fill="#0f172a"
+                              fontSize="6.5"
+                              fontWeight="700"
+                              pointerEvents="none"
+                            >
+                              {numeroAsiento}
+                            </text>
+                          )}
+                        </g>
                       );
                     });
                   })()}
