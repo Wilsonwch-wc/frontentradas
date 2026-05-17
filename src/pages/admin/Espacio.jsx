@@ -1326,7 +1326,7 @@ const Espacio = () => {
         y: Math.round(my),
         width: mesaW,
         height: mesaH,
-        numero_mesa: numeroMesa,
+        numero_mesa: numeroMesa++,
         codigo_mesa: null,
         capacidad_sillas: sillasPorMesa,
         tipo_precio_id: zona.tipo_precio_id,
@@ -3079,7 +3079,6 @@ const Espacio = () => {
 
     const mesasOrdenadas = [...mesas].sort(ordenarPorPosicion);
     const mesasRenumeradas = mesasOrdenadas.map((m, i) => {
-      if (m.codigo_mesa && String(m.codigo_mesa).trim()) return m;
       return { ...m, numero_mesa: i + 1 };
     });
     setMesas(mesasRenumeradas);
@@ -3203,10 +3202,23 @@ const Espacio = () => {
       // Renumerar elementos primero para calcular el total
       const { asientos: asientosRenumerados } = renumerarElementos(0);
       
+      // Renumerar mesas de forma segura para garantizar numero_mesa unico secuencial en la BD
+      const ordenarMesasPorPosicion = (a, b) => {
+        const ay = (a.y ?? a.posicion_y ?? 0);
+        const by = (b.y ?? b.posicion_y ?? 0);
+        if (Math.abs(ay - by) > 5) return ay - by;
+        return (a.x ?? a.posicion_x ?? 0) - (b.x ?? b.posicion_x ?? 0);
+      };
+      const mesasOrdenadas = [...mesas].sort(ordenarMesasPorPosicion);
+      const mesasParaGuardar = mesasOrdenadas.map((m, i) => ({
+        ...m,
+        numero_mesa: i + 1
+      }));
+
       // Calcular total de pasos para el progreso (aproximado)
       // Estimamos pasos: evento (1) + mesas + asientos (cada 10) + areas
       const pasosAsientos = Math.max(1, Math.ceil(asientosRenumerados.length / 10));
-      const totalPasos = 1 + mesas.length + pasosAsientos + areas.length;
+      const totalPasos = 1 + mesasParaGuardar.length + pasosAsientos + areas.length;
       let pasosProcesados = 0;
 
       const actualizarProgreso = (mensaje, detalle = null) => {
@@ -3272,10 +3284,10 @@ const Espacio = () => {
       }
 
       // Guardar mesas primero
-      actualizarProgreso(`Guardando ${mesas.length} mesa(s)...`);
+      actualizarProgreso(`Guardando ${mesasParaGuardar.length} mesa(s)...`);
       const mesasGuardadas = [];
-      for (let i = 0; i < mesas.length; i++) {
-        const mesa = mesas[i];
+      for (let i = 0; i < mesasParaGuardar.length; i++) {
+        const mesa = mesasParaGuardar[i];
         // Validar que la mesa tenga capacidad_sillas válida
         if (!mesa.capacidad_sillas || mesa.capacidad_sillas < 1) {
           console.error('Mesa sin capacidad_sillas válida:', mesa);
@@ -3307,8 +3319,9 @@ const Espacio = () => {
         });
 
         if (response.data.success) {
-          mesasGuardadas.push({ ...mesa, id: response.data.data.id });
-          actualizarProgreso(`Guardando mesa ${i + 1} de ${mesas.length}...`, `✅ Mesa ${mesa.numero_mesa} registrada`);
+          // Guardamos tempId: mesa.id para poder mapear los asientos perfectamente sin importar numero_mesa
+          mesasGuardadas.push({ ...mesa, tempId: mesa.id, id: response.data.data.id });
+          actualizarProgreso(`Guardando mesa ${i + 1} de ${mesasParaGuardar.length}...`, `✅ Mesa ${mesa.numero_mesa} registrada`);
         }
       }
 
@@ -3328,19 +3341,10 @@ const Espacio = () => {
         // Buscar la mesa asociada si el asiento tiene mesa_id
         let mesaId = null;
         if (asiento.mesa_id) {
-          // Buscar la mesa guardada que corresponde a este asiento
-          const mesaOriginal = mesas.find(m => m.id === asiento.mesa_id);
-          if (mesaOriginal) {
-            const mesaGuardada = mesasGuardadas.find((m) => {
-              if (mesaOriginal.codigo_mesa && m.codigo_mesa === mesaOriginal.codigo_mesa) return true;
-              return (
-                m.numero_mesa === mesaOriginal.numero_mesa &&
-                m.tipo_precio_id === mesaOriginal.tipo_precio_id
-              );
-            });
-            if (mesaGuardada) {
-              mesaId = mesaGuardada.id;
-            }
+          // Buscar la mesa guardada que corresponde a este asiento usando tempId de forma directa y 100% segura
+          const mesaGuardada = mesasGuardadas.find(m => m.tempId === asiento.mesa_id);
+          if (mesaGuardada) {
+            mesaId = mesaGuardada.id;
           }
         }
         
