@@ -144,12 +144,30 @@ const Espacio = () => {
     venta_solo_mesa: mesasSinSillasVisibles || mesaVentaSoloMesa ? 1 : 0,
   });
 
-  const codigoMesaDuplicado = (codigo, excluirId = null) => {
+  const codigoMesaDuplicado = (codigo, excluirId = null, posX = null, posY = null) => {
     const c = String(codigo || '').trim().toUpperCase();
     if (!c) return false;
-    return mesas.some(
-      (m) => m.id !== excluirId && String(m.codigo_mesa || '').trim().toUpperCase() === c
-    );
+    let areaActual = null;
+    if (posX !== null && posY !== null) {
+      areaActual = detectarAreaEnPosicion(posX, posY);
+    } else if (excluirId) {
+      const mObj = mesas.find(m => m.id === excluirId);
+      if (mObj) {
+        areaActual = detectarAreaEnPosicion((mObj.x || 0) + (mObj.width || 0) / 2, (mObj.y || 0) + (mObj.height || 0) / 2);
+      }
+    }
+    return mesas.some((m) => {
+      if (m.id === excluirId) return false;
+      if (String(m.codigo_mesa || '').trim().toUpperCase() !== c) return false;
+      const areaM = detectarAreaEnPosicion((m.x || 0) + (m.width || 0) / 2, (m.y || 0) + (m.height || 0) / 2);
+      if (areaActual?.id && areaM?.id) {
+        return areaActual.id === areaM.id;
+      }
+      if (!areaActual && !areaM) {
+        return true; // Ambos fuera de áreas, es duplicado
+      }
+      return false; // Uno dentro y otro fuera, no es duplicado
+    });
   };
 
   const agregarSillasDeMesaAlEstado = (mesa) => {
@@ -164,8 +182,11 @@ const Espacio = () => {
   const aplicarPreciosAMesa = (mesaId) => {
     const campos = getCamposPrecioMesa();
     const codigo = codigoMesaEdit.trim().toUpperCase() || null;
-    if (codigo && codigoMesaDuplicado(codigo, mesaId)) {
-      showAlert(`Ya existe la mesa ${codigo}`, { type: 'warning' });
+    const mesaObj = mesas.find(m => m.id === mesaId);
+    const mesaX = mesaObj ? (mesaObj.x + mesaObj.width / 2) : null;
+    const mesaY = mesaObj ? (mesaObj.y + mesaObj.height / 2) : null;
+    if (codigo && codigoMesaDuplicado(codigo, mesaId, mesaX, mesaY)) {
+      showAlert(`Ya existe la mesa ${codigo} en esta área`, { type: 'warning' });
       return;
     }
     const payload = { ...campos, ...(codigo ? { codigo_mesa: codigo } : {}) };
@@ -2466,8 +2487,8 @@ const Espacio = () => {
       const mesaH = formaMesa === 'cuadrado' ? layoutSizes.mesaCuad : layoutSizes.mesaRectH;
       const { x: mx, y: my } = clampMesaToSheet(pos.x - mesaW / 2, pos.y - mesaH / 2, mesaW, mesaH);
       const codigo = resolverCodigoNuevaMesa(mesas, mx + mesaW / 2, my + mesaH / 2);
-      if (codigo && codigoMesaDuplicado(codigo)) {
-        showAlert(`Ya existe la mesa ${codigo}`, { type: 'warning' });
+      if (codigo && codigoMesaDuplicado(codigo, null, mx + mesaW / 2, my + mesaH / 2)) {
+        showAlert(`Ya existe la mesa ${codigo} en esta área`, { type: 'warning' });
         setIsDrawing(false);
         return;
       }
