@@ -3243,21 +3243,8 @@ const Espacio = () => {
         layout_bloqueado: true
       });
 
-      // Eliminar TODAS las mesas existentes antes de guardar las nuevas
-      if (mesasExistentesRes.data.success) {
-        for (const mesaExistente of mesasExistentesRes.data.data) {
-          try {
-            await api.delete(`/mesas/${mesaExistente.id}`);
-          } catch (error) {
-            if (error.response?.status !== 404) {
-              console.warn('Error al eliminar mesa:', error);
-            }
-          }
-        }
-      }
-
       // Eliminar TODOS los asientos existentes antes de guardar los nuevos
-      // Esto evita conflictos de números duplicados durante la actualización
+      // Esto evita conflictos de números duplicados durante la actualización y respeta la integridad referencial (FK)
       if (asientosExistentesRes.data.success) {
         for (const asientoExistente of asientosExistentesRes.data.data) {
           try {
@@ -3266,6 +3253,19 @@ const Espacio = () => {
             // Si el asiento ya no existe, continuar sin error
             if (error.response?.status !== 404) {
               console.warn('Error al eliminar asiento:', error);
+            }
+          }
+        }
+      }
+
+      // Eliminar TODAS las mesas existentes antes de guardar las nuevas
+      if (mesasExistentesRes.data.success) {
+        for (const mesaExistente of mesasExistentesRes.data.data) {
+          try {
+            await api.delete(`/mesas/${mesaExistente.id}`);
+          } catch (error) {
+            if (error.response?.status !== 404) {
+              console.warn('Error al eliminar mesa:', error);
             }
           }
         }
