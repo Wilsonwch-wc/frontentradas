@@ -227,7 +227,7 @@ const Compra = () => {
           }));
         }
         // Verificar si el evento está en estado "proximamente", excepto para admin/vendedor
-        if (eventoData.estado === 'proximamente' && !isAdmin && !canUseAdminSaleOptions) {
+        if (eventoData.estado === 'proximamente' && !isAdmin() && !canUseAdminSaleOptions()) {
           showAlert('Este evento está marcado como "Próximamente". Las entradas aún no están disponibles para la venta.', {
             type: 'warning',
             title: 'Evento Próximamente'

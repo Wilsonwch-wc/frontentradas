@@ -54,7 +54,7 @@ const DetalleEvento = () => {
   const handleComprar = () => {
     if (!evento) return;
     // No permitir comprar si el evento está en estado "proximamente", excepto para admin/vendedor
-    if (evento.estado === 'proximamente' && !isAdmin && !canUseAdminSaleOptions) {
+    if (evento.estado === 'proximamente' && !isAdmin() && !canUseAdminSaleOptions()) {
       return;
     }
     if (isAuthenticated()) {
@@ -64,7 +64,7 @@ const DetalleEvento = () => {
     }
   };
 
-  const esProximamente = evento?.estado === 'proximamente' && !isAdmin && !canUseAdminSaleOptions;
+  const esProximamente = evento?.estado === 'proximamente' && !isAdmin() && !canUseAdminSaleOptions();
 
   if (loading) {
     return (
