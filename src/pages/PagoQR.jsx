@@ -1,322 +1,449 @@
-import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { useAlert } from '../context/AlertContext';
-import { QRCodeSVG } from 'qrcode.react';
-import api from '../api/axios';
-import { getServerBase } from '../api/base';
-import './PagoQR.css';
+import { useEffect, useState, useRef, useCallback } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import api from "../api/axios";
+import { getServerBase } from "../api/base";
+import "./PagoQR.css";
+
+// Intervalo de polling para verificar el estado del pago (ms)
+const POLL_INTERVAL_MS = 5000;
 
 const PagoQR = () => {
-  const { id } = useParams();
+  const { id: eventoId } = useParams();
   const navigate = useNavigate();
-  const { isAuthenticated, user } = useAuth();
-  const { showConfirm } = useAlert();
-  const serverBase = getServerBase();
-  const [loading, setLoading] = useState(true);
-  const [pago, setPago] = useState(null);
-  const [error, setError] = useState('');
-  const [eventoData, setEventoData] = useState(null);
-  const [seleccionesData, setSeleccionesData] = useState([]);
-  const [formDataCompra, setFormDataCompra] = useState(null);
-  const [codigoCompra, setCodigoCompra] = useState(null);
-  const [compraData, setCompraData] = useState(null);
-  const [contactoInfo, setContactoInfo] = useState(null);
+  const { isAuthenticated } = useAuth();
 
-  useEffect(() => {
-    if (!isAuthenticated()) {
-      navigate('/login');
+  // ── Estados principales ───────────────────────────────────────────────────
+  const [fase, setFase] = useState("generando"); // generando | esperando | aprobado | expirado | error
+  const [qrImagen, setQrImagen]     = useState(null);   // cadena Base64 de Redenlace
+  const [qrData, setQrData]         = useState(null);   // { paymentId, origenNumeroReferencia, atcReferencia, monto, tiempoQr }
+  const [eventoInfo, setEventoInfo] = useState(null);   // { titulo }
+  const [compraInfo, setCompraInfo] = useState(null);   // datos de la compra
+  const [errorMsg, setErrorMsg]     = useState("");
+  const [segundosRestantes, setSegundosRestantes] = useState(null);
+
+  // Refs para timers
+  const pollingRef   = useRef(null);
+  const countdownRef = useRef(null);
+  const generadoRef  = useRef(false); // evitar doble llamada en StrictMode
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  const detenerTimers = () => {
+    if (pollingRef.current)   clearInterval(pollingRef.current);
+    if (countdownRef.current) clearInterval(countdownRef.current);
+  };
+
+  const formatearTiempo = (segundos) => {
+    if (segundos === null || segundos < 0) return "--:--:--";
+    const h = Math.floor(segundos / 3600);
+    const m = Math.floor((segundos % 3600) / 60);
+    const s = segundos % 60;
+    return [h, m, s].map((v) => String(v).padStart(2, "0")).join(":");
+  };
+
+  const formatearMonto = (monto) => {
+    const n = parseFloat(monto);
+    return isNaN(n) ? "0.00" : n.toFixed(2);
+  };
+
+  // ── Polling: consulta estado cada POLL_INTERVAL_MS ───────────────────────
+  const iniciarPolling = useCallback((origenRef) => {
+    if (pollingRef.current) clearInterval(pollingRef.current);
+
+    pollingRef.current = setInterval(async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await fetch(`${getServerBase()}/qr/verificaQr/${origenRef}`, {
+          headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) }
+        });
+        const data = await res.json();
+        const estado = data?.data?.estado;
+
+        if (estado === "approved") {
+          detenerTimers();
+          setFase("aprobado");
+        } else if (estado === "expired" || estado === "cancelled" || estado === "rejected") {
+          detenerTimers();
+          setFase("expirado");
+        }
+      } catch (e) {
+        // Error de red: continuar polling silenciosamente
+        console.warn("[PagoQR] Error en polling:", e.message);
+      }
+    }, POLL_INTERVAL_MS);
+  }, []);
+
+  // ── Countdown del tiempo de vigencia ─────────────────────────────────────
+  const iniciarCountdown = useCallback((tiempoQrStr) => {
+    // tiempoQrStr = "HH:MM:SS"
+    const partes = (tiempoQrStr || "24:00:00").split(":").map(Number);
+    const totalSeg = (partes[0] || 0) * 3600 + (partes[1] || 0) * 60 + (partes[2] || 0);
+    setSegundosRestantes(totalSeg);
+
+    if (countdownRef.current) clearInterval(countdownRef.current);
+    countdownRef.current = setInterval(() => {
+      setSegundosRestantes((prev) => {
+        if (prev <= 1) {
+          clearInterval(countdownRef.current);
+          setFase((f) => (f === "esperando" ? "expirado" : f));
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  }, []);
+
+  // ── Generación del QR ─────────────────────────────────────────────────────
+  const generarQR = useCallback(async () => {
+    const compraId   = localStorage.getItem("compraId");
+    const totalGuard = localStorage.getItem("totalCompra");
+    const cantGuard  = localStorage.getItem("cantidadCompra");
+    const eventoJSON = localStorage.getItem("eventoCompra");
+
+    if (!compraId || !totalGuard || !eventoId) {
+      setErrorMsg("No se encontraron datos de la compra. Por favor, vuelve al inicio.");
+      setFase("error");
       return;
     }
 
-    cargarDatos();
-  }, [id, isAuthenticated, navigate]);
-
-  const cargarDatos = async () => {
-    setLoading(true);
+    // Datos del evento desde localStorage (para mostrar el título)
     try {
-      // Cargar datos de contacto (para obtener el número de WhatsApp)
-      try {
-        const resContacto = await api.get('/contacto');
-        if (resContacto.data?.success && resContacto.data?.data) {
-          setContactoInfo(resContacto.data.data);
-        }
-      } catch (err) {
-        console.error('Error al cargar contacto:', err);
-      }
+      if (eventoJSON) setEventoInfo(JSON.parse(eventoJSON));
+    } catch (_) {}
 
-      // Cargar código de compra desde localStorage
-      const codigo = localStorage.getItem('codigoCompra');
-      if (codigo) {
-        setCodigoCompra(codigo);
-        
-        // Cargar datos de la compra desde el backend
-        try {
-          const resCompra = await api.get(`/compras/codigo/${codigo}`);
-          if (resCompra.data?.success) {
-            setCompraData(resCompra.data.data);
-          }
-        } catch (err) {
-          console.error('Error al cargar compra:', err);
-        }
-      }
+    // Datos de la compra
+    try {
+      const resCom = await api.get(`/compras/codigo/${localStorage.getItem("codigoCompra")}`);
+      if (resCom.data?.success) setCompraInfo(resCom.data.data);
+    } catch (_) {}
 
-      // Evento fresco desde API para traer qr_pago_url actualizado
-      const resEvento = await api.get(`/eventos-public/${id}`);
-      if (resEvento.data?.success) {
-        setEventoData(resEvento.data.data);
-      } else {
-        setEventoData(null);
-      }
+    // ─── Llamada correcta: la ruta /qr/generar está fuera de /api ─────────
+    // Usamos fetch directo con getServerBase() para evitar 404 en el proxy de Vite
+    const token = localStorage.getItem("token");
+    const eventoData = eventoJSON ? JSON.parse(eventoJSON) : {};
 
-      // Cargar selecciones (asientos) si es evento especial desde localStorage
-      const selecciones = JSON.parse(localStorage.getItem('seleccionesCompra') || '[]');
-      setSeleccionesData(selecciones);
-      
-      // Cargar datos del formulario
-      const formData = JSON.parse(localStorage.getItem('formDataCompra') || '{}');
-      setFormDataCompra(formData);
-
-      // Generar QR estático de prueba (si no hay qr_pago_url)
-      crearPagoQRPrueba();
-    } catch (err) {
-      console.error('Error cargando datos de pago:', err);
-      setError('No se pudo cargar la información de pago');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const crearPagoQRPrueba = () => {
-    setLoading(true);
-    
-    // Simular generación de QR (modo prueba)
-    const evento = JSON.parse(localStorage.getItem('eventoCompra') || '{}');
-    const cantidad = parseInt(localStorage.getItem('cantidadCompra') || '1');
-    const total = parseFloat(localStorage.getItem('totalCompra') || '0');
-    
-    // Generar referencia única
-    const referencia = `EVENTO_${id}_USER_${user?.id}_${Date.now()}`;
-    
-    // Crear URL de pago de prueba (simulando una pasarela de pago)
-    const qrUrl = `https://pago.ejemplo.com/bo/pagar?ref=${referencia}&monto=${total}&evento=${id}&cantidad=${cantidad}`;
-    
-    // Crear objeto de pago simulado
-    const pagoSimulado = {
-      paymentId: Date.now(),
-      preferenceId: `TEST_${Date.now()}`,
-      qrCodeUrl: qrUrl,
-      externalReference: referencia,
-      status: 'pending',
-      monto: total,
-      cantidad: cantidad,
-      evento: evento
-    };
-
-    // Simular delay de API
-    setTimeout(() => {
-      setPago(pagoSimulado);
-      setLoading(false);
-    }, 1000);
-  };
-
-  const limpiarDatosCompra = async () => {
-    const confirmado = await showConfirm('¿Estás seguro de eliminar todos los datos de esta compra? Esta acción no se puede deshacer.', { 
-      type: 'warning',
-      title: 'Limpiar Datos'
+    const response = await fetch(`${getServerBase()}/qr/generar`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({
+        compra_id: parseInt(compraId, 10),
+        eventoId: parseInt(eventoId, 10),
+        cantidad: parseInt(cantGuard || "1", 10),
+        total: parseFloat(totalGuard),
+        descripcion: `Entradas ${eventoData.titulo || "evento"}`.substring(0, 40),
+      }),
     });
-    if (confirmado) {
-      // Limpiar todos los datos relacionados con la compra
-      localStorage.removeItem('codigoCompra');
-      localStorage.removeItem('compraId');
-      localStorage.removeItem('eventoCompra');
-      localStorage.removeItem('cantidadCompra');
-      localStorage.removeItem('totalCompra');
-      localStorage.removeItem('formDataCompra');
-      localStorage.removeItem('seleccionesCompra');
-      
-      // Limpiar estados
-      setCompraData(null);
-      setCodigoCompra(null);
-      setEventoData(null);
-      setSeleccionesData([]);
-      setFormDataCompra(null);
-      setPago(null);
-      
-      // Redirigir a la página de eventos
-      navigate('/eventos');
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.message || `Error ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (!data.success || !data.data?.imagen) {
+      throw new Error(data.message || "La pasarela no devolvió imagen QR");
+    }
+
+    const { imagen, tiempoQr, origenNumeroReferencia } = data.data;
+
+    setQrImagen(imagen);
+    setQrData(data.data);
+    setFase("esperando");
+
+    iniciarCountdown(tiempoQr || "24:00:00");
+    iniciarPolling(origenNumeroReferencia.toString());
+  }, [eventoId, iniciarCountdown, iniciarPolling]);
+
+  // ── Efecto principal ──────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!isAuthenticated()) {
+      navigate("/login");
+      return;
+    }
+    if (generadoRef.current) return;
+    generadoRef.current = true;
+
+    generarQR().catch((err) => {
+      console.error("[PagoQR] Error al generar QR:", err);
+      setErrorMsg(err.message || "No se pudo generar el QR. Intenta nuevamente.");
+      setFase("error");
+    });
+
+    return () => detenerTimers();
+  }, [isAuthenticated, navigate, generarQR]);
+
+  // ── Verificación manual ───────────────────────────────────────────────────
+  const verificarManual = async () => {
+    if (!qrData?.origenNumeroReferencia) return;
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${getServerBase()}/qr/verificaQr/${qrData.origenNumeroReferencia}`, {
+        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      });
+      const data = await res.json();
+      const estado = data?.data?.estado;
+      if (estado === "approved") {
+        detenerTimers();
+        setFase("aprobado");
+      } else if (estado === "expired" || estado === "cancelled" || estado === "rejected") {
+        detenerTimers();
+        setFase("expirado");
+      } else {
+        // Todavía pendiente
+        alert("El pago aún está pendiente. Por favor, escanea el QR y completa el pago.");
+      }
+    } catch (e) {
+      alert("No se pudo verificar el estado. Intenta nuevamente.");
     }
   };
 
-  const enviarComprobantePorWhatsApp = () => {
-    if (!eventoData || !codigoCompra) return;
-
-    // Obtener número de WhatsApp desde los datos de contacto de la base de datos
-    let numeroWhatsApp = contactoInfo?.whatsapp || contactoInfo?.telefono || import.meta.env.VITE_WHATSAPP || '62556840';
-    // Limpiar el número (quitar espacios, guiones, +)
-    numeroWhatsApp = numeroWhatsApp.toString().replace(/[\s\-\+]/g, '');
-    // Asegurar que tenga el código de país (591 para Bolivia)
-    if (!numeroWhatsApp.startsWith('591')) {
-      numeroWhatsApp = '591' + numeroWhatsApp;
-    }
-    
-    const cantidad = compraData?.cantidad || pago?.cantidad || localStorage.getItem('cantidadCompra') || '';
-    const totalRaw = compraData?.total || pago?.monto || localStorage.getItem('totalCompra') || '0';
-    const total = typeof totalRaw === 'number' ? totalRaw.toFixed(2) : (typeof totalRaw === 'string' ? parseFloat(totalRaw).toFixed(2) : '0.00');
-
-    // Mensaje corto solicitado
-    const mensaje = `Hola, estoy comprando para el evento ${eventoData.titulo || id}\nEl código es: ${codigoCompra}`;
-    
-    const mensajeCodificado = encodeURIComponent(mensaje);
-
-    // Intentar distintas variantes para evitar bloqueos de pop-up
-    const urls = [
-      `https://wa.me/${numeroWhatsApp}?text=${mensajeCodificado}`,
-      `https://api.whatsapp.com/send?phone=${numeroWhatsApp}&text=${mensajeCodificado}`,
-      `whatsapp://send?phone=${numeroWhatsApp}&text=${mensajeCodificado}`
-    ];
-
-    // Preferir abrir en la misma pestaña para móviles, nueva pestaña para desktop
-    const target = /Mobi|Android/i.test(navigator.userAgent) ? '_self' : '_blank';
-
-    const opened = window.open(urls[0], target);
-    if (!opened) {
-      // Fallback a la segunda URL
-      window.open(urls[1], target);
-    }
+  const irAMisCompras = () => {
+    // Limpiar localStorage
+    ["codigoCompra","compraId","eventoCompra","cantidadCompra","totalCompra","formDataCompra","seleccionesCompra"].forEach(
+      (k) => localStorage.removeItem(k)
+    );
+    navigate("/mis-compras");
   };
 
-  if (loading) {
+  // ═══════════════════════════════════════════════════════════════════════════
+  // RENDER
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  // ── Fase: generando ───────────────────────────────────────────────────────
+  if (fase === "generando") {
     return (
       <div className="pago-qr-page">
-        <div className="loading-container">
-          <div className="spinner"></div>
-          <p>Generando código QR de pago...</p>
+        <div className="pqr-center">
+          <div className="pqr-card pqr-generando">
+            <div className="pqr-spinner" />
+            <h2>Generando tu QR de pago…</h2>
+            <p>Conectando con la pasarela de pagos Redenlace</p>
+          </div>
         </div>
       </div>
     );
   }
 
-  if (error && !pago) {
+  // ── Fase: error ───────────────────────────────────────────────────────────
+  if (fase === "error") {
     return (
       <div className="pago-qr-page">
-        <div className="error-container">
-          <h2>Error</h2>
-          <p>{error}</p>
-          <button onClick={() => navigate(-1)} className="btn-volver">
-            Volver
-          </button>
+        <div className="pqr-center">
+          <div className="pqr-card pqr-error-card">
+            <div className="pqr-icon pqr-icon-error">✕</div>
+            <h2>No se pudo generar el QR</h2>
+            <p>{errorMsg}</p>
+            <button className="pqr-btn pqr-btn-secondary" onClick={() => navigate(-1)}>
+              ← Volver
+            </button>
+          </div>
         </div>
       </div>
     );
   }
 
-  return (
-    <div className="pago-qr-page">
-      <div className="container">
-        <button onClick={() => navigate(-1)} className="btn-volver">
-          ← Volver
-        </button>
+  // ── Fase: aprobado ────────────────────────────────────────────────────────
+  if (fase === "aprobado") {
+    return (
+      <div className="pago-qr-page">
+        <div className="pqr-center">
+          <div className="pqr-card pqr-aprobado-card">
+            <div className="pqr-icon pqr-icon-success">✓</div>
+            <h2>¡Pago recibido!</h2>
+            <p className="pqr-subtitle">Tu compra ha sido confirmada exitosamente.</p>
 
-        <div className="pago-qr-content">
-          <div className="pago-qr-card">
-            <h1>Información del Pago</h1>
-            {eventoData && (
-              <div className="pago-info">
-                <p><strong>Evento:</strong> {eventoData.titulo}</p>
-                <p><strong>Cantidad:</strong> {compraData?.cantidad || pago?.cantidad} entrada(s)</p>
-                <p><strong>Total:</strong> ${(() => {
-                  const total = compraData?.total || pago?.monto;
-                  if (total !== null && total !== undefined) {
-                    const totalNum = typeof total === 'number' ? total : parseFloat(total);
-                    return isNaN(totalNum) ? '0.00' : totalNum.toFixed(2);
-                  }
-                  return '0.00';
-                })()} BOB</p>
-                {codigoCompra && (
-                  <div style={{ 
-                    marginTop: '15px', 
-                    padding: '15px', 
-                    backgroundColor: '#f0f8ff', 
-                    borderRadius: '8px',
-                    border: '2px solid #4CAF50'
-                  }}>
-                    <p style={{ margin: 0, fontSize: '14px', color: '#666' }}>
-                      <strong>Código de Compra:</strong>
-                    </p>
-                    <p style={{ 
-                      margin: '5px 0 0 0', 
-                      fontSize: '20px', 
-                      fontWeight: 'bold', 
-                      color: '#4CAF50',
-                      letterSpacing: '2px'
-                    }}>
-                      {codigoCompra}
-                    </p>
-                    <p style={{ margin: '10px 0 0 0', fontSize: '12px', color: '#666' }}>
-                      Envía este código al personal para verificar tu compra
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {(eventoData?.qr_pago_url || pago) && (
-              <div className="qr-container">
-                <div className="qr-code-wrapper">
-                  {eventoData?.qr_pago_url ? (
-                    <img
-                      src={eventoData.qr_pago_url.startsWith('http') ? eventoData.qr_pago_url : `${serverBase}${eventoData.qr_pago_url}`}
-                      alt="QR de pago"
-                      style={{ width: 360, height: 360, objectFit: 'contain', background: '#fff', padding: '10px', borderRadius: '12px' }}
-                    />
-                  ) : (
-                    <QRCodeSVG
-                      value={pago.qrCodeUrl}
-                      size={360}
-                      level="H"
-                      includeMargin={true}
-                      fgColor="#2c3e50"
-                      bgColor="#ffffff"
-                    />
-                  )}
+            {compraInfo && (
+              <div className="pqr-resumen">
+                <div className="pqr-resumen-row">
+                  <span>Evento</span>
+                  <strong>{compraInfo.evento_titulo || eventoInfo?.titulo || "—"}</strong>
+                </div>
+                <div className="pqr-resumen-row">
+                  <span>Entradas</span>
+                  <strong>{compraInfo.cantidad}</strong>
+                </div>
+                <div className="pqr-resumen-row">
+                  <span>Total pagado</span>
+                  <strong>{formatearMonto(compraInfo.total)} BOB</strong>
+                </div>
+                <div className="pqr-resumen-row">
+                  <span>Código</span>
+                  <strong className="pqr-codigo">{compraInfo.codigo_unico}</strong>
                 </div>
               </div>
             )}
 
-            <div className="pago-actions" style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <button 
-                onClick={enviarComprobantePorWhatsApp} 
-                className="btn-whatsapp"
-                style={{ width: '100%', padding: '15px', fontSize: '16px' }}
-              >
-                📱 Enviar Comprobante
-              </button>
-              <button 
-                onClick={limpiarDatosCompra} 
-                className="btn-limpiar"
-                style={{ 
-                  width: '100%', 
-                  padding: '12px', 
-                  fontSize: '14px',
-                  background: '#e74c3c',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  fontWeight: '500'
-                }}
-              >
-                🗑️ Limpiar Datos de Compra
-              </button>
+            <p className="pqr-info-boleto">
+              Tu boleto está siendo generado. Puedes descargarlo desde <strong>Mis Compras</strong>.
+            </p>
+
+            <button className="pqr-btn pqr-btn-primary" onClick={irAMisCompras}>
+              Ver mis entradas →
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Fase: expirado ────────────────────────────────────────────────────────
+  if (fase === "expirado") {
+    return (
+      <div className="pago-qr-page">
+        <div className="pqr-center">
+          <div className="pqr-card pqr-expirado-card">
+            <div className="pqr-icon pqr-icon-warning">⏱</div>
+            <h2>QR expirado o cancelado</h2>
+            <p>El tiempo de pago venció. Puedes volver e intentarlo de nuevo.</p>
+            <button className="pqr-btn pqr-btn-secondary" onClick={() => navigate(-1)}>
+              ← Intentar de nuevo
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Fase: esperando (QR activo) ───────────────────────────────────────────
+  const porcentaje = qrData?.tiempoQr
+    ? (() => {
+        const total = (parseInt(qrData.tiempoQr.split(":")[0], 10) || 24) * 3600;
+        return Math.max(0, Math.min(100, (segundosRestantes / total) * 100));
+      })()
+    : 100;
+
+  return (
+    <div className="pago-qr-page">
+      <div className="pqr-layout">
+        {/* ── Panel izquierdo: QR ─────────────────────────────────────── */}
+        <div className="pqr-panel-qr">
+          <div className="pqr-card">
+            {/* Encabezado */}
+            <div className="pqr-header">
+              <div className="pqr-logo-redenlace">Redenlace QR</div>
+              <div className="pqr-ambiente">🔐 Ambiente: {qrData?.ambiente || "TEST"}</div>
             </div>
 
-            {error && (
-              <div className="error-message">
-                {error}
+            {/* Imagen QR */}
+            <div className="pqr-qr-wrapper">
+              {qrImagen ? (
+                <img
+                  src={`data:image/png;base64,${qrImagen}`}
+                  alt="Código QR de pago"
+                  className="pqr-qr-image"
+                />
+              ) : (
+                <div className="pqr-spinner" />
+              )}
+            </div>
+
+            {/* Monto */}
+            {qrData?.monto && (
+              <div className="pqr-monto">
+                <span className="pqr-monto-label">Monto a pagar</span>
+                <span className="pqr-monto-valor">
+                  {formatearMonto(qrData.monto)} <span className="pqr-moneda">BOB</span>
+                </span>
+              </div>
+            )}
+
+            {/* Countdown */}
+            <div className="pqr-countdown">
+              <div className="pqr-countdown-label">Vigencia del QR</div>
+              <div className="pqr-countdown-timer">{formatearTiempo(segundosRestantes)}</div>
+              <div className="pqr-progress-bar">
+                <div className="pqr-progress-fill" style={{ width: `${porcentaje}%` }} />
+              </div>
+            </div>
+
+            {/* Estado */}
+            <div className="pqr-estado">
+              <div className="pqr-pulse" />
+              <span>Esperando pago…</span>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Panel derecho: instrucciones y resumen ──────────────────── */}
+        <div className="pqr-panel-info">
+          {/* Resumen de la compra */}
+          <div className="pqr-card">
+            <h2 className="pqr-titulo">Resumen de compra</h2>
+
+            {eventoInfo && (
+              <div className="pqr-resumen">
+                <div className="pqr-resumen-row">
+                  <span>Evento</span>
+                  <strong>{eventoInfo.titulo}</strong>
+                </div>
+                <div className="pqr-resumen-row">
+                  <span>Entradas</span>
+                  <strong>{localStorage.getItem("cantidadCompra") || "—"}</strong>
+                </div>
+                <div className="pqr-resumen-row pqr-resumen-total">
+                  <span>Total</span>
+                  <strong>{formatearMonto(localStorage.getItem("totalCompra"))} BOB</strong>
+                </div>
+              </div>
+            )}
+
+            {qrData?.origenNumeroReferencia && (
+              <div className="pqr-ref">
+                <span>Ref. comercio</span>
+                <code>{qrData.origenNumeroReferencia}</code>
+              </div>
+            )}
+            {qrData?.atcReferencia && (
+              <div className="pqr-ref">
+                <span>Ref. ATC</span>
+                <code>{qrData.atcReferencia}</code>
               </div>
             )}
           </div>
+
+          {/* Instrucciones */}
+          <div className="pqr-card pqr-instrucciones-card">
+            <h3>¿Cómo pagar?</h3>
+            <ol className="pqr-pasos">
+              <li>
+                <span className="pqr-paso-num">1</span>
+                <span>Abre tu app bancaria (cualquier banco Bolivia)</span>
+              </li>
+              <li>
+                <span className="pqr-paso-num">2</span>
+                <span>Busca la opción <strong>Pago QR</strong> o <strong>Escanear QR</strong></span>
+              </li>
+              <li>
+                <span className="pqr-paso-num">3</span>
+                <span>Escanea el código QR de la izquierda</span>
+              </li>
+              <li>
+                <span className="pqr-paso-num">4</span>
+                <span>Confirma el monto de <strong>{formatearMonto(qrData?.monto)} BOB</strong></span>
+              </li>
+              <li>
+                <span className="pqr-paso-num">5</span>
+                <span>Esta página se actualizará automáticamente al recibir tu pago</span>
+              </li>
+            </ol>
+          </div>
+
+          {/* Verificación manual */}
+          <div className="pqr-card pqr-verificar-card">
+            <p>¿Ya realizaste el pago y no se actualizó automáticamente?</p>
+            <button className="pqr-btn pqr-btn-verificar" onClick={verificarManual}>
+              🔄 Verificar estado del pago
+            </button>
+          </div>
+
+          {/* Cancelar */}
+          <button className="pqr-btn pqr-btn-ghost" onClick={() => navigate(-1)}>
+            ← Volver
+          </button>
         </div>
       </div>
     </div>
