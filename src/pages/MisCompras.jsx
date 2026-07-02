@@ -122,8 +122,23 @@ const MisCompras = () => {
                         📅 {formatearFechaEvento(compra.evento_fecha)}
                       </p>
                     </div>
-                    <div className={`estado-badge ${estadoInfo.clase}`}>
-                      {estadoInfo.texto}
+                    <div className="estado-acciones">
+                      <div className={`estado-badge ${estadoInfo.clase}`}>
+                        {estadoInfo.texto}
+                      </div>
+                      {compra.estado === 'PAGO_PENDIENTE' && (
+                        <button 
+                          className="btn-pagar-qr"
+                          onClick={() => {
+                            localStorage.setItem("compraId", compra.id);
+                            localStorage.setItem("totalCompra", compra.total);
+                            localStorage.setItem("cantidadCompra", compra.cantidad);
+                            navigate(`/pago-qr/${compra.evento_id}`);
+                          }}
+                        >
+                          🎫 Retomar Pago QR
+                        </button>
+                      )}
                     </div>
                   </div>
 
