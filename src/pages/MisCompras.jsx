@@ -80,6 +80,24 @@ const MisCompras = () => {
     });
   };
 
+  const handleDescargarBoleto = async (compraId, codigoUnico) => {
+    try {
+      const response = await api.get(`/compras/mis-compras/${compraId}/boleto`, {
+        responseType: 'blob'
+      });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `boleto-${codigoUnico}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode.removeChild(link);
+    } catch (error) {
+      console.error('Error al descargar el boleto:', error);
+      alert('No se pudo descargar el boleto. Por favor intente nuevamente.');
+    }
+  };
+
   if (loading) {
     return (
       <div className="mis-compras">
@@ -140,15 +158,12 @@ const MisCompras = () => {
                         </button>
                       )}
                       {compra.estado === 'PAGO_REALIZADO' && (
-                        <a
-                          href={`${import.meta.env.VITE_API_URL || ''}/api/compras/mis-compras/${compra.id}/boleto`}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                        <button
+                          onClick={() => handleDescargarBoleto(compra.id, compra.codigo_unico)}
                           className="btn-pagar-qr btn-descargar"
-                          download
                         >
                           ⬇️ Descargar Boleto
-                        </a>
+                        </button>
                       )}
                     </div>
                   </div>
