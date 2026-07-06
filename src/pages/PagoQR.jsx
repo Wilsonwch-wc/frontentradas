@@ -441,8 +441,8 @@ const PagoQR = () => {
           </div>
 
           {/* Cancelar */}
-          <button className="pqr-btn pqr-btn-ghost" onClick={() => navigate(-1)}>
-            ← Volver
+          <button className="pqr-btn pqr-btn-ghost" onClick={() => navigate('/mis-compras')}>
+            ❌ Cancelar Compra
           </button>
         </div>
       </div>
