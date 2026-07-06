@@ -139,6 +139,17 @@ const MisCompras = () => {
                           🎫 Retomar Pago QR
                         </button>
                       )}
+                      {compra.estado === 'PAGO_REALIZADO' && (
+                        <a
+                          href={`${import.meta.env.VITE_API_URL || ''}/api/compras/mis-compras/${compra.id}/boleto`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn-pagar-qr btn-descargar"
+                          download
+                        >
+                          ⬇️ Descargar Boleto
+                        </a>
+                      )}
                     </div>
                   </div>
 

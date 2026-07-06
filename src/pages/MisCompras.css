@@ -141,6 +141,16 @@
   background: #2980b9;
 }
 
+.btn-descargar {
+  background: #27ae60;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.btn-descargar:hover {
+  background: #219a52;
+}
+
 .estado-revision {
   background: #fff3cd;
   color: #856404;
