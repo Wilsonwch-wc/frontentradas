@@ -236,6 +236,7 @@ const Reportes = () => {
       if (filtroTipoPago !== 'todos') {
         if (filtroTipoPago === 'QR' && compra.tipo_pago !== 'QR') return false;
         if (filtroTipoPago === 'EFECTIVO' && compra.tipo_pago !== 'EFECTIVO') return false;
+        if (filtroTipoPago === 'PASARELA_QR' && compra.tipo_pago !== 'PASARELA_QR') return false;
         if (filtroTipoPago === 'SIN_PAGO' && compra.tipo_pago) return false;
       }
 
@@ -434,8 +435,9 @@ const Reportes = () => {
                 onChange={(e) => setFiltroTipoPago(e.target.value)}
               >
                 <option value="todos">Todos</option>
-                <option value="QR">📱 QR</option>
-                <option value="EFECTIVO">💵 Efectivo</option>
+                <option value="QR">📱 QR (Manual)</option>
+                <option value="EFECTIVO">Solo Efectivo</option>
+                <option value="PASARELA_QR">Solo Pasarela QR</option>
                 <option value="SIN_PAGO">Sin pago</option>
               </select>
             </div>
@@ -538,6 +540,15 @@ const Reportes = () => {
                 </strong>
                 <span className="card-sub">
                   {reporte.resumen?.pagos_qr || 0} venta(s)
+                </span>
+              </div>
+              <div className="card-resumen card-qr">
+                <span className="card-label">💳 Pasarela QR</span>
+                <strong className="card-value">
+                  Bs. {parseFloat(reporte.resumen?.total_pasarela_qr || 0).toFixed(2)}
+                </strong>
+                <span className="card-sub">
+                  {reporte.resumen?.pagos_pasarela_qr || 0} venta(s)
                 </span>
               </div>
               <div className="card-resumen card-efectivo">
@@ -795,7 +806,7 @@ const Reportes = () => {
                           <td>
                             {compra.tipo_pago ? (
                               <span className={`tipo-pago-badge tipo-pago-${compra.tipo_pago?.toLowerCase()}`}>
-                                {compra.tipo_pago === 'QR' ? '📱 QR' : '💵 Efectivo'}
+                                {compra.tipo_pago === 'QR' ? '📱 QR (Manual)' : compra.tipo_pago === 'PASARELA_QR' ? '💳 Pasarela QR' : '💵 Efectivo'}
                               </span>
                             ) : (
                               <span className="tipo-pago-badge tipo-pago-sin">-</span>

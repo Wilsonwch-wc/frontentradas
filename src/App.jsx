@@ -15,7 +15,7 @@ import AdminLayout from './pages/admin/AdminLayout';
 import Dashboard from './pages/admin/Dashboard';
 import Usuarios from './pages/admin/Usuarios';
 import Cartelera from './pages/admin/Cartelera';
-import Espacio from './pages/admin/Espacio';
+import EspacioGrid from './pages/admin/EspacioGrid';
 import Reportes from './pages/admin/Reportes';
 import Compras from './pages/admin/Compras';
 import WhatsAppWeb from './pages/admin/WhatsAppWeb';
@@ -48,7 +48,7 @@ function App() {
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="usuarios" element={<Usuarios />} />
             <Route path="cartelera" element={<Cartelera />} />
-            <Route path="espacio" element={<Espacio />} />
+            <Route path="espacio" element={<EspacioGrid />} />
             <Route path="compras" element={<Compras />} />
             <Route path="mi-panel" element={<MiPanelVentas />} />
             <Route path="reportes" element={<Reportes />} />

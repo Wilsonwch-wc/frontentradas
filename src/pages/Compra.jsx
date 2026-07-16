@@ -12,6 +12,7 @@ import { useAlert } from '../context/AlertContext';
 import { getApiBase, getServerBase } from '../api/base';
 import api from '../api/axios';
 import ModalTipoPago from '../components/ModalTipoPago';
+import PlanoGrid from '../components/PlanoGrid';
 import './Compra.css';
 
 const serverBase = getServerBase();
@@ -1233,9 +1234,9 @@ const Compra = () => {
     setEnviando(true);
     
     // Para eventos especiales, validar que haya selecciones (excluyendo entradas de mesa completa del conteo)
-    const seleccionesValidas = selecciones.filter(s => s.type === 'asiento' || s.type === 'mesa_completa');
+    const seleccionesValidas = selecciones.filter(s => s.type === 'asiento' || s.type === 'mesa_completa' || s.type === 'area_general');
     if (evento.tipo_evento === 'especial' && seleccionesValidas.length === 0) {
-      showAlert('Por favor selecciona al menos un asiento', { type: 'warning' });
+      showAlert('Por favor selecciona al menos un asiento, mesa o entrada general', { type: 'warning' });
       setEnviando(false);
       return;
     }
@@ -1776,6 +1777,60 @@ const Compra = () => {
           {esEventoEspecial && (
             <div className="compra-card compra-card-asientos">
               <h2>Selecciona tus Asientos</h2>
+              
+              {/* Filtros de Zona y Tipo de Precio */}
+              {evento.areas && Array.isArray(evento.areas) && evento.areas.length > 0 && (
+                <div
+                  style={{
+                    marginBottom: '12px',
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    alignItems: 'center',
+                    gap: '10px'
+                  }}
+                >
+                  <span style={{ fontWeight: 600 }}>Zona:</span>
+                  <select
+                    value={zonaSeleccionadaId}
+                    onChange={(e) => setZonaSeleccionadaId(e.target.value)}
+                    style={{
+                      padding: '6px 10px',
+                      borderRadius: '4px',
+                      border: '1px solid #ccc',
+                      minWidth: '180px'
+                    }}
+                  >
+                    <option value="">Todas las zonas</option>
+                    {evento.areas.map((area) => (
+                      <option key={area.id} value={area.id}>
+                        {area.nombre}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+
+              {evento.modo_layout === 'grid' ? (
+                // ── Plano en cuadrícula (nuevo sistema) ──────────────────
+                <PlanoGrid
+                  evento={evento}
+                  selecciones={selecciones}
+                  onToggleSeleccion={(item) => {
+                    const exists = selecciones.find(s => s.type === item.type && s.id === item.id);
+                    if (exists) {
+                      setSelecciones(prev => prev.filter(s => !(s.type === item.type && s.id === item.id)));
+                    } else {
+                      setSelecciones(prev => [...prev, item]);
+                    }
+                  }}
+                  asientosOcupados={asientosOcupados}
+                  mesasOcupadas={mesasOcupadas}
+                  zonaSeleccionadaId={zonaSeleccionadaId}
+                />
+              ) : (
+                // ── Plano libre SVG (sistema anterior) ───────────────────
+                <>
               <p className="layout-instructions">
                 Haz clic en un asiento para seleccionarlo.
               </p>
@@ -1857,51 +1912,7 @@ const Compra = () => {
                   Limpiar selección
                 </button>
               </div>
-              {evento.areas && Array.isArray(evento.areas) && evento.areas.length > 0 && (
-                <div
-                  style={{
-                    marginBottom: '12px',
-                    display: 'flex',
-                    flexWrap: 'wrap',
-                    alignItems: 'center',
-                    gap: '10px'
-                  }}
-                >
-                  <span style={{ fontWeight: 600 }}>Zona:</span>
-                  <select
-                    value={zonaSeleccionadaId}
-                    onChange={(e) => setZonaSeleccionadaId(e.target.value)}
-                    style={{
-                      padding: '6px 10px',
-                      borderRadius: '4px',
-                      border: '1px solid #ccc',
-                      minWidth: '180px'
-                    }}
-                  >
-                    <option value="">Todas las zonas</option>
-                    {evento.areas.map((area) => (
-                      <option key={area.id} value={area.id}>
-                        {area.nombre}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-              {evento.tipos_precio && evento.tipos_precio.length > 0 && (
-                <div style={{ marginBottom: '12px', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '10px' }}>
-                  <span style={{ fontWeight: 600 }}>Tipo de precio:</span>
-                  <select
-                    value={filtroTipoPrecioId}
-                    onChange={(e) => setFiltroTipoPrecioId(e.target.value)}
-                    style={{ padding: '6px 10px', borderRadius: '4px', border: '1px solid #ccc', minWidth: '160px' }}
-                  >
-                    <option value="">Todos</option>
-                    {evento.tipos_precio.map((tp) => (
-                      <option key={tp.id} value={tp.id}>{tp.nombre} (Bs. {parseFloat(tp.precio).toFixed(2)})</option>
-                    ))}
-                  </select>
-                </div>
-              )}
+
               <div className="leyenda-asientos" style={{ marginBottom: '15px', display: 'flex', gap: '20px', flexWrap: 'wrap', alignItems: 'center' }}>
                 <button
                   type="button"
@@ -2375,7 +2386,6 @@ const Compra = () => {
                 </svg>
               ) : null}
 
-              {/* Canvas se mantiene como fallback/compatibilidad (oculto por defecto) */}
               <canvas
                 ref={canvasRef}
                 width={800}
@@ -2392,6 +2402,8 @@ const Compra = () => {
                 }}
               />
               </div>
+              </> // fin plano SVG (sistema anterior)
+              )} {/* fin ternario grid/svg */}
               {selecciones.length > 0 && (
                 <div className="selecciones-resumen">
                   <h4>Selecciones</h4>
@@ -2469,7 +2481,7 @@ const Compra = () => {
               {/* Zonas Generales (De Pie) para eventos especiales */}
               {Array.isArray(evento.areas) && evento.areas.some(a => a.tipo_area === 'PERSONAS') && (
                 <div className="compra-card-cantidad" style={{ marginTop: '20px', padding: '20px', borderTop: '1px solid #eee' }}>
-                  <h3 style={{ fontSize: '1.25rem', color: '#2c3e50', marginBottom: '8px', fontWeight: 'bold' }}>Entradas de Zona General (De Pie)</h3>
+                  <h3 style={{ fontSize: '1.25rem', color: '#2c3e50', marginBottom: '8px', fontWeight: 'bold' }}>Entradas de Zona General</h3>
                   <p style={{ color: '#666', fontSize: '0.85rem', marginBottom: '15px' }}>
                     Selecciona la cantidad de entradas para las zonas de pie/sin numerar (puedes hacer clic en ellas en el plano o seleccionarlas aquí abajo):
                   </p>
@@ -2528,9 +2540,11 @@ const Compra = () => {
                           <div key={area.id} className="tipo-precio-fila" style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem', flexWrap: 'wrap', padding: '10px 15px', background: '#f8f9fa', borderRadius: '8px', borderLeft: `5px solid ${area.color || '#4CAF50'}` }}>
                             <div style={{ flex: 1, minWidth: '150px' }}>
                               <span className="tipo-nombre" style={{ fontWeight: 700, fontSize: '1rem', color: '#2c3e50', display: 'block' }}>{area.nombre}</span>
-                              <span style={{ fontSize: '0.8rem', color: '#666' }}>
-                                Capacidad: {area.capacidad_personas} • Disponibles: <strong style={{ color: disponibles === 0 ? '#dc3545' : '#198754' }}>{disponibles}</strong>
-                              </span>
+                              {canUseAdminSaleOptions && (
+                                <span style={{ fontSize: '0.8rem', color: '#666' }}>
+                                  Capacidad: {area.capacidad_personas} • Disponibles: <strong style={{ color: disponibles === 0 ? '#dc3545' : '#198754' }}>{disponibles}</strong>
+                                </span>
+                              )}
                             </div>
                             <span className="tipo-precio precio-destacado" style={{ fontWeight: 700, color: '#0d6efd', fontSize: '1rem' }}>Bs. {precio.toFixed(2)}</span>
                             
