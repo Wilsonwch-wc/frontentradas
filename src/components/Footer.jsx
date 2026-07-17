@@ -113,6 +113,13 @@ const Footer = () => {
 
       <div className="footer-bottom">
         <p>&copy; 2025 PlusTiket - MAS FACIL IMPOSIBLE. Todos los derechos reservados.</p>
+        <div style={{ marginTop: '15px' }}>
+          <img 
+            src="/SITEL.png" 
+            alt="SITEL Logo" 
+            style={{ maxWidth: '150px', height: 'auto', opacity: 0.8 }} 
+          />
+        </div>
       </div>
     </footer>
   );

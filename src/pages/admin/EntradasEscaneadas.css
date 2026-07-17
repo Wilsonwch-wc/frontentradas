@@ -233,6 +233,16 @@
   color: #e65100;
 }
 
+.badge-tipo.silla_mesa {
+  background: #fce4ec;
+  color: #c62828;
+}
+
+.badge-tipo.general {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
 .btn-desmarcar {
   padding: 6px 12px;
   background: #e74c3c;

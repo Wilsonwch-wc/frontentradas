@@ -15,6 +15,8 @@ const EntradasEscaneadas = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [eliminando, setEliminando] = useState(null);
+  const [paginaActual, setPaginaActual] = useState(1);
+  const ITEMS_POR_PAGINA = 10;
 
   useEffect(() => {
     cargarEventos();
@@ -47,6 +49,7 @@ const EntradasEscaneadas = () => {
   const cargarEntradasEscaneadas = async () => {
     setLoading(true);
     setError('');
+    setPaginaActual(1);
     try {
       const url = eventoSeleccionado 
         ? `/compras/entradas-escaneadas?evento_id=${eventoSeleccionado}`
@@ -109,7 +112,15 @@ const EntradasEscaneadas = () => {
   };
 
   const generales = Array.isArray(entradas.generales) ? entradas.generales : [];
-  const todasLasEntradas = [...(entradas.asientos || []), ...(entradas.mesas || []), ...generales];
+  const todasLasEntradas = [...(entradas.asientos || []), ...(entradas.mesas || []), ...generales]
+    .sort((a, b) => new Date(b.fecha_escaneo) - new Date(a.fecha_escaneo));
+
+  // Paginación
+  const totalPaginas = Math.ceil(todasLasEntradas.length / ITEMS_POR_PAGINA);
+  const entradasPagina = todasLasEntradas.slice(
+    (paginaActual - 1) * ITEMS_POR_PAGINA,
+    paginaActual * ITEMS_POR_PAGINA
+  );
 
   return (
     <div className="admin-page entradas-escaneadas-page">
@@ -199,19 +210,42 @@ const EntradasEscaneadas = () => {
                     <>
                       {entradas.estadisticas.generales && entradas.estadisticas.generales.total_confirmadas > 0 && (
                         <div className="stat-detail-card">
-                          <h4>Eventos Generales</h4>
+                          <h4>Entradas Generales</h4>
                           <div className="stat-detail-row">
                             <span>Entradas Confirmadas:</span>
                             <strong>{entradas.estadisticas.generales.total_confirmadas}</strong>
                           </div>
                           <div className="stat-detail-row">
                             <span>Entradas Escaneadas:</span>
-                            <strong className="text-success">{entradas.estadisticas.generales.total_escaneadas}</strong>
+                            <strong className="text-success">{entradas.estadisticas.generales.total_escaneadas ?? entradas.estadisticas.generales.escaneadas ?? 0}</strong>
                           </div>
                           <div className="stat-detail-row">
                             <span>Entradas Faltantes:</span>
-                            <strong className="text-warning">{entradas.estadisticas.generales.total_faltantes}</strong>
+                            <strong className="text-warning">{entradas.estadisticas.generales.total_faltantes ?? (entradas.estadisticas.generales.total_confirmadas - (entradas.estadisticas.generales.total_escaneadas ?? entradas.estadisticas.generales.escaneadas ?? 0))}</strong>
                           </div>
+                        </div>
+                      )}
+                      {entradas.estadisticas.zonas_generales && entradas.estadisticas.zonas_generales.vendidas > 0 && (
+                        <div className="stat-detail-card">
+                          <h4>Personas de Pie (Zonas Generales)</h4>
+                          <div className="stat-detail-row">
+                            <span>Vendidas:</span>
+                            <strong>{entradas.estadisticas.zonas_generales.vendidas}</strong>
+                          </div>
+                          <div className="stat-detail-row">
+                            <span>Escaneadas:</span>
+                            <strong className="text-success">{entradas.estadisticas.zonas_generales.escaneadas}</strong>
+                          </div>
+                          <div className="stat-detail-row">
+                            <span>Faltantes:</span>
+                            <strong className="text-warning">{entradas.estadisticas.zonas_generales.total_faltantes}</strong>
+                          </div>
+                          {entradas.estadisticas.zonas_generales.limite_total && (
+                            <div className="stat-detail-row">
+                              <span>Capacidad Total:</span>
+                              <strong>{entradas.estadisticas.zonas_generales.limite_total}</strong>
+                            </div>
+                          )}
                         </div>
                       )}
                       <div className="stat-detail-card">
@@ -230,33 +264,48 @@ const EntradasEscaneadas = () => {
                         </div>
                       </div>
                       <div className="stat-detail-card">
-                        <h4>Mesas Completas</h4>
+                        <h4>🪑 Mesas Completas</h4>
                         <div className="stat-detail-row">
                           <span>Mesas Confirmadas:</span>
-                          <strong>{entradas.estadisticas.mesas.total_confirmadas}</strong>
+                          <strong>{entradas.estadisticas.mesas.vendidas ?? entradas.estadisticas.mesas.total_confirmadas ?? 0}</strong>
                         </div>
                         <div className="stat-detail-row">
                           <span>Mesas Escaneadas:</span>
-                          <strong className="text-success">{entradas.estadisticas.mesas.total_escaneadas}</strong>
+                          <strong className="text-success">{entradas.estadisticas.mesas.escaneadas ?? entradas.estadisticas.mesas.total_escaneadas ?? 0}</strong>
                         </div>
                         <div className="stat-detail-row">
                           <span>Mesas Faltantes:</span>
-                          <strong className="text-warning">{entradas.estadisticas.mesas.total_faltantes}</strong>
+                          <strong className="text-warning">{entradas.estadisticas.mesas.total_faltantes ?? 0}</strong>
                         </div>
+                        {entradas.estadisticas.mesas.limite_total != null && (
+                          <div className="stat-detail-row">
+                            <span>Total Mesas Disponibles:</span>
+                            <strong>{entradas.estadisticas.mesas.limite_total}</strong>
+                          </div>
+                        )}
                       </div>
                       <div className="stat-detail-card">
-                        <h4>Sillas de Mesas</h4>
+                        <h4>🎫 Sillas de Mesas (Entradas)</h4>
                         <div className="stat-detail-row">
-                          <span>Sillas Confirmadas:</span>
-                          <strong>{entradas.estadisticas.mesas.sillas.total_confirmadas}</strong>
+                          <span>Total Sillas/Entradas:</span>
+                          <strong>{entradas.estadisticas.mesas.sillas?.vendidas ?? entradas.estadisticas.mesas.sillas?.total_confirmadas ?? 0}</strong>
                         </div>
                         <div className="stat-detail-row">
                           <span>Sillas Escaneadas:</span>
-                          <strong className="text-success">{entradas.estadisticas.mesas.sillas.total_escaneadas}</strong>
+                          <strong className="text-success">{entradas.estadisticas.mesas.sillas?.escaneadas ?? entradas.estadisticas.mesas.sillas?.total_escaneadas ?? 0}</strong>
                         </div>
                         <div className="stat-detail-row">
                           <span>Sillas Faltantes:</span>
-                          <strong className="text-warning">{entradas.estadisticas.mesas.sillas.total_faltantes}</strong>
+                          <strong className="text-warning">{entradas.estadisticas.mesas.sillas?.total_faltantes ?? 0}</strong>
+                        </div>
+                        {entradas.estadisticas.mesas.sillas?.limite_total != null && (
+                          <div className="stat-detail-row">
+                            <span>Capacidad Total Sillas:</span>
+                            <strong>{entradas.estadisticas.mesas.sillas.limite_total}</strong>
+                          </div>
+                        )}
+                        <div className="stat-info-note">
+                          <small>Cada mesa genera N entradas individuales según su cantidad de sillas. Ej: 3 mesas de 5 sillas = 15 entradas.</small>
                         </div>
                       </div>
                     </>
@@ -297,6 +346,7 @@ const EntradasEscaneadas = () => {
                       <th>Tipo</th>
                       <th>Detalle</th>
                       <th>Cliente</th>
+                      <th>Teléfono</th>
                       <th>Evento</th>
                       <th>Escaneado Por</th>
                       <th>Fecha Escaneo</th>
@@ -304,12 +354,12 @@ const EntradasEscaneadas = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {todasLasEntradas.map((entrada) => (
+                    {entradasPagina.map((entrada) => (
                       <tr key={`${entrada.tipo}-${entrada.id}`}>
                         <td><strong>{entrada.codigo_escaneo}</strong></td>
                         <td>
                           <span className={`badge-tipo ${entrada.tipo.toLowerCase()}`}>
-                            {entrada.tipo}
+                            {entrada.tipo === 'SILLA_MESA' ? 'SILLA' : entrada.tipo}
                           </span>
                         </td>
                         <td>
@@ -319,6 +369,8 @@ const EntradasEscaneadas = () => {
                               {entrada.numero_mesa && ` (Mesa M${entrada.numero_mesa})`}
                               {entrada.tipo_precio_nombre && ` - ${entrada.tipo_precio_nombre}`}
                             </>
+                          ) : entrada.tipo === 'SILLA_MESA' ? (
+                            <>Silla de Mesa {entrada.codigo_mesa || entrada.numero_mesa ? `M${entrada.codigo_mesa || entrada.numero_mesa}` : ''}</>
                           ) : entrada.tipo === 'GENERAL' ? (
                             <>Entrada General{entrada.area_nombre ? ` (${entrada.area_nombre})` : ''}</>
                           ) : (
@@ -328,6 +380,7 @@ const EntradasEscaneadas = () => {
                           )}
                         </td>
                         <td>{entrada.cliente_nombre}</td>
+                        <td>{entrada.cliente_telefono || '-'}</td>
                         <td>{entrada.evento_titulo}</td>
                         <td>{entrada.usuario_escaneo || '-'}</td>
                         <td>{formatearFecha(entrada.fecha_escaneo)}</td>
@@ -345,6 +398,42 @@ const EntradasEscaneadas = () => {
                     ))}
                   </tbody>
                 </table>
+
+                {/* Paginación */}
+                {totalPaginas > 1 && (
+                  <div className="paginacion-entradas" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', marginTop: '16px', flexWrap: 'wrap' }}>
+                    <button
+                      onClick={() => setPaginaActual(p => Math.max(1, p - 1))}
+                      disabled={paginaActual === 1}
+                      style={{ padding: '6px 14px', borderRadius: '6px', border: '1px solid #ddd', background: paginaActual === 1 ? '#f0f0f0' : '#fff', cursor: paginaActual === 1 ? 'default' : 'pointer', fontWeight: 'bold' }}
+                    >
+                      ← Anterior
+                    </button>
+                    {Array.from({ length: totalPaginas }, (_, i) => i + 1)
+                      .filter(p => p === 1 || p === totalPaginas || Math.abs(p - paginaActual) <= 2)
+                      .map((p, idx, arr) => (
+                        <span key={p}>
+                          {idx > 0 && arr[idx - 1] !== p - 1 && <span style={{ padding: '0 4px' }}>...</span>}
+                          <button
+                            onClick={() => setPaginaActual(p)}
+                            style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid', borderColor: p === paginaActual ? '#1976d2' : '#ddd', background: p === paginaActual ? '#1976d2' : '#fff', color: p === paginaActual ? '#fff' : '#333', cursor: 'pointer', fontWeight: p === paginaActual ? 'bold' : 'normal' }}
+                          >
+                            {p}
+                          </button>
+                        </span>
+                      ))}
+                    <button
+                      onClick={() => setPaginaActual(p => Math.min(totalPaginas, p + 1))}
+                      disabled={paginaActual === totalPaginas}
+                      style={{ padding: '6px 14px', borderRadius: '6px', border: '1px solid #ddd', background: paginaActual === totalPaginas ? '#f0f0f0' : '#fff', cursor: paginaActual === totalPaginas ? 'default' : 'pointer', fontWeight: 'bold' }}
+                    >
+                      Siguiente →
+                    </button>
+                    <span style={{ fontSize: '0.85rem', color: '#888', marginLeft: '8px' }}>
+                      Mostrando {(paginaActual - 1) * ITEMS_POR_PAGINA + 1}-{Math.min(paginaActual * ITEMS_POR_PAGINA, todasLasEntradas.length)} de {todasLasEntradas.length}
+                    </span>
+                  </div>
+                )}
               </div>
             )}
           </>

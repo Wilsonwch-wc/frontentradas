@@ -38,6 +38,7 @@ const BusquedaEntrada = () => {
   const [feedbackTipo, setFeedbackTipo] = useState(null);
   const [feedbackMensaje, setFeedbackMensaje] = useState('');
   const [modoSoloConsulta, setModoSoloConsulta] = useState(false);
+  const [historialEscaneos, setHistorialEscaneos] = useState([]);
   const qrCodeRegionId = 'qr-reader';
   const html5QrCodeRef = useRef(null);
   const lastProcessedScanRef = useRef({ code: null, time: 0 });
@@ -49,6 +50,17 @@ const BusquedaEntrada = () => {
       navigate('/admin', { replace: true });
     }
   }, [user?.rol, navigate]);
+
+  const agregarAlHistorial = (data, estado) => {
+    setHistorialEscaneos(prev => [{
+      id: Date.now() + Math.random(),
+      fecha: new Date(),
+      codigo: data.entrada?.codigo_escaneo || '-',
+      telefono: data.compra?.cliente_telefono || '-',
+      estado: estado,
+      tipo: data.entrada?.tipo || '-'
+    }, ...prev].slice(0, 15));
+  };
 
   const tickearEntrada = async () => {
     if (!datosEntrada) return;
@@ -74,6 +86,7 @@ const BusquedaEntrada = () => {
           },
           ya_escaneada: true
         });
+        agregarAlHistorial(datosEntrada, '✅ Válida (Manual)');
       }
     } catch (error) {
       console.error('Error al tickear:', error);
@@ -223,15 +236,18 @@ const BusquedaEntrada = () => {
               playBeep('ok');
               setFeedbackTipo('ok');
               setFeedbackMensaje('Entrada válida');
+              agregarAlHistorial(data, '✅ Válida');
             } catch (tickError) {
               playBeep('error');
               setFeedbackTipo('error');
               setFeedbackMensaje(tickError.response?.data?.message || 'Error al validar');
+              agregarAlHistorial(data, '❌ Error');
             }
           } else {
             playBeep('ok');
             setFeedbackTipo('ya-escaneada');
             setFeedbackMensaje('Entrada ya escaneada');
+            agregarAlHistorial(data, '⚠️ Ya escaneada');
           }
           setCodigo('');
           setTimeout(() => {
@@ -513,6 +529,42 @@ const BusquedaEntrada = () => {
           </div>
         </div>
 
+        <div className="historial-escaneos-section" style={{ marginTop: '30px' }}>
+          <h3 style={{ marginBottom: '15px', color: '#2c3e50' }}>🕒 Últimos Escaneos</h3>
+          <div className="tabla-detalle-entrada-wrapper" style={{ marginTop: 0 }}>
+            <table className="tabla-detalle-entrada">
+              <thead>
+                <tr>
+                  <th>Hora</th>
+                  <th>Cód. Verificación</th>
+                  <th>Tipo</th>
+                  <th>Teléfono</th>
+                  <th>Estado</th>
+                </tr>
+              </thead>
+              <tbody>
+                {historialEscaneos.length > 0 ? (
+                  historialEscaneos.map(item => (
+                    <tr key={item.id}>
+                      <td>{item.fecha.toLocaleTimeString('es-ES')}</td>
+                      <td><strong style={{ letterSpacing: '2px' }}>{item.codigo}</strong></td>
+                      <td>{item.tipo}</td>
+                      <td>{item.telefono}</td>
+                      <td>{item.estado}</td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="5" style={{ textAlign: 'center', color: '#7f8c8d', padding: '20px' }}>
+                      No se han escaneado entradas recientemente.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
         {/* Modal con los datos encontrados */}
         {mostrarModal && datosEntrada && (
           <div className="modal-overlay" onClick={cerrarModal}>
@@ -625,6 +677,29 @@ const BusquedaEntrada = () => {
                       <span className="info-value">Esta entrada ya fue escaneada anteriormente</span>
                     </div>
                   )}
+                </div>
+
+                <div className="tabla-detalle-entrada-wrapper">
+                  <table className="tabla-detalle-entrada">
+                    <thead>
+                      <tr>
+                        <th>Teléfono</th>
+                        <th>Código Verificación</th>
+                        <th>Fecha/Hora Escaneada</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>{datosEntrada.compra.cliente_telefono || '-'}</td>
+                        <td>{datosEntrada.entrada.codigo_escaneo}</td>
+                        <td>
+                          {datosEntrada.entrada.fecha_escaneo 
+                            ? formatearFecha(datosEntrada.entrada.fecha_escaneo) 
+                            : 'No escaneada'}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
               </div>
 
