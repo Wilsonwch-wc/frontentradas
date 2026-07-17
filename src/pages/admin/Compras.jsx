@@ -845,9 +845,7 @@ const Compras = () => {
                           </span>
                           <span>
                             <strong>Cantidad de Sillas:</strong>{" "}
-                            {mesa.cantidad_sillas === 4
-                              ? 10
-                              : mesa.cantidad_sillas}
+                            {mesa.cantidad_sillas}
                           </span>
                           <span>
                             <strong>Precio Total:</strong> $

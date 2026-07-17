@@ -169,7 +169,18 @@ const Cartelera = () => {
         body: formDataUpload
       });
 
-      const data = await response.json();
+      if (!response.ok) {
+        if (response.status === 413) {
+          throw new Error('La imagen es demasiado grande. Por favor, sube una imagen más pequeña (máximo 1MB o ajusta el límite del servidor).');
+        }
+      }
+
+      let data;
+      try {
+        data = await response.json();
+      } catch (err) {
+        throw new Error('Error en el servidor al subir la imagen. Es posible que sea demasiado grande. (El servidor devolvió HTML en lugar de JSON)');
+      }
       
       if (data.success) {
         return data.data.url;
@@ -202,7 +213,18 @@ const Cartelera = () => {
         body: formDataUpload
       });
 
-      const data = await response.json();
+      if (!response.ok) {
+        if (response.status === 413) {
+          throw new Error('El código QR es demasiado pesado. Por favor, sube una imagen más pequeña.');
+        }
+      }
+
+      let data;
+      try {
+        data = await response.json();
+      } catch (err) {
+        throw new Error('Error en el servidor al subir el QR. (El servidor devolvió HTML en lugar de JSON)');
+      }
       
       if (data.success) {
         return data.data.url;

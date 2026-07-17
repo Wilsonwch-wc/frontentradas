@@ -2431,10 +2431,10 @@ const Compra = () => {
                             <div className="seleccion-mesa-info">
                               <span className="seleccion-nombre seleccion-mesa-titulo">{sel.nombre}</span>
                               <span className="seleccion-mesa-detalle">
-                                Mesa {sel.codigo_mesa || (sel.numero_mesa != null ? `M${sel.numero_mesa}` : '?')} • {sel.cantidad_sillas === 4 ? 10 : sel.cantidad_sillas} personas
+                                Mesa {sel.codigo_mesa || (sel.numero_mesa != null ? `M${sel.numero_mesa}` : '?')} • {sel.cantidad_sillas} personas
                               </span>
                               <span className="seleccion-mesa-sillas">
-                                Sillas: {sel.sillas === '4 personas' ? '10 personas' : sel.sillas}
+                                Sillas: {sel.sillas}
                               </span>
                             </div>
                             <span className="seleccion-precio seleccion-precio-mesa">Bs. {sel.precio_total.toFixed(2)}</span>
@@ -2876,10 +2876,10 @@ const Compra = () => {
                           <div className="resumen-mesa-info">
                             <span className="resumen-seleccion-nombre resumen-mesa-titulo">{sel.nombre}</span>
                             <span className="resumen-mesa-detalle">
-                              Mesa {sel.codigo_mesa || sel.numero_mesa} • {sel.cantidad_sillas === 4 ? 10 : sel.cantidad_sillas} sillas
+                              Mesa {sel.codigo_mesa || sel.numero_mesa} • {sel.cantidad_sillas} sillas
                             </span>
                             <span className="resumen-mesa-sillas">
-                              Sillas: {sel.sillas === '4 personas' ? '10 personas' : sel.sillas}
+                              Sillas: {sel.sillas}
                             </span>
                           </div>
                           <span className="resumen-seleccion-precio resumen-precio-mesa">Bs. {sel.precio_total.toFixed(2)}</span>

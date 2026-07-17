@@ -209,7 +209,7 @@ const MisCompras = () => {
                         <span className="detalle-value">
                           {compra.mesas.map((m, idx) => (
                             <span key={idx} className="mesa-badge">
-                              Mesa {m.numero_mesa} ({m.cantidad_sillas === 4 ? 10 : m.cantidad_sillas} sillas)
+                              Mesa {m.numero_mesa} ({m.cantidad_sillas} sillas)
                             </span>
                           ))}
                         </span>
