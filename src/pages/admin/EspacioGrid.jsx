@@ -1318,11 +1318,18 @@ const EspacioGrid = () => {
           <div className="eg-modal" onClick={e => e.stopPropagation()}>
             <h2 className="eg-modal__title">🪑 Nueva Mesa</h2>
             <p className="eg-modal__info">
-              Área: <strong>{areas.find(a => a.id === modalMesa.areaId)?.nombre || '—'}</strong>
-              &nbsp;· Celda [{modalMesa.r},{modalMesa.c}]
+              Celda [{modalMesa.r},{modalMesa.c}]
             </p>
 
-            <label className="eg-label">Nombre / Código de la mesa *</label>
+            <label className="eg-label">Área Asignada</label>
+            <input
+              className="eg-input"
+              value={areas.find(a => a.id == modalMesa.areaId)?.nombre || '—'}
+              disabled
+              style={{ backgroundColor: '#f1f5f9', cursor: 'not-allowed' }}
+            />
+
+            <label className="eg-label" style={{ marginTop: '12px' }}>Nombre / Código de la mesa *</label>
             <input
               className="eg-input"
               placeholder="ej: M1A, Mesa 1 Izq., VIP-01"
@@ -1368,11 +1375,18 @@ const EspacioGrid = () => {
           <div className="eg-modal" onClick={e => e.stopPropagation()}>
             <h2 className="eg-modal__title">💺 Nueva Silla</h2>
             <p className="eg-modal__info">
-              Área: <strong>{areas.find(a => a.id === modalSilla.areaId)?.nombre || '—'}</strong>
-              &nbsp;· Celda [{modalSilla.r},{modalSilla.c}]
+              Celda [{modalSilla.r},{modalSilla.c}]
             </p>
 
-            <label className="eg-label">Nombre / Número de la silla *</label>
+            <label className="eg-label">Área Asignada</label>
+            <input
+              className="eg-input"
+              value={areas.find(a => a.id == modalSilla.areaId)?.nombre || '—'}
+              disabled
+              style={{ backgroundColor: '#f1f5f9', cursor: 'not-allowed' }}
+            />
+
+            <label className="eg-label" style={{ marginTop: '12px' }}>Nombre / Número de la silla *</label>
             <input
               className="eg-input"
               placeholder="ej: A1, Silla 12, S-001"
