@@ -715,8 +715,6 @@ const EspacioGrid = () => {
         escenario: escenarioUnificado,
         escenario_celdas: escenarios.flatMap(e => e.celdas.map(c => ({ r: c.r, c: c.c }))),
         areas: areas.map(a => {
-          const idStr = typeof a.id === 'string' && a.id.startsWith('tmp_') ? null : a.id;
-          
           // Calcular celdas excluidas
           const celdasExcluidas = [];
           const cStart = parseInt(a.posicion_x) || 0;
@@ -736,7 +734,7 @@ const EspacioGrid = () => {
           }
 
           return {
-            id: idStr,
+            id: a.id,
             nombre: a.nombre,
             color: a.color,
             tipo_precio_id: a.tipo_precio_id,
@@ -751,7 +749,7 @@ const EspacioGrid = () => {
           };
         }),
         mesas: mesas.map(m => ({
-          id: typeof m.id === 'string' && m.id.startsWith('tmp_') ? null : m.id,
+          id: m.id,
           numero_mesa: m.numero_mesa || m.codigo_mesa,
           codigo_mesa: m.codigo_mesa || m.numero_mesa,
           capacidad_sillas: m.capacidad_sillas,
@@ -768,7 +766,7 @@ const EspacioGrid = () => {
           venta_solo_mesa: 0,
         })),
         asientos: asientos.map(a => ({
-          id: typeof a.id === 'string' && a.id.startsWith('tmp_') ? null : a.id,
+          id: a.id,
           numero_asiento: a.numero_asiento,
           tipo_precio_id: a.tipo_precio_id,
           area_id: a.area_id,
