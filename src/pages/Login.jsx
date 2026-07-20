@@ -44,11 +44,14 @@ const Login = () => {
     if (isAuthenticated()) {
       const rol = (currentUser?.rol || '').toLowerCase();
       const staffPath = getStaffPanelPath(rol);
-      if (staffPath) {
+      
+      const from = location.state?.from;
+      if (from && from !== '/') {
+        navigate(from, { replace: true });
+      } else if (staffPath) {
         navigate(staffPath, { replace: true });
       } else {
-        const from = location.state?.from || '/';
-        navigate(from, { replace: true });
+        navigate('/', { replace: true });
       }
     }
   }, [isAuthenticated, currentUser?.rol, navigate, location]);

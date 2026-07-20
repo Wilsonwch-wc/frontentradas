@@ -157,14 +157,6 @@ const MisCompras = () => {
                           🎫 Retomar Pago QR
                         </button>
                       )}
-                      {compra.estado === 'PAGO_REALIZADO' && (
-                        <button
-                          onClick={() => handleDescargarBoleto(compra.id, compra.codigo_unico)}
-                          className="btn-pagar-qr btn-descargar"
-                        >
-                          ⬇️ Descargar Boleto
-                        </button>
-                      )}
                     </div>
                   </div>
 

@@ -261,11 +261,11 @@ const EspacioGrid = () => {
     const key = `${r},${c}`;
     const celda = celdas[key];
     if (!celda || celda.tipo !== TIPOS_CELDA.area) return null;
-    return areas.find(a => a.id === celda.areaId) || null;
+    return areas.find(a => a.id == celda.areaId) || null;
   };
 
   const getTipoPrecioSeleccionado = () =>
-    tiposPrecio.find(t => t.id === parseInt(tipoPrecioId)) || null;
+    tiposPrecio.find(t => t.id == parseInt(tipoPrecioId)) || null;
 
   const getPrecioTipoPrecio = (id) =>
     tiposPrecio.find(t => t.id === parseInt(id))?.precio || 0;
@@ -296,13 +296,13 @@ const EspacioGrid = () => {
       const celda = celdas[key];
       if (celda && celda.tipo !== TIPOS_CELDA.vacio) {
         if (celda.tipo === TIPOS_CELDA.area) {
-          const area = areas.find(a => a.id === celda.areaId);
+          const area = areas.find(a => a.id == celda.areaId);
           setElementoSeleccionado({ tipo: 'area', data: area });
         } else if (celda.tipo === TIPOS_CELDA.mesa) {
-          const mesa = mesas.find(m => m.id === celda.elementoId);
+          const mesa = mesas.find(m => m.id == celda.elementoId);
           setElementoSeleccionado({ tipo: 'mesa', data: mesa });
         } else if (celda.tipo === TIPOS_CELDA.silla) {
-          const silla = asientos.find(a => a.id === celda.elementoId);
+          const silla = asientos.find(a => a.id == celda.elementoId);
           setElementoSeleccionado({ tipo: 'silla', data: silla });
         }
       } else {
@@ -429,12 +429,13 @@ const EspacioGrid = () => {
     }
 
     const areaId = celda.areaId;
+    const area = areas.find(a => a.id == areaId);
     setModalMesa({ r, c, areaId });
     const tp = getTipoPrecioSeleccionado();
     setFormMesa({
       nombre: '',
       capacidad_sillas: 4,
-      tipo_precio_id: tp ? tp.id : (tipoPrecioId || ''),
+      tipo_precio_id: tp ? tp.id : (area?.tipo_precio_id || tipoPrecioId || ''),
     });
   };
 
@@ -445,15 +446,23 @@ const EspacioGrid = () => {
     }
     const { r, c, areaId } = modalMesa;
     const id = tmpId();
-    const area = areas.find(a => a.id === areaId);
+    const area = areas.find(a => a.id == areaId);
+    
+    const finalTipoPrecioId = formMesa.tipo_precio_id ? parseInt(formMesa.tipo_precio_id) : (area?.tipo_precio_id ? parseInt(area.tipo_precio_id) : null);
+    
+    if (!finalTipoPrecioId) {
+      showAlert('Debes asignar un precio a la mesa o al área donde se encuentra.', { type: 'warning' });
+      return;
+    }
+
     const nuevaMesa = {
       id,
       codigo_mesa: formMesa.nombre.trim(),
       numero_mesa: formMesa.nombre.trim(),
       capacidad_sillas: parseInt(formMesa.capacidad_sillas) || 4,
-      tipo_precio_id: formMesa.tipo_precio_id ? parseInt(formMesa.tipo_precio_id) : null,
-      tipo_precio_nombre: tiposPrecio.find(t => t.id === parseInt(formMesa.tipo_precio_id))?.nombre || '',
-      tipo_precio_precio: getPrecioTipoPrecio(formMesa.tipo_precio_id),
+      tipo_precio_id: finalTipoPrecioId,
+      tipo_precio_nombre: tiposPrecio.find(t => t.id === finalTipoPrecioId)?.nombre || '',
+      tipo_precio_precio: getPrecioTipoPrecio(finalTipoPrecioId),
       area_id: areaId,
       area_nombre: area?.nombre || '',
       grid_row: r,
@@ -479,11 +488,12 @@ const EspacioGrid = () => {
     }
 
     const areaId = celda.areaId;
+    const area = areas.find(a => a.id == areaId);
     setModalSilla({ r, c, areaId });
     const tp = getTipoPrecioSeleccionado();
     setFormSilla({
       nombre: '',
-      tipo_precio_id: tp ? tp.id : (tipoPrecioId || ''),
+      tipo_precio_id: tp ? tp.id : (area?.tipo_precio_id || tipoPrecioId || ''),
     });
   };
 
@@ -494,13 +504,21 @@ const EspacioGrid = () => {
     }
     const { r, c, areaId } = modalSilla;
     const id = tmpId();
-    const area = areas.find(a => a.id === areaId);
+    const area = areas.find(a => a.id == areaId);
+    
+    const finalTipoPrecioId = formSilla.tipo_precio_id ? parseInt(formSilla.tipo_precio_id) : (area?.tipo_precio_id ? parseInt(area.tipo_precio_id) : null);
+    
+    if (!finalTipoPrecioId) {
+      showAlert('Debes asignar un precio a la silla o al área donde se encuentra.', { type: 'warning' });
+      return;
+    }
+
     const nuevaSilla = {
       id,
       numero_asiento: formSilla.nombre.trim(),
-      tipo_precio_id: formSilla.tipo_precio_id ? parseInt(formSilla.tipo_precio_id) : null,
-      tipo_precio_nombre: tiposPrecio.find(t => t.id === parseInt(formSilla.tipo_precio_id))?.nombre || '',
-      tipo_precio_precio: getPrecioTipoPrecio(formSilla.tipo_precio_id),
+      tipo_precio_id: finalTipoPrecioId,
+      tipo_precio_nombre: tiposPrecio.find(t => t.id === finalTipoPrecioId)?.nombre || '',
+      tipo_precio_precio: getPrecioTipoPrecio(finalTipoPrecioId),
       area_id: areaId,
       area_nombre: area?.nombre || '',
       mesa_id: null,

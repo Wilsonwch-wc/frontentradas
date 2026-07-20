@@ -278,7 +278,7 @@ const PagoQR = () => {
             )}
 
             <p className="pqr-info-boleto">
-              Tu boleto está siendo generado. Puedes descargarlo desde <strong>Mis Compras</strong>.
+              Tu boleto ha sido generado y enviado a tu correo electrónico. Revisa tu bandeja de entrada.
             </p>
 
             <button className="pqr-btn pqr-btn-primary" onClick={irAMisCompras}>
@@ -325,7 +325,6 @@ const PagoQR = () => {
             {/* Encabezado */}
             <div className="pqr-header">
               <div className="pqr-logo-redenlace">Redenlace QR</div>
-              <div className="pqr-ambiente">🔐 Ambiente: {qrData?.ambiente || "TEST"}</div>
             </div>
 
             {/* Imagen QR */}
@@ -391,18 +390,8 @@ const PagoQR = () => {
               </div>
             )}
 
-            {qrData?.origenNumeroReferencia && (
-              <div className="pqr-ref">
-                <span>Ref. comercio</span>
-                <code>{qrData.origenNumeroReferencia}</code>
-              </div>
-            )}
-            {qrData?.atcReferencia && (
-              <div className="pqr-ref">
-                <span>Ref. ATC</span>
-                <code>{qrData.atcReferencia}</code>
-              </div>
-            )}
+
+
           </div>
 
           {/* Instrucciones */}
@@ -432,18 +421,6 @@ const PagoQR = () => {
             </ol>
           </div>
 
-          {/* Verificación manual */}
-          <div className="pqr-card pqr-verificar-card">
-            <p>¿Ya realizaste el pago y no se actualizó automáticamente?</p>
-            <button className="pqr-btn pqr-btn-verificar" onClick={verificarManual}>
-              🔄 Verificar estado del pago
-            </button>
-          </div>
-
-          {/* Cancelar */}
-          <button className="pqr-btn pqr-btn-ghost" onClick={() => navigate('/mis-compras')}>
-            ❌ Cancelar Compra
-          </button>
         </div>
       </div>
     </div>

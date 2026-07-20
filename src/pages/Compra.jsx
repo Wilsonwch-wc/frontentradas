@@ -58,7 +58,7 @@ const Compra = () => {
 
   const { id } = useParams();
   const navigate = useNavigate();
-  const { isAuthenticated, user, isAdmin, canSellWithVerification, canUseAdminSaleOptions } = useAuth();
+  const { isAuthenticated, user, isAdmin, canSellWithVerification, canUseAdminSaleOptions, loading: authLoading } = useAuth();
   const { showAlert } = useAlert();
   const [evento, setEvento] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -111,6 +111,9 @@ const Compra = () => {
   }, [puedeOpcionesVentaAdmin]);
 
   useEffect(() => {
+    // Si todavía está cargando la sesión, no hacemos nada
+    if (authLoading) return;
+
     // Verificar autenticación
     if (!isAuthenticated()) {
       navigate('/login', { state: { from: `/compra/${id}` } });
@@ -119,7 +122,7 @@ const Compra = () => {
 
     // Cargar evento desde la API
     cargarEvento();
-  }, [id, isAuthenticated, navigate]);
+  }, [id, isAuthenticated, authLoading, navigate]);
 
   const viewportPlano = useMemo(() => {
     if (!evento) return { minX: 0, minY: 0, worldW: 1000, worldH: 600 };
@@ -2827,11 +2830,10 @@ const Compra = () => {
             </form>
           </div>
 
-          {/* Sección 5: Resumen de Compra (Debajo de todo) */}
-          <div className="compra-card compra-card-resumen">
-            <h2>Resumen de Compra</h2>
-            {!esEventoEspecial && (
-              <>
+          {/* Sección 5: Resumen de Compra (Solo para eventos generales - los especiales ya tienen el panel "Selecciones") */}
+          {!esEventoEspecial && (
+           <div className="compra-card compra-card-resumen">
+              <h2>Resumen de Compra</h2>
                 <div className="resumen-cantidad">
                   <span>Cantidad:</span>
                   <span>{cantidadEntradas} entrada{cantidadEntradas !== 1 ? 's' : ''}</span>
@@ -2848,61 +2850,6 @@ const Compra = () => {
                       ))}
                   </div>
                 )}
-              </>
-            )}
-            {esEventoEspecial && selecciones.length > 0 && (
-              <div className="resumen-selecciones">
-                <h3>Entradas Seleccionadas</h3>
-                <div className="resumen-selecciones-lista">
-                  {selecciones.map((sel, index) => {
-                    if (sel.type === 'asiento') {
-                      // Verificar si este asiento pertenece a una mesa completa seleccionada
-                      const perteneceAMesaCompleta = selecciones.some(s => 
-                        s.type === 'mesa_completa' && 
-                        evento.asientos?.find(a => a.id === sel.id)?.mesa_id === s.mesa_id
-                      );
-                      // No mostrar asientos individuales si pertenecen a una mesa completa
-                      if (perteneceAMesaCompleta) return null;
-                      
-                      return (
-                        <div key={index} className="resumen-seleccion-item">
-                          <span className="resumen-seleccion-nombre">{sel.nombre}</span>
-                          <span className="resumen-seleccion-precio">Bs. {sel.precio.toFixed(2)}</span>
-                        </div>
-                      );
-                    } else if (sel.type === 'mesa_completa') {
-                      return (
-                        <div key={index} className="resumen-seleccion-item resumen-mesa-completa">
-                          <div className="resumen-mesa-info">
-                            <span className="resumen-seleccion-nombre resumen-mesa-titulo">{sel.nombre}</span>
-                            <span className="resumen-mesa-detalle">
-                              Mesa {sel.codigo_mesa || sel.numero_mesa} • {sel.cantidad_sillas} sillas
-                            </span>
-                            <span className="resumen-mesa-sillas">
-                              Sillas: {sel.sillas}
-                            </span>
-                          </div>
-                          <span className="resumen-seleccion-precio resumen-precio-mesa">Bs. {sel.precio_total.toFixed(2)}</span>
-                        </div>
-                      );
-                    } else if (sel.type === 'area_general') {
-                      return (
-                        <div key={index} className="resumen-seleccion-item" style={{ borderLeft: `4px solid ${sel.color || '#4CAF50'}` }}>
-                          <div className="resumen-mesa-info">
-                            <span className="resumen-seleccion-nombre" style={{ fontWeight: 'bold' }}>{sel.nombre}</span>
-                            <span className="resumen-mesa-detalle" style={{ color: '#666', fontSize: '0.85rem' }}>
-                              Cantidad: {sel.cantidad} × Bs. {sel.precio.toFixed(2)}
-                            </span>
-                          </div>
-                          <span className="resumen-seleccion-precio">Bs. {sel.total.toFixed(2)}</span>
-                        </div>
-                      );
-                    }
-                    return null;
-                  })}
-                </div>
-              </div>
-            )}
             <div className="resumen-detalle">
               {cuponValidado && !esRegaloAdmin && !esOfertaAdmin && (
                 <>
@@ -2947,7 +2894,8 @@ const Compra = () => {
                 </div>
               )}
             </div>
-          </div>
+           </div>
+          )}
         </div>
       </div>
     </div>
