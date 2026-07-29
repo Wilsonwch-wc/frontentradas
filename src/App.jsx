@@ -25,6 +25,7 @@ import EntradasEscaneadas from './pages/admin/EntradasEscaneadas';
 import PanelEnVivo from './pages/admin/PanelEnVivo';
 import Cupones from './pages/admin/Cupones';
 import MiPanelVentas from './pages/admin/MiPanelVentas';
+import CargarDocumentos from './pages/admin/CargarDocumentos';
 import './App.css';
 
 function AdminIndexRedirect() {
@@ -58,6 +59,7 @@ function App() {
             <Route path="entradas-escaneadas" element={<EntradasEscaneadas />} />
             <Route path="panel-en-vivo" element={<PanelEnVivo />} />
             <Route path="cupones" element={<Cupones />} />
+            <Route path="cargar-documentos" element={<CargarDocumentos />} />
           </Route>
           
           {/* Rutas públicas con Header y Footer */}

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import api from '../../api/axios';
 import { useAlert } from '../../context/AlertContext';
 import './WhatsAppWeb.css';
@@ -8,19 +8,52 @@ const WhatsAppWeb = () => {
   const [estado, setEstado] = useState(null);
   const [loading, setLoading] = useState(true);
   const [reiniciando, setReiniciando] = useState(false);
+  const [countdown, setCountdown] = useState(null);
+  const countdownRef = useRef(null);
+  const lastQrRef = useRef(null);
 
   useEffect(() => {
     cargarEstado();
-    // Actualizar cada 3 segundos para ver cambios en tiempo real
+    // Intervalo base de consulta
     const interval = setInterval(cargarEstado, 3000);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      if (countdownRef.current) clearInterval(countdownRef.current);
+    };
   }, []);
+
+  // Iniciar/reiniciar el contador cada vez que llega un QR nuevo
+  const iniciarContador = () => {
+    if (countdownRef.current) clearInterval(countdownRef.current);
+    setCountdown(60);
+    countdownRef.current = setInterval(() => {
+      setCountdown(prev => {
+        if (prev <= 1) {
+          clearInterval(countdownRef.current);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
 
   const cargarEstado = async () => {
     try {
       const response = await api.get('/compras/whatsapp-web/estado');
       if (response.data.success) {
         setEstado(response.data);
+        // Si hay un QR nuevo (diferente al anterior), reiniciar el contador
+        const nuevoQr = response.data.qrCode;
+        if (nuevoQr && nuevoQr !== lastQrRef.current) {
+          lastQrRef.current = nuevoQr;
+          iniciarContador();
+        }
+        // Si ya se conectó, limpiar el contador
+        if (response.data.isReady) {
+          if (countdownRef.current) clearInterval(countdownRef.current);
+          setCountdown(null);
+          lastQrRef.current = null;
+        }
       }
     } catch (error) {
       console.error('Error al cargar estado:', error);
@@ -39,6 +72,9 @@ const WhatsAppWeb = () => {
     }
     try {
       setReiniciando(true);
+      lastQrRef.current = null;
+      if (countdownRef.current) clearInterval(countdownRef.current);
+      setCountdown(null);
       const response = await api.post('/compras/whatsapp-web/reiniciar');
       if (response.data.success) {
         await cargarEstado();
@@ -52,6 +88,13 @@ const WhatsAppWeb = () => {
     } finally {
       setReiniciando(false);
     }
+  };
+
+  // Color del contador según tiempo restante
+  const getCountdownColor = () => {
+    if (countdown > 30) return '#25d366';
+    if (countdown > 10) return '#f59e0b';
+    return '#ef4444';
   };
 
   if (loading) {
@@ -103,6 +146,37 @@ const WhatsAppWeb = () => {
                       <li>Escanea este código QR</li>
                     </ol>
                   </div>
+
+                  {/* Contador de tiempo */}
+                  {countdown !== null && (
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '10px',
+                      margin: '12px 0',
+                      padding: '10px 16px',
+                      backgroundColor: '#f8f9fa',
+                      borderRadius: '8px',
+                      border: `2px solid ${getCountdownColor()}`,
+                    }}>
+                      <span style={{ fontSize: '14px', color: '#555' }}>⏱️ El QR se renueva en:</span>
+                      <span style={{
+                        fontSize: '24px',
+                        fontWeight: 'bold',
+                        color: getCountdownColor(),
+                        minWidth: '40px',
+                        textAlign: 'center',
+                        transition: 'color 0.3s',
+                      }}>
+                        {countdown}s
+                      </span>
+                      {countdown === 0 && (
+                        <span style={{ fontSize: '13px', color: '#888' }}>⟳ Actualizando...</span>
+                      )}
+                    </div>
+                  )}
+
                   <div className="qr-container">
                     <img 
                       src={estado.qrCodeImage} 
@@ -111,7 +185,7 @@ const WhatsAppWeb = () => {
                     />
                   </div>
                   <p className="qr-note">
-                    ⚠️ El código QR expira después de unos minutos. Si expira, recarga la página.
+                    ⚠️ Si el QR expira antes de escanearlo, espera a que aparezca uno nuevo automáticamente.
                   </p>
                 </div>
               )}
@@ -124,4 +198,3 @@ const WhatsAppWeb = () => {
 };
 
 export default WhatsAppWeb;
-
