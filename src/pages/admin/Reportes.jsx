@@ -252,13 +252,14 @@ const Reportes = () => {
       // Filtro por cliente (nombre o teléfono)
       if (filtroCliente.trim()) {
         const busqueda = filtroCliente.trim().toLowerCase();
+        const busqNum = busqueda.replace(/[^\d]/g, '');
         const nombre = (compra.cliente_nombre || '').toLowerCase();
         const telefono = (compra.cliente_telefono || '').replace(/[^\d]/g, '');
         const email = (compra.cliente_email || '').toLowerCase();
         const codigo = (compra.codigo_unico || '').toLowerCase();
         
         const coincide = nombre.includes(busqueda) || 
-                        telefono.includes(busqueda.replace(/[^\d]/g, '')) ||
+                        (busqNum.length > 0 && telefono.includes(busqNum)) ||
                         email.includes(busqueda) ||
                         codigo.includes(busqueda);
         if (!coincide) return false;
@@ -420,12 +421,32 @@ const Reportes = () => {
           <div className="reportes-filtros-tabla">
             <div className="campo campo-busqueda">
               <label>🔍 Buscar cliente</label>
-              <input
-                type="text"
-                value={filtroCliente}
-                onChange={(e) => setFiltroCliente(e.target.value)}
-                placeholder="Nombre, teléfono, email o código..."
-              />
+              <div style={{ display: 'flex', gap: '6px' }}>
+                <input
+                  type="text"
+                  value={filtroCliente}
+                  onChange={(e) => setFiltroCliente(e.target.value)}
+                  placeholder="Nombre, teléfono, email o código..."
+                  style={{ flex: 1 }}
+                />
+                {filtroCliente && (
+                  <button
+                    type="button"
+                    onClick={() => setFiltroCliente('')}
+                    style={{
+                      padding: '0 10px',
+                      background: '#e2e8f0',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '0.9rem'
+                    }}
+                    title="Limpiar búsqueda"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
             </div>
 
             <div className="campo">
@@ -497,18 +518,11 @@ const Reportes = () => {
                 <span className="card-sub">Registros en el evento</span>
               </div>
               <div className="card-resumen">
-                <span className="card-label">Pagos confirmados</span>
+                <span className="card-label">Ventas Realizadas</span>
                 <strong className="card-value">
                   {reporte.resumen?.pagos_realizados || 0}
                 </strong>
-                <span className="card-sub">Entradas listas</span>
-              </div>
-              <div className="card-resumen">
-                <span className="card-label">Pagos pendientes</span>
-                <strong className="card-value">
-                  {reporte.resumen?.pagos_pendientes || 0}
-                </strong>
-                <span className="card-sub">Por confirmar</span>
+                <span className="card-sub">Entradas confirmadas</span>
               </div>
               <div className="card-resumen card-entradas-total">
                 <span className="card-label">Entradas totales</span>

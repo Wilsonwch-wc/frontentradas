@@ -1,11 +1,16 @@
 /**
  * PlanoGrid.jsx
  * Plano de selección de asientos/mesas para eventos con layout de cuadrícula.
- * El cliente ve la cuadrícula y hace clic para seleccionar mesas/sillas.
+ * Auto-fit: el plano se ajusta automáticamente al ancho/pantalla para que
+ * se vea COMPLETO sin necesidad de deslizar (scroll), manteniendo controles de Zoom
+ * para que el usuario pueda acercarse a una zona si lo desea.
  */
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 
-const CELL_SIZE = 32; // px por celda en la vista del cliente
+const CELL_SIZE = 32; // px por celda a zoom 1.0
+const MIN_ZOOM = 0.2;
+const MAX_ZOOM = 2.5;
+const ZOOM_STEP = 0.1;
 
 // Colores para el plano del cliente
 const COLORES = {
@@ -37,6 +42,7 @@ const PlanoGrid = ({
 }) => {
   const [hoveredKey, setHoveredKey] = useState(null);
   const [zoom, setZoom] = useState(1.0);
+  const containerRef = useRef(null);
 
   // Reconstruir mapa de celdas desde los datos del evento
   const { celdas, areasFiltradas, mesasFiltradas, asientosFiltrados, minCol, maxCol, minRow, maxRow } = useMemo(() => {
@@ -46,7 +52,6 @@ const PlanoGrid = ({
 
     const isFiltered = !!zonaSeleccionadaId;
     const filteredAreas = isFiltered ? areas.filter(a => String(a.id) === String(zonaSeleccionadaId)) : areas;
-    // Compra.jsx ya hace el fetch de las mesas y asientos correspondientes a la zona (incluyendo los de area_id=null que caen dentro de las coordenadas).
     const filteredMesas = mesas;
     const filteredAsientos = asientos;
 
@@ -188,6 +193,36 @@ const PlanoGrid = ({
     return { celdas, areasFiltradas: filteredAreas, mesasFiltradas: filteredMesas, asientosFiltrados: filteredAsientos, minCol: minC, maxCol: maxC, minRow: minR, maxRow: maxR };
   }, [evento, zonaSeleccionadaId]);
 
+  // Función para calcular el zoom óptimo que encaja todo en el contenedor
+  const calcularAutoZoom = () => {
+    if (!containerRef.current) return;
+    const containerWidth = containerRef.current.clientWidth - 28; // márgenes/padding
+    const totalCols = maxCol - minCol + 1;
+    const totalRows = maxRow - minRow + 1;
+
+    if (totalCols <= 0 || totalRows <= 0) return;
+
+    const zoomW = containerWidth / (totalCols * CELL_SIZE + totalCols);
+    const maxH = window.innerHeight * 0.70;
+    const zoomH = maxH / (totalRows * CELL_SIZE + totalRows);
+
+    // Ajuste automático exacto para que TODO se vea sin scroll
+    const fitZoom = Math.min(zoomW, zoomH, 1.0);
+    const clampedZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, Math.round(fitZoom * 100) / 100));
+
+    setZoom(clampedZoom);
+  };
+
+  // Auto-ajustar al cargar o cuando cambia la zona/datos o el tamaño de la ventana
+  useEffect(() => {
+    const t = setTimeout(calcularAutoZoom, 60);
+    window.addEventListener('resize', calcularAutoZoom);
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener('resize', calcularAutoZoom);
+    };
+  }, [maxCol, minCol, maxRow, minRow, zonaSeleccionadaId]);
+
   const seleccionadosIds = useMemo(() => {
     const set = new Set();
     selecciones.forEach(s => {
@@ -204,7 +239,7 @@ const PlanoGrid = ({
     if (!celda) return;
 
     if (celda.tipo === 'mesa') {
-      if (mesasOcupadas.includes(celda.id)) return; // Ocupada
+      if (mesasOcupadas.includes(celda.id)) return;
       onToggleSeleccion({
         type: 'mesa_completa',
         id: celda.id,
@@ -219,7 +254,7 @@ const PlanoGrid = ({
         mesa_id: celda.id,
       });
     } else if (celda.tipo === 'silla') {
-      if (asientosOcupados.includes(celda.id)) return; // Ocupada
+      if (asientosOcupados.includes(celda.id)) return;
       onToggleSeleccion({
         type: 'asiento',
         id: celda.id,
@@ -234,68 +269,80 @@ const PlanoGrid = ({
   // Renderizar celdas
   const renderCeldas = () => {
     const cols = [];
+    const cellPx = Math.max(8, CELL_SIZE * zoom);
+
     for (let r = minRow; r <= maxRow; r++) {
       for (let c = minCol; c <= maxCol; c++) {
         const key = `${r},${c}`;
         const celda = celdas[key];
         const isHovered = hoveredKey === key;
 
-        let bg = COLORES.vacio;
-        let border = '#e2e8f0';
+        let bg = 'transparent';
+        let border = 'none';
         let label = '';
         let cursor = 'default';
         let textColor = '#475569';
         let icon = '';
+        let borderRadius = 0;
+        let shadow = 'none';
 
         if (!celda) {
-          bg = isHovered ? '#f1f5f9' : COLORES.vacio;
+          bg = 'transparent';
+          border = 'none';
         } else if (celda.tipo === 'area') {
-          bg = celda.color + '1A';
-          border = celda.color + '60';
+          bg = celda.color + '25'; // fondo suave del área
+          border = 'none';
         } else if (celda.tipo === 'escenario') {
           bg = COLORES.escenario;
-          border = '#000000';
+          border = 'none';
           icon = '🎤';
           textColor = '#ffffff';
+          borderRadius = 2;
         } else if (celda.tipo === 'mesa') {
           const ocupada = mesasOcupadas.includes(celda.id);
           const seleccionada = seleccionadosIds.has(`mesa_${celda.id}`);
+          borderRadius = 4;
           if (ocupada) {
             bg = COLORES.mesa.ocupada;
-            border = '#d1d5db';
+            border = '1px solid #cbd5e1';
             textColor = COLORES.textOcupada;
             cursor = 'not-allowed';
           } else if (seleccionada) {
             bg = COLORES.mesa.seleccionada;
-            border = '#b45309';
+            border = '1.5px solid #b45309';
             textColor = '#fff';
             cursor = 'pointer';
+            shadow = '0 0 6px rgba(245, 158, 11, 0.6)';
           } else {
             bg = isHovered ? '#fbbf24' : COLORES.mesa.libre;
-            border = '#000000';
+            border = '1.5px solid #000000';
             textColor = COLORES.textLibre;
             cursor = 'pointer';
+            shadow = '0 1px 3px rgba(0,0,0,0.1)';
           }
           icon = '';
           label = celda.label;
         } else if (celda.tipo === 'silla') {
           const ocupada = asientosOcupados.includes(celda.id);
           const seleccionada = seleccionadosIds.has(`silla_${celda.id}`);
+          borderRadius = 4;
           if (ocupada) {
             bg = COLORES.silla.ocupada;
-            border = '#d1d5db';
+            border = '1px solid #cbd5e1';
             textColor = COLORES.textOcupada;
             cursor = 'not-allowed';
           } else if (seleccionada) {
             bg = COLORES.silla.seleccionada;
-            border = '#1d4ed8';
+            border = '1.5px solid #1d4ed8';
             textColor = '#fff';
             cursor = 'pointer';
+            shadow = '0 0 6px rgba(59, 130, 246, 0.6)';
           } else {
             bg = isHovered ? '#60a5fa' : COLORES.silla.libre;
-            border = '#1d4ed8';
+            border = '1.5px solid #1d4ed8';
             textColor = '#1e3a5f';
             cursor = 'pointer';
+            shadow = '0 1px 3px rgba(0,0,0,0.1)';
           }
           icon = '';
           label = celda.label;
@@ -312,16 +359,19 @@ const PlanoGrid = ({
                 : ''
             }
             style={{
-              width: CELL_SIZE * zoom,
-              height: CELL_SIZE * zoom,
+              width: cellPx,
+              height: cellPx,
               backgroundColor: bg,
-              border: `1px solid ${border}`,
+              border: border,
+              borderRadius: borderRadius,
+              boxShadow: shadow,
               boxSizing: 'border-box',
               cursor,
               position: 'relative',
               flexShrink: 0,
               userSelect: 'none',
-              transition: 'background-color 0.1s',
+              transition: 'background-color 0.15s, transform 0.1s',
+              zIndex: (celda?.tipo === 'mesa' || celda?.tipo === 'silla') ? 2 : 1,
             }}
             onMouseEnter={() => setHoveredKey(key)}
             onMouseLeave={() => setHoveredKey(null)}
@@ -332,31 +382,34 @@ const PlanoGrid = ({
                 position: 'absolute', inset: 0,
                 display: 'flex', flexDirection: 'column',
                 alignItems: 'center', justifyContent: 'center',
-                fontSize: Math.max(12, Math.round(14 * zoom)),
+                fontSize: Math.max(6, Math.round(13 * zoom)),
                 fontWeight: 800, color: textColor,
                 lineHeight: 1, textAlign: 'center', padding: 1,
                 overflow: 'hidden', pointerEvents: 'none',
               }}>
-                {zoom > 0.7 && icon && <span style={{ fontSize: Math.max(12, Math.round(14 * zoom)) }}>{icon}</span>}
-                <span>{label.length > 5 ? label.slice(0, 5) : label}</span>
+                {zoom > 0.55 && icon && <span style={{ fontSize: Math.max(7, Math.round(13 * zoom)) }}>{icon}</span>}
+                {zoom >= 0.35 && <span>{label.length > 5 ? label.slice(0, 5) : label}</span>}
               </span>
             )}
           </div>
         );
       }
     }
+
     return (
       <div
         className="plano-grid"
         style={{
           display: 'grid',
-          gridTemplateColumns: `repeat(${maxCol - minCol + 1}, ${CELL_SIZE * zoom}px)`,
-          gridTemplateRows: `repeat(${maxRow - minRow + 1}, ${CELL_SIZE * zoom}px)`,
-          gap: '1px',
-          backgroundColor: '#e2e8f0',
-          padding: '1px',
+          gridTemplateColumns: `repeat(${maxCol - minCol + 1}, ${cellPx}px)`,
+          gridTemplateRows: `repeat(${maxRow - minRow + 1}, ${cellPx}px)`,
+          gap: '0px',
+          backgroundColor: '#ffffff',
+          padding: '8px',
+          borderRadius: '8px',
           boxSizing: 'border-box',
           width: 'max-content',
+          margin: '0 auto', // Centrar horizontalmente el plano en su contenedor
         }}
       >
         {cols}
@@ -365,37 +418,39 @@ const PlanoGrid = ({
   };
 
   // Etiquetas de áreas superpuestas
-  const renderAreaLabels = () =>
-    areasFiltradas.map(area => (
+  const renderAreaLabels = () => {
+    const cellPx = Math.max(8, CELL_SIZE * zoom) + 1;
+    return areasFiltradas.map(area => (
       <div
         key={area.id}
         style={{
           position: 'absolute',
-          left: ((parseInt(area.posicion_x) || 0) - minCol) * CELL_SIZE * zoom + 4,
-          top: ((parseInt(area.posicion_y) || 0) - minRow) * CELL_SIZE * zoom + 2,
-          background: (area.color || '#666') + 'CC',
+          left: ((parseInt(area.posicion_x) || 0) - minCol) * cellPx + 4,
+          top: ((parseInt(area.posicion_y) || 0) - minRow) * cellPx + 2,
+          background: (area.color || '#666') + 'D0',
           color: '#fff',
-          fontSize: Math.max(9, Math.round(11 * zoom)),
+          fontSize: Math.max(8, Math.round(11 * zoom)),
           fontWeight: 800,
           padding: '1px 5px',
           borderRadius: 3,
           pointerEvents: 'none',
           whiteSpace: 'nowrap',
-          maxWidth: (parseInt(area.ancho) || 1) * CELL_SIZE * zoom - 8,
+          maxWidth: (parseInt(area.ancho) || 1) * cellPx - 8,
           overflow: 'hidden',
           textOverflow: 'ellipsis',
-          textShadow: '0 1px 2px #0006',
+          textShadow: '0 1px 2px #000a',
           zIndex: 10,
         }}
       >
-        {area.nombre}
+        {zoom >= 0.35 ? area.nombre : ''}
       </div>
     ));
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       {/* Leyenda */}
-      <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', fontSize: 12, color: '#475569', marginBottom: 4 }}>
+      <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', fontSize: 12, color: '#475569', marginBottom: 2 }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
           <span style={{ display: 'inline-block', width: 14, height: 14, borderRadius: 3, background: COLORES.mesa.libre, border: '1px solid #f59e0b' }} />
           Mesa disponible
@@ -414,28 +469,44 @@ const PlanoGrid = ({
         </span>
       </div>
 
-      {/* Zoom */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-        <span style={{ fontSize: 12, color: '#475569' }}>Zoom:</span>
-        <button onClick={() => setZoom(z => Math.min(2, z + 0.1))} style={btnStyle}>+</button>
-        <span style={{ fontSize: 12, color: '#1e293b', minWidth: 38, textAlign: 'center' }}>{Math.round(zoom * 100)}%</span>
-        <button onClick={() => setZoom(z => Math.max(0.3, z - 0.1))} style={btnStyle}>−</button>
-        <button onClick={() => setZoom(1)} style={btnStyle}>⊡</button>
+      {/* Controles de zoom */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2, flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 12, color: '#475569', fontWeight: 600 }}>Zoom:</span>
+        <button onClick={() => setZoom(z => Math.min(MAX_ZOOM, Math.round((z + ZOOM_STEP) * 10) / 10))} style={btnStyle}>+</button>
+        <span style={{ fontSize: 12, color: '#1e293b', minWidth: 42, textAlign: 'center', fontWeight: 700 }}>{Math.round(zoom * 100)}%</span>
+        <button onClick={() => setZoom(z => Math.max(MIN_ZOOM, Math.round((z - ZOOM_STEP) * 10) / 10))} style={btnStyle}>−</button>
+        <button onClick={() => setZoom(1.0)} style={{ ...btnStyle, fontSize: 11, padding: '2px 7px' }} title="Zoom 100%">100%</button>
+        <button
+          onClick={calcularAutoZoom}
+          style={{ ...btnStyle, fontSize: 11, padding: '2px 8px', color: '#2563eb', borderColor: '#bfdbfe', background: '#eff6ff', fontWeight: 600 }}
+          title="Ajustar para ver todo el plano completo en pantalla"
+        >
+          ⤢ Ver Todo
+        </button>
       </div>
 
-      {/* Grid scrollable */}
-      <div style={{
-        overflow: 'auto',
-        border: '1px solid #e2e8f0',
-        borderRadius: 8,
-        background: '#f8fafc',
-        maxHeight: '500px',
-        position: 'relative',
-      }}>
-        <div style={{ display: 'inline-flex', flexDirection: 'column', position: 'relative', padding: 12 }}>
+      {/* Contenedor del plano adaptativo: todo el plano visible sin scrollbars forzados */}
+      <div
+        ref={containerRef}
+        style={{
+          border: '1px solid #e2e8f0',
+          borderRadius: 8,
+          background: '#f8fafc',
+          position: 'relative',
+          width: '100%',
+          overflowX: 'auto',
+          overflowY: 'auto',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'flex-start',
+          padding: '12px 6px',
+          boxSizing: 'border-box',
+        }}
+      >
+        <div style={{ display: 'inline-flex', flexDirection: 'column', position: 'relative' }}>
           {renderCeldas()}
           {/* Etiquetas de área */}
-          <div style={{ position: 'absolute', top: 12, left: 12, pointerEvents: 'none' }}>
+          <div style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none' }}>
             {renderAreaLabels()}
           </div>
         </div>
@@ -446,7 +517,8 @@ const PlanoGrid = ({
         <div style={{
           background: '#ffffff', border: '1px solid #cbd5e1',
           borderRadius: 8, padding: '8px 12px', fontSize: 12, color: '#1e293b',
-          display: 'flex', gap: 16, boxShadow: '0 4px 6px rgba(0,0,0,0.05)'
+          display: 'flex', gap: 16, boxShadow: '0 4px 6px rgba(0,0,0,0.05)',
+          flexWrap: 'wrap',
         }}>
           {celdas[hoveredKey].tipo === 'mesa' ? (
             <>

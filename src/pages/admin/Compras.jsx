@@ -14,9 +14,16 @@ const Compras = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [codigoBusqueda, setCodigoBusqueda] = useState("");
+  const [busquedaActiva, setBusquedaActiva] = useState("");
   const [compraSeleccionada, setCompraSeleccionada] = useState(null);
   const [mostrarDetalle, setMostrarDetalle] = useState(false);
   const [filtroEstado, setFiltroEstado] = useState(""); // 'PAGO_PENDIENTE', 'PAGO_REALIZADO', etc.
+  const [filtroTipoPago, setFiltroTipoPago] = useState(""); // 'QR', 'EFECTIVO', 'PASARELA'
+  const [fechaDesde, setFechaDesde] = useState("");
+  const [fechaHasta, setFechaHasta] = useState("");
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCompras, setTotalCompras] = useState(0);
   const [eventoFiltro, setEventoFiltro] = useState(""); // '', 'activo', o id del evento
   const [listaEventos, setListaEventos] = useState([]);
   const [confirmando, setConfirmando] = useState(false);
@@ -27,7 +34,7 @@ const Compras = () => {
 
   useEffect(() => {
     cargarCompras();
-  }, [filtroEstado, eventoFiltro]);
+  }, [filtroEstado, eventoFiltro, filtroTipoPago, fechaDesde, fechaHasta, page, busquedaActiva]);
 
   // Buscar automáticamente si viene el parámetro "buscar" en la URL
   useEffect(() => {
@@ -78,12 +85,20 @@ const Compras = () => {
   const cargarCompras = async () => {
     try {
       setLoading(true);
-      const params = {};
+      const params = { page, limit: 10 };
       if (filtroEstado) params.estado = filtroEstado;
       if (eventoFiltro) params.evento_id = eventoFiltro;
+      if (filtroTipoPago) params.tipo_pago = filtroTipoPago;
+      if (fechaDesde) params.fecha_desde = fechaDesde;
+      if (fechaHasta) params.fecha_hasta = fechaHasta;
+      if (busquedaActiva) params.busqueda = busquedaActiva;
       const response = await api.get("/compras", { params });
       if (response.data.success) {
         setCompras(response.data.data);
+        if (response.data.totalPages != null) {
+          setTotalPages(response.data.totalPages);
+          setTotalCompras(response.data.total || 0);
+        }
       }
     } catch (error) {
       console.error("Error al cargar compras:", error);
@@ -94,33 +109,35 @@ const Compras = () => {
   };
 
   const buscarPorCodigo = async () => {
-    if (!codigoBusqueda.trim()) {
-      showAlert("Por favor ingresa un código", { type: "warning" });
+    const term = codigoBusqueda.trim();
+    if (!term) {
+      setBusquedaActiva("");
+      setPage(1);
       return;
     }
 
-    try {
-      setLoading(true);
-      const response = await api.get(
-        `/compras/codigo/${codigoBusqueda.trim()}`,
-      );
-      if (response.data.success) {
-        setCompraSeleccionada(response.data.data);
-        setMostrarDetalle(true);
-        setError("");
-      } else {
-        setError("Compra no encontrada");
-        setCompraSeleccionada(null);
-        setMostrarDetalle(false);
+    // Si parece un código exacto ENT-..., intentar abrir el detalle directamente
+    if (term.toUpperCase().startsWith("ENT-")) {
+      try {
+        setLoading(true);
+        const response = await api.get(
+          `/compras/codigo/${encodeURIComponent(term)}`,
+        );
+        if (response.data.success && response.data.data) {
+          setCompraSeleccionada(response.data.data);
+          setMostrarDetalle(true);
+          setError("");
+          setLoading(false);
+          return;
+        }
+      } catch (err) {
+        console.log("No se abrió directamente por código, aplicando filtro:", err);
       }
-    } catch (error) {
-      console.error("Error al buscar compra:", error);
-      setError("Compra no encontrada con ese código");
-      setCompraSeleccionada(null);
-      setMostrarDetalle(false);
-    } finally {
-      setLoading(false);
     }
+
+    // Para teléfonos, nombres, emails o códigos parciales: filtrar la lista
+    setBusquedaActiva(term);
+    setPage(1);
   };
 
   const verDetalle = async (compra) => {
@@ -239,6 +256,220 @@ const Compras = () => {
     } finally {
       setConfirmando(false);
     }
+  };
+
+  const renderUbicacionCompra = (compra) => {
+    const elementos = [];
+    const mesasMostradas = new Set();
+
+    // 1. Mesas completas desde compras_mesas
+    if (compra.mesas_detalle && compra.mesas_detalle.length > 0) {
+      compra.mesas_detalle.forEach((m, idx) => {
+        const mesaCodigo = m.codigo_mesa || (m.numero_mesa != null ? `Mesa ${m.numero_mesa}` : `Mesa ${m.mesa_id || ''}`);
+        const mesaNombre = String(mesaCodigo).startsWith('Mesa') ? mesaCodigo : `Mesa ${mesaCodigo}`;
+        const area = m.area_nombre ? ` • ${m.area_nombre}` : '';
+        const sillas = m.cantidad_sillas ? ` [${m.cantidad_sillas} sillas]` : '';
+        if (m.mesa_id) mesasMostradas.add(Number(m.mesa_id));
+        if (m.codigo_mesa) mesasMostradas.add(String(m.codigo_mesa).toLowerCase());
+
+        elementos.push(
+          <span
+            key={`m-${idx}`}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              background: '#eff6ff',
+              border: '1px solid #bfdbfe',
+              color: '#1d4ed8',
+              padding: '3px 8px',
+              borderRadius: '6px',
+              fontSize: '0.82rem',
+              fontWeight: 700
+            }}
+          >
+            🏷️ {mesaNombre}{area}{sillas}
+          </span>
+        );
+      });
+    }
+
+    // 2. Asientos desde compras_asientos (agrupados por mesa o individuales)
+    if (compra.asientos_detalle && compra.asientos_detalle.length > 0) {
+      const porMesa = {};
+      const sinMesa = [];
+
+      compra.asientos_detalle.forEach((a) => {
+        const mesaKey = a.mesa_id || a.codigo_mesa || a.numero_mesa;
+        if (mesaKey) {
+          if (!porMesa[mesaKey]) {
+            porMesa[mesaKey] = {
+              mesa_id: a.mesa_id,
+              codigo_mesa: a.codigo_mesa || a.numero_mesa,
+              area_nombre: a.area_nombre,
+              tipo_precio_nombre: a.tipo_precio_nombre,
+              asientos: []
+            };
+          }
+          porMesa[mesaKey].asientos.push(a);
+        } else if (a.asiento_id != null || (a.numero_asiento && !String(a.numero_asiento).toLowerCase().includes('null'))) {
+          sinMesa.push(a);
+        }
+      });
+
+      // Procesar grupos por mesa
+      Object.keys(porMesa).forEach((key, idx) => {
+        const grupo = porMesa[key];
+        if (
+          (grupo.mesa_id && mesasMostradas.has(Number(grupo.mesa_id))) ||
+          (grupo.codigo_mesa && mesasMostradas.has(String(grupo.codigo_mesa).toLowerCase()))
+        ) {
+          return; // Ya mostrada en mesas_detalle
+        }
+
+        const rawCod = grupo.codigo_mesa || key;
+        const mesaCodigo = String(rawCod).startsWith('Mesa') ? rawCod : `Mesa ${rawCod}`;
+        const area = grupo.area_nombre ? ` • ${grupo.area_nombre}` : '';
+
+        // Extraer números de asientos válidos (ej: A5, SN, 1, 2)
+        const numsValidos = grupo.asientos
+          .map((a) => a.numero_asiento)
+          .filter((n) => n != null && n !== '' && !String(n).toLowerCase().includes('null') && String(n).toLowerCase() !== 'silla');
+
+        if (numsValidos.length > 0) {
+          elementos.push(
+            <span
+              key={`am-${idx}`}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                background: '#f0fdf4',
+                border: '1px solid #bbf7d0',
+                color: '#15803d',
+                padding: '3px 8px',
+                borderRadius: '6px',
+                fontSize: '0.82rem',
+                fontWeight: 600
+              }}
+            >
+              🪑 Sillas {numsValidos.join(', ')} ({mesaCodigo}){area}
+            </span>
+          );
+        } else {
+          // Es una mesa completa (N sillas)
+          elementos.push(
+            <span
+              key={`am-${idx}`}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                background: '#eff6ff',
+                border: '1px solid #bfdbfe',
+                color: '#1d4ed8',
+                padding: '3px 8px',
+                borderRadius: '6px',
+                fontSize: '0.82rem',
+                fontWeight: 700
+              }}
+            >
+              🏷️ {mesaCodigo}{area} [{grupo.asientos.length} sillas]
+            </span>
+          );
+        }
+      });
+
+      // Asientos sueltos sin mesa
+      if (sinMesa.length > 0) {
+        const numsSinMesa = sinMesa
+          .map((a) => a.numero_asiento || (a.asiento_id ? `#${a.asiento_id}` : null))
+          .filter(Boolean);
+        if (numsSinMesa.length > 0) {
+          const area = sinMesa[0]?.area_nombre ? ` • ${sinMesa[0].area_nombre}` : '';
+          elementos.push(
+            <span
+              key="sin-mesa"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                background: '#f0fdf4',
+                border: '1px solid #bbf7d0',
+                color: '#15803d',
+                padding: '3px 8px',
+                borderRadius: '6px',
+                fontSize: '0.82rem',
+                fontWeight: 600
+              }}
+            >
+              🪑 Silla{numsSinMesa.length > 1 ? 's' : ''} {numsSinMesa.join(', ')}{area}
+            </span>
+          );
+        }
+      }
+    }
+
+    // 3. Áreas generales / personas de pie
+    if (compra.areas_detalle && compra.areas_detalle.length > 0) {
+      compra.areas_detalle.forEach((ar, idx) => {
+        elementos.push(
+          <span
+            key={`ar-${idx}`}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              background: '#fefce8',
+              border: '1px solid #fef08a',
+              color: '#854d0e',
+              padding: '3px 8px',
+              borderRadius: '6px',
+              fontSize: '0.82rem',
+              fontWeight: 600
+            }}
+          >
+            👥 {ar.area_nombre || 'Zona General'} [{ar.cantidad} personas]
+          </span>
+        );
+      });
+    } else if (compra.generales_detalle && compra.generales_detalle.length > 0) {
+      compra.generales_detalle.forEach((g, idx) => {
+        elementos.push(
+          <span
+            key={`gen-${idx}`}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              background: '#fefce8',
+              border: '1px solid #fef08a',
+              color: '#854d0e',
+              padding: '3px 8px',
+              borderRadius: '6px',
+              fontSize: '0.82rem',
+              fontWeight: 600
+            }}
+          >
+            👥 {g.tipo_nombre || 'Entrada General'} [{g.cantidad} personas]
+          </span>
+        );
+      });
+    }
+
+    if (elementos.length === 0) {
+      return (
+        <span style={{ color: '#64748b', fontSize: '0.85rem' }}>
+          🎟️ {compra.cantidad || 1} entrada(s)
+        </span>
+      );
+    }
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', marginTop: '4px' }}>
+        {elementos}
+      </div>
+    );
   };
 
   const copiarCodigo = (codigo) => {
@@ -507,62 +738,134 @@ const Compras = () => {
       <div className="admin-content">
         <div className="compras-header">
           <div>
-            <h1>Gestión de Compras</h1>
-            <p>Verifica y confirma los pagos de los clientes</p>
+            <h1>Gestión de Compras y Ventas</h1>
+            <p>Historial de ventas y tickets confirmados</p>
           </div>
         </div>
 
-        {/* Búsqueda por código único */}
-        <div className="busqueda-codigo">
-          <div className="busqueda-input-group">
-            <input
-              type="text"
-              placeholder="Buscar por código único (ej: ENT-1765215246044-1234)"
-              value={codigoBusqueda}
-              onChange={(e) => setCodigoBusqueda(e.target.value)}
-              onKeyPress={(e) => e.key === "Enter" && buscarPorCodigo()}
-              className="input-busqueda"
-            />
-            <button onClick={buscarPorCodigo} className="btn-buscar">
-              🔍 Buscar
+        {/* Barra de Búsqueda Moderna */}
+        <div className="busqueda-section">
+          <div className="busqueda-box">
+            <div className="busqueda-input-wrapper">
+              <span className="busqueda-icon">🔍</span>
+              <input
+                type="text"
+                placeholder="Buscar por mesa (ej: 5, M-05), cliente, teléfono o código..."
+                value={codigoBusqueda}
+                onChange={(e) => setCodigoBusqueda(e.target.value)}
+                onKeyPress={(e) => e.key === "Enter" && buscarPorCodigo()}
+                className="busqueda-input-modern"
+              />
+              {codigoBusqueda && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCodigoBusqueda("");
+                    setBusquedaActiva("");
+                    setPage(1);
+                  }}
+                  className="busqueda-clear-btn"
+                  title="Limpiar búsqueda"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+            <button onClick={buscarPorCodigo} className="btn-buscar-modern">
+              Buscar
             </button>
           </div>
         </div>
 
-        {/* Filtros */}
-        <div className="filtros-compras">
-          <div className="filtro-group">
-            <label>Filtrar por evento:</label>
-            <select
-              value={eventoFiltro}
-              onChange={(e) => setEventoFiltro(e.target.value)}
-              className="select-filtro"
-            >
-              <option value="">Todos los eventos</option>
-              <option value="activo">Evento activo (próximo)</option>
-              {listaEventos.map((ev) => (
-                <option key={ev.id} value={ev.id}>
-                  {ev.titulo || `Evento #${ev.id}`}
-                  {ev.hora_inicio
-                    ? ` — ${new Date(ev.hora_inicio).toLocaleDateString("es-ES")}`
-                    : ""}
-                </option>
-              ))}
-            </select>
+        {/* Panel de Filtros Moderno */}
+        <div className="filtros-card">
+          <div className="filtros-header">
+            <span className="filtros-title">⚙️ Filtros de búsqueda</span>
+            {(filtroEstado || eventoFiltro || filtroTipoPago || fechaDesde || fechaHasta) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setFiltroEstado("");
+                  setEventoFiltro("");
+                  setFiltroTipoPago("");
+                  setFechaDesde("");
+                  setFechaHasta("");
+                  setPage(1);
+                }}
+                className="btn-limpiar-filtros"
+              >
+                ✕ Limpiar filtros
+              </button>
+            )}
           </div>
-          <div className="filtro-group">
-            <label>Filtrar por estado:</label>
-            <select
-              value={filtroEstado}
-              onChange={(e) => setFiltroEstado(e.target.value)}
-              className="select-filtro"
-            >
-              <option value="">Todos</option>
-              <option value="PAGO_PENDIENTE">Pago Pendiente</option>
-              <option value="PAGO_REALIZADO">Pago Realizado</option>
-              <option value="CANCELADO">Cancelado</option>
-              <option value="ENTRADA_USADA">Entrada Usada</option>
-            </select>
+          <div className="filtros-grid">
+            <div className="filtro-item">
+              <label>Evento:</label>
+              <select
+                value={eventoFiltro}
+                onChange={(e) => { setEventoFiltro(e.target.value); setPage(1); }}
+                className="select-filtro-modern"
+              >
+                <option value="">Todos los eventos</option>
+                <option value="activo">Evento activo (próximo)</option>
+                {listaEventos.map((ev) => (
+                  <option key={ev.id} value={ev.id}>
+                    {ev.titulo || `Evento #${ev.id}`}
+                    {ev.hora_inicio
+                      ? ` — ${new Date(ev.hora_inicio).toLocaleDateString("es-ES")}`
+                      : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="filtro-item">
+              <label>Estado:</label>
+              <select
+                value={filtroEstado}
+                onChange={(e) => { setFiltroEstado(e.target.value); setPage(1); }}
+                className="select-filtro-modern"
+              >
+                <option value="">Ventas Confirmadas (Pagadas)</option>
+                <option value="PAGO_REALIZADO">Pago Realizado</option>
+                <option value="ENTRADA_USADA">Entrada Usada (Ingresada)</option>
+                <option value="TODOS_INCLUYE_PENDIENTES">Ver Todo (incluye intentos)</option>
+              </select>
+            </div>
+
+            <div className="filtro-item">
+              <label>Tipo de Pago:</label>
+              <select
+                value={filtroTipoPago}
+                onChange={(e) => { setFiltroTipoPago(e.target.value); setPage(1); }}
+                className="select-filtro-modern"
+              >
+                <option value="">Todos los pagos</option>
+                <option value="QR">QR</option>
+                <option value="EFECTIVO">Efectivo</option>
+                <option value="PASARELA">Pasarela</option>
+              </select>
+            </div>
+
+            <div className="filtro-item">
+              <label>Desde:</label>
+              <input
+                type="date"
+                value={fechaDesde}
+                onChange={(e) => { setFechaDesde(e.target.value); setPage(1); }}
+                className="select-filtro-modern"
+              />
+            </div>
+
+            <div className="filtro-item">
+              <label>Hasta:</label>
+              <input
+                type="date"
+                value={fechaHasta}
+                onChange={(e) => { setFechaHasta(e.target.value); setPage(1); }}
+                className="select-filtro-modern"
+              />
+            </div>
           </div>
         </div>
 
@@ -1073,7 +1376,8 @@ const Compras = () => {
                     <tr>
                       <th>Código</th>
                       <th>Cliente</th>
-                      <th>Evento</th>
+                      <th>Teléfono</th>
+                      <th>Evento y Ubicación (Mesas / Asientos)</th>
                       <th>Cantidad</th>
                       <th>Total</th>
                       <th>Estado</th>
@@ -1098,16 +1402,73 @@ const Compras = () => {
                             </button>
                           </div>
                         </td>
-                        <td>{compra.cliente_nombre}</td>
-                        <td>{compra.evento_titulo}</td>
-                        <td>{compra.cantidad}</td>
-                        <td>${parseFloat(compra.total).toFixed(2)}</td>
+                        <td>
+                          <div style={{ fontWeight: 600, color: '#1e293b' }}>
+                            {compra.cliente_nombre || 'Sin nombre'}
+                          </div>
+                          {compra.cliente_email && (
+                            <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                              {compra.cliente_email}
+                            </div>
+                          )}
+                        </td>
+                        <td>
+                          {compra.cliente_telefono ? (
+                            <a
+                              href={`https://wa.me/${compra.cliente_telefono.replace(/[^\d]/g, '')}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                color: '#059669',
+                                textDecoration: 'none',
+                                fontWeight: 600,
+                                fontSize: '0.9rem'
+                              }}
+                              title="Abrir WhatsApp"
+                            >
+                              📱 {compra.cliente_telefono}
+                            </a>
+                          ) : (
+                            <span style={{ color: '#94a3b8', fontSize: '0.85rem' }}>-</span>
+                          )}
+                        </td>
+                        <td>
+                          <div style={{ fontWeight: 600, color: '#0f172a', marginBottom: '4px' }}>
+                            {compra.evento_titulo}
+                          </div>
+                          {renderUbicacionCompra(compra)}
+                        </td>
+                        <td>
+                          <span style={{ fontWeight: 600, color: '#334155' }}>
+                            {compra.cantidad}
+                          </span>
+                        </td>
+                        <td>
+                          <strong style={{ color: '#15803d', fontSize: '0.95rem' }}>
+                            Bs. {parseFloat(compra.total).toFixed(2)}
+                          </strong>
+                        </td>
                         <td>{getEstadoBadge(compra.estado)}</td>
-                        <td>{formatearFecha(compra.fecha_compra)}</td>
+                        <td style={{ fontSize: '0.85rem', color: '#64748b' }}>
+                          {formatearFecha(compra.fecha_compra)}
+                        </td>
                         <td>
                           <button
                             onClick={() => verDetalle(compra)}
                             className="btn-ver"
+                            style={{
+                              padding: '6px 14px',
+                              borderRadius: '6px',
+                              background: '#2563eb',
+                              color: 'white',
+                              border: 'none',
+                              cursor: 'pointer',
+                              fontWeight: 600,
+                              fontSize: '0.85rem'
+                            }}
                           >
                             Ver Detalle
                           </button>
@@ -1117,7 +1478,7 @@ const Compras = () => {
                   </tbody>
                 </table>
 
-                {/* Tarjetas para móvil */}
+                {/* Vista en tarjetas para pantallas móviles */}
                 <div className="compras-cards-mobile">
                   {compras.map((compra) => (
                     <div key={compra.id} className="compra-card">
@@ -1144,11 +1505,37 @@ const Compras = () => {
                           </span>
                         </div>
                         <div className="compra-card-row">
+                          <span className="compra-card-label">Teléfono:</span>
+                          <span className="compra-card-value">
+                            {compra.cliente_telefono ? (
+                              <a
+                                href={`https://wa.me/${compra.cliente_telefono.replace(/[^\d]/g, '')}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{ color: '#059669', textDecoration: 'none', fontWeight: 600 }}
+                              >
+                                📱 {compra.cliente_telefono}
+                              </a>
+                            ) : (
+                              '-'
+                            )}
+                          </span>
+                        </div>
+                        <div className="compra-card-row">
                           <span className="compra-card-label">Evento:</span>
                           <span className="compra-card-value">
                             {compra.evento_titulo}
                           </span>
                         </div>
+
+                        {/* Ubicación en móvil */}
+                        <div className="compra-card-row">
+                          <span className="compra-card-label">Ubicación:</span>
+                          <div className="compra-card-value">
+                            {renderUbicacionCompra(compra)}
+                          </div>
+                        </div>
+
                         <div className="compra-card-row">
                           <span className="compra-card-label">Cantidad:</span>
                           <span className="compra-card-value">
@@ -1158,7 +1545,7 @@ const Compras = () => {
                         <div className="compra-card-row">
                           <span className="compra-card-label">Total:</span>
                           <span className="compra-card-value compra-card-total">
-                            ${parseFloat(compra.total).toFixed(2)}
+                            Bs. {parseFloat(compra.total).toFixed(2)}
                           </span>
                         </div>
                         <div className="compra-card-row">
@@ -1179,6 +1566,60 @@ const Compras = () => {
                     </div>
                   ))}
                 </div>
+
+                {/* Controles de Paginación */}
+                {totalPages > 1 && (
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                    gap: '10px',
+                    margin: '20px 0 12px 0',
+                    padding: '10px',
+                    background: '#f8fafc',
+                    borderRadius: '10px',
+                    border: '1px solid #e2e8f0'
+                  }}>
+                    <button
+                      onClick={() => setPage(p => Math.max(1, p - 1))}
+                      disabled={page <= 1}
+                      style={{
+                        padding: '8px 16px',
+                        borderRadius: '8px',
+                        border: '1px solid #cbd5e1',
+                        background: page <= 1 ? '#f1f5f9' : '#ffffff',
+                        color: page <= 1 ? '#94a3b8' : '#1e293b',
+                        cursor: page <= 1 ? 'not-allowed' : 'pointer',
+                        fontWeight: 600,
+                        fontSize: '0.9rem'
+                      }}
+                    >
+                      ← Anterior
+                    </button>
+
+                    <span style={{ fontSize: '0.95rem', fontWeight: 600, color: '#475569' }}>
+                      Página {page} de {totalPages} {totalCompras > 0 && `(${totalCompras} compras)`}
+                    </span>
+
+                    <button
+                      onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                      disabled={page >= totalPages}
+                      style={{
+                        padding: '8px 16px',
+                        borderRadius: '8px',
+                        border: '1px solid #cbd5e1',
+                        background: page >= totalPages ? '#f1f5f9' : '#ffffff',
+                        color: page >= totalPages ? '#94a3b8' : '#1e293b',
+                        cursor: page >= totalPages ? 'not-allowed' : 'pointer',
+                        fontWeight: 600,
+                        fontSize: '0.9rem'
+                      }}
+                    >
+                      Siguiente →
+                    </button>
+                  </div>
+                )}
               </>
             )}
           </div>

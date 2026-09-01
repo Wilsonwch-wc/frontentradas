@@ -291,43 +291,42 @@ const Dashboard = () => {
                 icon="🎫"
               />
               <StatCard
-                title="Pagos confirmados"
+                title="Ventas Realizadas"
                 value={fmtNumber(data.pagos_confirmados)}
-                subtitle={`${fmtNumber(data.entradas_confirmadas)} entradas`}
+                subtitle={`${fmtNumber(data.entradas_confirmadas)} entradas vendidas`}
                 tone="green"
                 icon="✅"
               />
               <StatCard
-                title="Pagos pendientes"
-                value={fmtNumber(data.pagos_pendientes)}
-                subtitle={`${fmtNumber(data.entradas_pendientes)} entradas`}
-                tone="amber"
-                icon="⏳"
-                onClick={data.pagos_pendientes > 0 ? handleAbrirModalPendientes : undefined}
+                title="Entradas Ingresadas"
+                value={fmtNumber(data.entradas_usadas || 0)}
+                subtitle="Escaneadas en puerta"
+                tone="purple"
+                icon="🎟️"
               />
             </div>
 
             <div className="dash-grid">
               <StatCard
-                title="Ingresos confirmados"
+                title="Total Recaudado"
                 value={fmtMoney(data.ingresos_confirmados)}
-                subtitle="Pagos completados"
+                subtitle="Ventas confirmadas"
                 tone="emerald"
                 icon="💰"
               />
               <StatCard
-                title="Monto pendiente"
-                value={fmtMoney(data.monto_pendiente)}
-                subtitle="Por cobrar"
-                tone="orange"
-                icon="🧾"
-              />
-              <StatCard
-                title="Compras totales"
+                title="Compras Totales"
                 value={fmtNumber(data.compras)}
-                subtitle="Registros"
+                subtitle="Transacciones exitosas"
                 tone="slate"
                 icon="🛒"
+              />
+              <StatCard
+                title="Promedio por Venta"
+                value={data.compras > 0 ? fmtMoney(data.ingresos_confirmados / data.compras) : 'Bs. 0.00'}
+                subtitle="Ticket promedio"
+                tone="blue"
+                icon="📈"
               />
               <StatCard
                 title="Última actualización"
@@ -338,93 +337,35 @@ const Dashboard = () => {
               />
             </div>
 
-            {/* Gráficos */}
+            {/* Gráficos Ejecutivos de Ventas */}
             {data && (
-              <div style={{ marginTop: '30px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '20px' }}>
-                {/* Gráfico de Ingresos vs Pendientes */}
-                <div style={{ background: '#fff', padding: '20px', borderRadius: '14px', border: '1px solid #e5e7eb', boxShadow: '0 12px 30px rgba(15, 23, 42, 0.05)' }}>
-                  <h3 style={{ marginTop: 0, marginBottom: '20px', color: '#2c3e50', fontSize: '1.2rem' }}>Ingresos y Pendientes</h3>
-                  <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'flex-end', height: '200px', gap: '20px' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 }}>
-                      <div style={{ 
-                        width: '100%', 
-                        background: 'linear-gradient(to top, #28a745, #20c997)', 
-                        borderRadius: '8px 8px 0 0',
-                        height: `${Math.max(10, (data.ingresos_confirmados / (data.ingresos_confirmados + data.monto_pendiente || 1)) * 180)}px`,
-                        minHeight: '20px',
-                        display: 'flex',
-                        alignItems: 'flex-end',
-                        justifyContent: 'center',
-                        paddingBottom: '10px',
-                        color: 'white',
-                        fontWeight: 'bold'
-                      }}>
-                        {fmtMoney(data.ingresos_confirmados).replace(/\s/g, '')}
-                      </div>
-                      <div style={{ marginTop: '10px', fontWeight: 'bold', color: '#28a745' }}>Confirmados</div>
+              <div style={{ marginTop: '30px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '20px' }}>
+                {/* Resumen de Recaudación */}
+                <div style={{ background: '#fff', padding: '24px', borderRadius: '14px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.04)' }}>
+                  <h3 style={{ marginTop: 0, marginBottom: '16px', color: '#1e293b', fontSize: '1.15rem' }}>💰 Rendimiento de Ventas</h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: '#f8fafc', borderRadius: '10px' }}>
+                      <span style={{ fontWeight: 600, color: '#475569' }}>Total Recaudado:</span>
+                      <strong style={{ fontSize: '1.25rem', color: '#15803d' }}>{fmtMoney(data.ingresos_confirmados)}</strong>
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 }}>
-                      <div style={{ 
-                        width: '100%', 
-                        background: 'linear-gradient(to top, #ffc107, #fd7e14)', 
-                        borderRadius: '8px 8px 0 0',
-                        height: `${Math.max(10, (data.monto_pendiente / (data.ingresos_confirmados + data.monto_pendiente || 1)) * 180)}px`,
-                        minHeight: '20px',
-                        display: 'flex',
-                        alignItems: 'flex-end',
-                        justifyContent: 'center',
-                        paddingBottom: '10px',
-                        color: 'white',
-                        fontWeight: 'bold'
-                      }}>
-                        {fmtMoney(data.monto_pendiente).replace(/\s/g, '')}
-                      </div>
-                      <div style={{ marginTop: '10px', fontWeight: 'bold', color: '#ffc107' }}>Pendientes</div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: '#f8fafc', borderRadius: '10px' }}>
+                      <span style={{ fontWeight: 600, color: '#475569' }}>Entradas Vendidas:</span>
+                      <strong style={{ fontSize: '1.15rem', color: '#2563eb' }}>{fmtNumber(data.entradas_confirmadas)} tickets</strong>
                     </div>
                   </div>
                 </div>
 
-                {/* Gráfico de Compras por Estado */}
-                <div style={{ background: '#fff', padding: '20px', borderRadius: '14px', border: '1px solid #e5e7eb', boxShadow: '0 12px 30px rgba(15, 23, 42, 0.05)' }}>
-                  <h3 style={{ marginTop: 0, marginBottom: '20px', color: '#2c3e50', fontSize: '1.2rem' }}>Estado de Compras</h3>
-                  <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'flex-end', height: '200px', gap: '20px' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 }}>
-                      <div style={{ 
-                        width: '100%', 
-                        background: 'linear-gradient(to top, #28a745, #20c997)', 
-                        borderRadius: '8px 8px 0 0',
-                        height: `${Math.max(10, (data.pagos_confirmados / (data.compras || 1)) * 180)}px`,
-                        minHeight: '20px',
-                        display: 'flex',
-                        alignItems: 'flex-end',
-                        justifyContent: 'center',
-                        paddingBottom: '10px',
-                        color: 'white',
-                        fontWeight: 'bold',
-                        fontSize: '1.2rem'
-                      }}>
-                        {data.pagos_confirmados}
-                      </div>
-                      <div style={{ marginTop: '10px', fontWeight: 'bold', color: '#28a745', textAlign: 'center', fontSize: '0.9rem' }}>Confirmados</div>
+                {/* Control de Asistencia */}
+                <div style={{ background: '#fff', padding: '24px', borderRadius: '14px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.04)' }}>
+                  <h3 style={{ marginTop: 0, marginBottom: '16px', color: '#1e293b', fontSize: '1.15rem' }}>🎟️ Control de Asistencia y Aforo</h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: '#f8fafc', borderRadius: '10px' }}>
+                      <span style={{ fontWeight: 600, color: '#475569' }}>Tickets Emitidos:</span>
+                      <strong style={{ fontSize: '1.15rem', color: '#0f172a' }}>{fmtNumber(data.entradas_confirmadas)}</strong>
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 }}>
-                      <div style={{ 
-                        width: '100%', 
-                        background: 'linear-gradient(to top, #ffc107, #fd7e14)', 
-                        borderRadius: '8px 8px 0 0',
-                        height: `${Math.max(10, (data.pagos_pendientes / (data.compras || 1)) * 180)}px`,
-                        minHeight: '20px',
-                        display: 'flex',
-                        alignItems: 'flex-end',
-                        justifyContent: 'center',
-                        paddingBottom: '10px',
-                        color: 'white',
-                        fontWeight: 'bold',
-                        fontSize: '1.2rem'
-                      }}>
-                        {data.pagos_pendientes}
-                      </div>
-                      <div style={{ marginTop: '10px', fontWeight: 'bold', color: '#ffc107', textAlign: 'center', fontSize: '0.9rem' }}>Pendientes</div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: '#f8fafc', borderRadius: '10px' }}>
+                      <span style={{ fontWeight: 600, color: '#475569' }}>Ingresados al Evento:</span>
+                      <strong style={{ fontSize: '1.15rem', color: '#7c3aed' }}>{fmtNumber(data.entradas_usadas || 0)}</strong>
                     </div>
                   </div>
                 </div>

@@ -62,7 +62,7 @@ const EventoCard = ({ evento }) => {
           {evento.estado === 'proximamente' ? (
             <p className="evento-card-proximamente">PROXIMAMENTE</p>
           ) : (
-            <p className="evento-card-precio">${evento.precio?.toFixed(2) || '0.00'}</p>
+            <p className="evento-card-precio">Bs. {evento.precio?.toFixed(2) || '0.00'}</p>
           )}
         </div>
         <button className="evento-card-btn">Ver Detalles</button>

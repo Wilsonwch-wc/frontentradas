@@ -83,6 +83,7 @@ const Compra = () => {
   const [validandoCupon, setValidandoCupon] = useState(false);
   const [compraRecienCreada, setCompraRecienCreada] = useState(null);
   const [showModalVerificarPago, setShowModalVerificarPago] = useState(false);
+  const [showModalResumen, setShowModalResumen] = useState(false);
   const [compraConfirmada, setCompraConfirmada] = useState(null);
   const [confirmandoPago, setConfirmandoPago] = useState(false);
   const [enviandoBoleto, setEnviandoBoleto] = useState(false);
@@ -101,6 +102,7 @@ const Compra = () => {
   const eventoCompletoRef = useRef(null);
 
   const puedeOpcionesVentaAdmin = !!(canUseAdminSaleOptions && canUseAdminSaleOptions());
+  const esAdminOVendedor = !!((isAdmin && isAdmin()) || (user && (user.rol === 'admin' || user.rol === 'vendedor' || user.rol === 'vendedor_externo')));
 
   useEffect(() => {
     if (!puedeOpcionesVentaAdmin && (esRegaloAdmin || esOfertaAdmin || (precioEspecial || '').trim() !== '')) {
@@ -1226,53 +1228,62 @@ const Compra = () => {
     manejarClickPlano(pos.x, pos.y);
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    
-    // Prevenir doble envío
-    if (enviando) {
+    if (enviando) return;
+
+    // Validar datos de contacto
+    if (!formData.nombre.trim()) {
+      showAlert('Por favor ingresa tu nombre completo', { type: 'warning' });
       return;
     }
-    
-    setEnviando(true);
-    
-    // Para eventos especiales, validar que haya selecciones (excluyendo entradas de mesa completa del conteo)
-    const seleccionesValidas = selecciones.filter(s => s.type === 'asiento' || s.type === 'mesa_completa' || s.type === 'area_general');
-    if (evento.tipo_evento === 'especial' && seleccionesValidas.length === 0) {
-      showAlert('Por favor selecciona al menos un asiento, mesa o entrada general', { type: 'warning' });
-      setEnviando(false);
+    if (!formData.telefono.trim()) {
+      showAlert('Por favor ingresa tu número de teléfono', { type: 'warning' });
       return;
     }
 
-    // Para evento general con múltiples tipos (VIP, General, etc.), validar que haya al menos una entrada
+    // Para eventos especiales, validar que haya selecciones
+    const seleccionesValidas = selecciones.filter(s => s.type === 'asiento' || s.type === 'mesa_completa' || s.type === 'area_general');
+    if (evento.tipo_evento === 'especial' && seleccionesValidas.length === 0) {
+      showAlert('Por favor selecciona al menos un asiento, mesa o entrada general', { type: 'warning' });
+      return;
+    }
+
+    // Para evento general con múltiples tipos, validar que haya al menos una entrada
     if (evento.tipo_evento === 'general' && evento.tipos_precio?.length > 0) {
       const totalPorTipo = Object.values(cantidadesPorTipo).reduce((s, q) => s + (parseInt(q, 10) || 0), 0);
       if (totalPorTipo < 1) {
         showAlert('Selecciona al menos una entrada por tipo (VIP, General, Gradería, etc.)', { type: 'warning' });
-        setEnviando(false);
         return;
       }
+    } else if (evento.tipo_evento === 'general' && cantidad < 1) {
+      showAlert('La cantidad mínima es 1 entrada', { type: 'warning' });
+      return;
     }
+
+    // Abrir Modal de Resumen y Confirmación (tipo Carrito)
+    setShowModalResumen(true);
+  };
+
+  const ejecutarCompraFinal = async () => {
+    if (enviando) return;
+    setEnviando(true);
     
     // Calcular cantidad real (sin contar mesas completas como entrada adicional)
     let cantidadReal = cantidad;
     if (evento.tipo_evento === 'general' && evento.tipos_precio?.length > 0) {
       cantidadReal = Object.values(cantidadesPorTipo).reduce((s, q) => s + (parseInt(q, 10) || 0), 0);
     } else if (evento.tipo_evento === 'especial') {
-      // Obtener IDs de mesas completas seleccionadas
       const mesasCompletasSeleccionadas = selecciones.filter(s => s.type === 'mesa_completa');
       const idsMesasCompletas = mesasCompletasSeleccionadas.map(m => m.mesa_id);
       
-      // Contar asientos de mesas completas (no contar la mesa como entrada adicional)
       let cantidadMesas = 0;
       mesasCompletasSeleccionadas.forEach(mesa => {
         cantidadMesas += mesa.cantidad_sillas || 0;
       });
       
-      // Contar asientos individuales que NO pertenecen a una mesa completa seleccionada
       const asientosIndividuales = selecciones.filter(s => {
         if (s.type !== 'asiento') return false;
-        // Verificar si este asiento pertenece a una mesa completa seleccionada
         const asientoData = evento.asientos?.find(a => a.id === s.id);
         return asientoData && !idsMesasCompletas.includes(asientoData.mesa_id);
       });
@@ -1286,17 +1297,14 @@ const Compra = () => {
     
     // Registrar compra en la base de datos
     try {
-      // Preparar asientos para enviar al backend
       const asientosParaBackend = [];
       const mesasParaBackend = [];
       const areasPersonasParaBackend = [];
       
       if (evento.tipo_evento === 'especial') {
-        // Obtener IDs de mesas completas seleccionadas
         const mesasCompletasSeleccionadas = selecciones.filter(s => s.type === 'mesa_completa');
         const idsMesasCompletas = mesasCompletasSeleccionadas.map(m => m.mesa_id);
         
-        // Agregar mesas completas
         mesasCompletasSeleccionadas.forEach(mesa => {
           mesasParaBackend.push({
             mesa_id: mesa.mesa_id,
@@ -1306,7 +1314,6 @@ const Compra = () => {
           });
         });
         
-        // Agregar asientos individuales que NO pertenecen a una mesa completa seleccionada
         const asientosIndividuales = selecciones.filter(s => {
           if (s.type !== 'asiento') return false;
           const asientoData = evento.asientos?.find(a => a.id === s.id);
@@ -1320,7 +1327,6 @@ const Compra = () => {
           });
         });
 
-        // Agregar áreas personas (de pie)
         const areasPersonasSeleccionadas = selecciones.filter(s => s.type === 'area_general');
         areasPersonasSeleccionadas.forEach(ap => {
           areasPersonasParaBackend.push({
@@ -1329,22 +1335,17 @@ const Compra = () => {
             precio_unitario: ap.precio
           });
         });
-      } else {
-        // Para eventos generales (precio único o con tipos), no hay asientos
       }
 
-      // Entradas generales por tipo (VIP, General, Gradería) para evento general
       const entradasGeneralesPayload = (evento.tipo_evento === 'general' && evento.tipos_precio?.length > 0)
         ? Object.entries(cantidadesPorTipo)
             .filter(([, q]) => (parseInt(q, 10) || 0) > 0)
             .map(([tipoId, q]) => ({ tipo_precio_id: parseInt(tipoId, 10), cantidad: parseInt(q, 10) }))
         : undefined;
 
-      // Enviar al backend: total SIN descuento cuando hay cupón (el backend aplica el descuento una vez).
-      // Si enviamos el total ya con descuento, el backend lo descontaría de nuevo y quedaría mal (ej. 972 en vez de 1080).
       let totalParaBackend = totalConDescuento || 0;
       if (cuponValidado && !esRegaloAdmin && !esOfertaAdmin) {
-        totalParaBackend = total; // total = subtotal sin descuento; el backend aplicará el cupón
+        totalParaBackend = total;
       }
 
       let totalFinal = totalConDescuento || 0;
@@ -1368,7 +1369,6 @@ const Compra = () => {
         }
       }
 
-      // Crear compra en el backend
       const compraPayload = {
         evento_id: parseInt(id),
         cliente_nombre: formData.nombre || 'Cliente',
@@ -1390,8 +1390,8 @@ const Compra = () => {
 
       if (compraResponse.data.success) {
         const compra = compraResponse.data.data;
+        setShowModalResumen(false);
         
-        // Si es admin: mostrar modal para verificar tipo de pago (QR/Efectivo) y no ir a pago-qr
         if (canSellWithVerification && canSellWithVerification()) {
           setCompraRecienCreada(compra);
           setShowModalVerificarPago(true);
@@ -1399,7 +1399,6 @@ const Compra = () => {
           return;
         }
         
-        // Cliente normal: guardar en localStorage y redirigir a pago QR
         localStorage.setItem('codigoCompra', compra.codigo_unico);
         localStorage.setItem('compraId', compra.id.toString());
         localStorage.setItem('eventoCompra', JSON.stringify(evento));
@@ -1410,6 +1409,7 @@ const Compra = () => {
           localStorage.setItem('seleccionesCompra', JSON.stringify(selecciones));
         }
         console.log('✅ Compra registrada con código:', compra.codigo_unico);
+        navigate(`/pago-qr/${id}`);
       } else {
         throw new Error(compraResponse.data.message || 'Error al registrar la compra');
       }
@@ -1422,8 +1422,6 @@ const Compra = () => {
     } finally {
       setEnviando(false);
     }
-    
-    navigate(`/pago-qr/${id}`);
   };
 
   const totalParaModalAdmin = () => {
@@ -2630,10 +2628,16 @@ const Compra = () => {
                       <div key={tp.id} className="tipo-precio-fila" style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
                         <span className="tipo-nombre" style={{ fontWeight: 600, minWidth: '120px' }}>{tp.nombre}</span>
                         <span className="tipo-precio precio-destacado" style={{ fontWeight: 700, color: '#0d6efd', fontSize: '1.05rem' }}>Bs. {parseFloat(tp.precio).toFixed(2)}</span>
-                        {maxPermitido != null && (
+                        {esAdminOVendedor && maxPermitido != null ? (
                           <span className="tipo-disponibles" style={{ fontSize: '0.9rem', color: maxPermitido === 0 ? '#c00' : '#555' }}>
                             Quedan: {maxPermitido}
                           </span>
+                        ) : (
+                          maxPermitido === 0 && (
+                            <span className="tipo-disponibles" style={{ fontSize: '0.9rem', color: '#c00', fontWeight: 600 }}>
+                              Agotado
+                            </span>
+                          )
                         )}
                         <div className="cantidad-selector" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                           <button
@@ -2829,75 +2833,551 @@ const Compra = () => {
               </button>
             </form>
           </div>
-
-          {/* Sección 5: Resumen de Compra (Solo para eventos generales - los especiales ya tienen el panel "Selecciones") */}
-          {!esEventoEspecial && (
-           <div className="compra-card compra-card-resumen">
-              <h2>Resumen de Compra</h2>
-                <div className="resumen-cantidad">
-                  <span>Cantidad:</span>
-                  <span>{cantidadEntradas} entrada{cantidadEntradas !== 1 ? 's' : ''}</span>
-                </div>
-                {evento.tipos_precio?.length > 0 && cantidadEntradas > 0 && (
-                  <div className="resumen-tipos-general" style={{ marginTop: '8px', fontSize: '0.95rem' }}>
-                    {evento.tipos_precio
-                      .filter(tp => (cantidadesPorTipo[tp.id] || 0) > 0)
-                      .map(tp => (
-                        <div key={tp.id} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                          <span>{tp.nombre}: {cantidadesPorTipo[tp.id] || 0} × Bs. {parseFloat(tp.precio).toFixed(2)}</span>
-                          <span style={{ fontWeight: 600 }}>Bs. {((cantidadesPorTipo[tp.id] || 0) * parseFloat(tp.precio)).toFixed(2)}</span>
-                        </div>
-                      ))}
-                  </div>
-                )}
-            <div className="resumen-detalle">
-              {cuponValidado && !esRegaloAdmin && !esOfertaAdmin && (
-                <>
-                  <div className="resumen-item resumen-item-anterior">
-                    <span>Total anterior (sin descuento)</span>
-                    <span>Bs. {total.toFixed(2)}</span>
-                  </div>
-                  <div className="resumen-item" style={{ color: '#28a745' }}>
-                    <span>Descuento ({cuponValidado.porcentaje_descuento}%)</span>
-                    <span>- Bs. {descuentoCupon.toFixed(2)}</span>
-                  </div>
-                  <div className="resumen-item resumen-total resumen-total-con-descuento">
-                    <span>Total con descuento (a pagar)</span>
-                    <span className="resumen-total-monto">Bs. {totalConDescuento.toFixed(2)}</span>
-                  </div>
-                </>
-              )}
-              {!cuponValidado && !esRegaloAdmin && !esOfertaAdmin && (
-                <div className="resumen-item resumen-total">
-                  <span>Total a pagar</span>
-                  <span className="resumen-total-monto">Bs. {totalConDescuento.toFixed(2)}</span>
-                </div>
-              )}
-              {((canSellWithVerification && canSellWithVerification()) && puedeOpcionesVentaAdmin) && (esRegaloAdmin || (esOfertaAdmin && precioEspecial !== '')) && (
-                <div className="resumen-item">
-                  <span>Precio original</span>
-                  <span>Bs. {total.toFixed(2)}</span>
-                </div>
-              )}
-              {(esRegaloAdmin || esOfertaAdmin) && (
-                <div className="resumen-item resumen-total">
-                  <span>Total a pagar</span>
-                  <span>
-                    {esRegaloAdmin ? (
-                      <span style={{ color: '#28a745', fontWeight: 700 }}>Gratis</span>
-                    ) : esOfertaAdmin && precioEspecial !== '' && !isNaN(parseFloat(precioEspecial)) ? (
-                      <span style={{ fontWeight: 700 }}>Bs. {(parseFloat(precioEspecial) * cantidadEntradas).toFixed(2)} <small style={{ fontWeight: 400, color: '#666' }}>({cantidadEntradas} × Bs. {parseFloat(precioEspecial).toFixed(2)})</small></span>
-                    ) : (
-                      `Bs. ${totalConDescuento.toFixed(2)}`
-                    )}
-                  </span>
-                </div>
-              )}
-            </div>
-           </div>
-          )}
         </div>
       </div>
+
+      {/* Modal de Resumen de Compra (Confirmación / Carrito) */}
+      {showModalResumen && (
+        <div
+          className="modal-resumen-overlay"
+          onClick={() => { if (!enviando) setShowModalResumen(false); }}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(5px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            padding: '16px'
+          }}
+        >
+          <div
+            className="modal-resumen-card"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: '#ffffff',
+              borderRadius: '16px',
+              maxWidth: '560px',
+              width: '100%',
+              maxHeight: '90vh',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 20px 40px rgba(0,0,0,0.25)',
+              overflow: 'hidden',
+              animation: 'fadeIn 0.2s ease-out'
+            }}
+          >
+            {/* Cabecera del modal */}
+            <div style={{
+              padding: '18px 24px',
+              background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
+              color: '#ffffff',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span style={{ fontSize: '1.4rem' }}>🛒</span>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700, color: '#ffffff' }}>Resumen de Compra</h3>
+                  <p style={{ margin: 0, fontSize: '0.82rem', color: '#94a3b8' }}>Revisa tus entradas antes de proceder</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => { if (!enviando) setShowModalResumen(false); }}
+                style={{
+                  background: 'rgba(255,255,255,0.1)',
+                  border: 'none',
+                  color: '#ffffff',
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '50%',
+                  cursor: 'pointer',
+                  fontSize: '1.1rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Cuerpo con Scroll */}
+            <div style={{ padding: '20px 24px', overflowY: 'auto', flex: 1 }}>
+              {/* Info del evento y comprador */}
+              <div style={{
+                background: '#f8fafc',
+                borderRadius: '10px',
+                padding: '12px 16px',
+                marginBottom: '16px',
+                border: '1px solid #e2e8f0',
+                fontSize: '0.88rem'
+              }}>
+                <div style={{ fontWeight: 700, color: '#0f172a', marginBottom: '4px', fontSize: '0.98rem' }}>
+                  {evento.titulo}
+                </div>
+                <div style={{ color: '#64748b' }}>
+                  <span>📅 {formatearFecha(evento.hora_inicio).fecha} • 🕐 {formatearFecha(evento.hora_inicio).hora}</span>
+                </div>
+                <div style={{ marginTop: '6px', paddingTop: '6px', borderTop: '1px dashed #cbd5e1', color: '#334155' }}>
+                  <strong>Comprador:</strong> {formData.nombre} • 📱 {formData.telefono}
+                </div>
+              </div>
+
+              {/* Lista de entradas seleccionadas */}
+              <h4 style={{ margin: '0 0 10px 0', fontSize: '0.92rem', textTransform: 'uppercase', letterSpacing: '0.5px', color: '#64748b' }}>
+                Entradas seleccionadas ({cantidadEntradas})
+              </h4>
+
+              {cantidadEntradas === 0 ? (
+                <div style={{ padding: '20px', textAlign: 'center', color: '#94a3b8' }}>
+                  No tienes entradas seleccionadas.
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
+                  {/* Eventos Generales con Múltiples Tipos */}
+                  {!esEventoEspecial && evento.tipos_precio?.length > 0 && (
+                    evento.tipos_precio
+                      .filter(tp => (cantidadesPorTipo[tp.id] || 0) > 0)
+                      .map(tp => {
+                        const qty = cantidadesPorTipo[tp.id] || 0;
+                        const sub = qty * parseFloat(tp.precio);
+                        const disp = tp.disponibles != null ? parseInt(tp.disponibles, 10) : null;
+                        const puedeSumar = disp == null || qty < disp;
+                        return (
+                          <div
+                            key={tp.id}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              padding: '10px 14px',
+                              background: '#f1f5f9',
+                              borderRadius: '8px',
+                              border: '1px solid #e2e8f0',
+                              gap: '10px'
+                            }}
+                          >
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontWeight: 600, color: '#1e293b' }}>{tp.nombre}</div>
+                              <div style={{ fontSize: '0.82rem', color: '#64748b' }}>
+                                Bs. {parseFloat(tp.precio).toFixed(2)} c/u
+                              </div>
+                            </div>
+
+                            {/* Controles de cantidad */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <button
+                                type="button"
+                                onClick={() => setCantidadesPorTipo(prev => ({ ...prev, [tp.id]: Math.max(0, (prev[tp.id] || 0) - 1) }))}
+                                style={{
+                                  width: '28px',
+                                  height: '28px',
+                                  borderRadius: '6px',
+                                  border: '1px solid #cbd5e1',
+                                  background: '#ffffff',
+                                  cursor: 'pointer',
+                                  fontWeight: 700,
+                                  fontSize: '1rem',
+                                  color: '#334155'
+                                }}
+                              >
+                                −
+                              </button>
+                              <span style={{ minWidth: '24px', textAlign: 'center', fontWeight: 700 }}>{qty}</span>
+                              <button
+                                type="button"
+                                onClick={() => puedeSumar && setCantidadesPorTipo(prev => ({ ...prev, [tp.id]: (prev[tp.id] || 0) + 1 }))}
+                                disabled={!puedeSumar}
+                                style={{
+                                  width: '28px',
+                                  height: '28px',
+                                  borderRadius: '6px',
+                                  border: '1px solid #cbd5e1',
+                                  background: puedeSumar ? '#ffffff' : '#e2e8f0',
+                                  cursor: puedeSumar ? 'pointer' : 'not-allowed',
+                                  fontWeight: 700,
+                                  fontSize: '1rem',
+                                  color: '#334155'
+                                }}
+                              >
+                                +
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setCantidadesPorTipo(prev => ({ ...prev, [tp.id]: 0 }))}
+                                title="Eliminar este tipo de entrada"
+                                style={{
+                                  background: 'transparent',
+                                  border: 'none',
+                                  cursor: 'pointer',
+                                  fontSize: '1.1rem',
+                                  padding: '4px',
+                                  color: '#ef4444',
+                                  marginLeft: '4px'
+                                }}
+                              >
+                                🗑️
+                              </button>
+                            </div>
+
+                            <div style={{ fontWeight: 700, color: '#0d6efd', minWidth: '75px', textAlign: 'right' }}>
+                              Bs. {sub.toFixed(2)}
+                            </div>
+                          </div>
+                        );
+                      })
+                  )}
+
+                  {/* Evento General Simple (Precio único) */}
+                  {!esEventoEspecial && (!evento.tipos_precio || evento.tipos_precio.length === 0) && (
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '10px 14px',
+                        background: '#f1f5f9',
+                        borderRadius: '8px',
+                        border: '1px solid #e2e8f0'
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontWeight: 600, color: '#1e293b' }}>Entrada General</div>
+                        <div style={{ fontSize: '0.82rem', color: '#64748b' }}>
+                          Bs. {parseFloat(evento.precio || 0).toFixed(2)} c/u
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <button
+                          type="button"
+                          onClick={() => setCantidad(Math.max(1, cantidad - 1))}
+                          style={{
+                            width: '28px',
+                            height: '28px',
+                            borderRadius: '6px',
+                            border: '1px solid #cbd5e1',
+                            background: '#ffffff',
+                            cursor: 'pointer',
+                            fontWeight: 700
+                          }}
+                        >
+                          −
+                        </button>
+                        <span style={{ minWidth: '24px', textAlign: 'center', fontWeight: 700 }}>{cantidad}</span>
+                        <button
+                          type="button"
+                          onClick={() => setCantidad(cantidad + 1)}
+                          style={{
+                            width: '28px',
+                            height: '28px',
+                            borderRadius: '6px',
+                            border: '1px solid #cbd5e1',
+                            background: '#ffffff',
+                            cursor: 'pointer',
+                            fontWeight: 700
+                          }}
+                        >
+                          +
+                        </button>
+                      </div>
+                      <div style={{ fontWeight: 700, color: '#0d6efd', minWidth: '75px', textAlign: 'right' }}>
+                        Bs. {(cantidad * parseFloat(evento.precio || 0)).toFixed(2)}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Evento Especial (Asientos, Mesas, Zonas) */}
+                  {esEventoEspecial && selecciones.map((sel) => {
+                    if (sel.type === 'asiento') {
+                      return (
+                        <div
+                          key={`asiento-${sel.id}`}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '10px 14px',
+                            background: '#f1f5f9',
+                            borderRadius: '8px',
+                            border: '1px solid #e2e8f0'
+                          }}
+                        >
+                          <div>
+                            <div style={{ fontWeight: 600, color: '#1e293b' }}>{sel.nombre || `Asiento ${sel.id}`}</div>
+                            <div style={{ fontSize: '0.82rem', color: '#64748b' }}>Asiento individual numerado</div>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <button
+                              type="button"
+                              onClick={() => deseleccionarAsiento(sel.id)}
+                              title="Quitar asiento"
+                              style={{
+                                background: 'transparent',
+                                border: 'none',
+                                cursor: 'pointer',
+                                fontSize: '1.1rem',
+                                color: '#ef4444'
+                              }}
+                            >
+                              🗑️
+                            </button>
+                            <span style={{ fontWeight: 700, color: '#0d6efd', minWidth: '70px', textAlign: 'right' }}>
+                              Bs. {parseFloat(sel.precio || 0).toFixed(2)}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    } else if (sel.type === 'mesa_completa') {
+                      return (
+                        <div
+                          key={`mesa-${sel.mesa_id}`}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '10px 14px',
+                            background: '#f1f5f9',
+                            borderRadius: '8px',
+                            border: '1px solid #e2e8f0'
+                          }}
+                        >
+                          <div>
+                            <div style={{ fontWeight: 600, color: '#1e293b' }}>{sel.nombre || `Mesa ${sel.mesa_id}`}</div>
+                            <div style={{ fontSize: '0.82rem', color: '#64748b' }}>Mesa completa ({sel.cantidad_sillas} sillas)</div>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <button
+                              type="button"
+                              onClick={() => deseleccionarMesaCompleta(sel.mesa_id)}
+                              title="Quitar mesa"
+                              style={{
+                                background: 'transparent',
+                                border: 'none',
+                                cursor: 'pointer',
+                                fontSize: '1.1rem',
+                                color: '#ef4444'
+                              }}
+                            >
+                              🗑️
+                            </button>
+                            <span style={{ fontWeight: 700, color: '#0d6efd', minWidth: '70px', textAlign: 'right' }}>
+                              Bs. {parseFloat(sel.precio_total || 0).toFixed(2)}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    } else if (sel.type === 'area_general') {
+                      return (
+                        <div
+                          key={`area-${sel.id}`}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '10px 14px',
+                            background: '#f1f5f9',
+                            borderRadius: '8px',
+                            border: '1px solid #e2e8f0'
+                          }}
+                        >
+                          <div>
+                            <div style={{ fontWeight: 600, color: '#1e293b' }}>{sel.nombre}</div>
+                            <div style={{ fontSize: '0.82rem', color: '#64748b' }}>
+                              Bs. {parseFloat(sel.precio || 0).toFixed(2)} c/u (Zona General)
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (sel.cantidad <= 1) {
+                                  setSelecciones(prev => prev.filter(s => !(s.type === 'area_general' && s.id === sel.id)));
+                                } else {
+                                  setSelecciones(prev => prev.map(s => (s.type === 'area_general' && s.id === sel.id)
+                                    ? { ...s, cantidad: s.cantidad - 1, total: (s.cantidad - 1) * s.precio }
+                                    : s
+                                  ));
+                                }
+                              }}
+                              style={{
+                                width: '28px',
+                                height: '28px',
+                                borderRadius: '6px',
+                                border: '1px solid #cbd5e1',
+                                background: '#ffffff',
+                                cursor: 'pointer',
+                                fontWeight: 700
+                              }}
+                            >
+                              −
+                            </button>
+                            <span style={{ minWidth: '24px', textAlign: 'center', fontWeight: 700 }}>{sel.cantidad}</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelecciones(prev => prev.map(s => (s.type === 'area_general' && s.id === sel.id)
+                                  ? { ...s, cantidad: s.cantidad + 1, total: (s.cantidad + 1) * s.precio }
+                                  : s
+                                ));
+                              }}
+                              style={{
+                                width: '28px',
+                                height: '28px',
+                                borderRadius: '6px',
+                                border: '1px solid #cbd5e1',
+                                background: '#ffffff',
+                                cursor: 'pointer',
+                                fontWeight: 700
+                              }}
+                            >
+                              +
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setSelecciones(prev => prev.filter(s => !(s.type === 'area_general' && s.id === sel.id)))}
+                              title="Quitar zona"
+                              style={{
+                                background: 'transparent',
+                                border: 'none',
+                                cursor: 'pointer',
+                                fontSize: '1.1rem',
+                                color: '#ef4444',
+                                marginLeft: '4px'
+                              }}
+                            >
+                              🗑️
+                            </button>
+                            <span style={{ fontWeight: 700, color: '#0d6efd', minWidth: '70px', textAlign: 'right' }}>
+                              Bs. {(sel.cantidad * parseFloat(sel.precio || 0)).toFixed(2)}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })}
+                </div>
+              )}
+
+              {/* Desglose de totales y cupón */}
+              <div style={{
+                borderTop: '1px solid #e2e8f0',
+                paddingTop: '12px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '6px',
+                fontSize: '0.95rem'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b' }}>
+                  <span>Subtotal:</span>
+                  <span style={{ fontWeight: 600, color: '#334155' }}>Bs. {total.toFixed(2)}</span>
+                </div>
+
+                {cuponValidado && !esRegaloAdmin && !esOfertaAdmin && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#16a34a' }}>
+                    <span>Descuento Cupón ({cuponValidado.porcentaje_descuento}%):</span>
+                    <span style={{ fontWeight: 600 }}>− Bs. {descuentoCupon.toFixed(2)}</span>
+                  </div>
+                )}
+
+                {esRegaloAdmin && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#16a34a' }}>
+                    <span>Beneficio Admin:</span>
+                    <span style={{ fontWeight: 700 }}>Entrada Gratis</span>
+                  </div>
+                )}
+
+                {esOfertaAdmin && precioEspecial !== '' && !isNaN(parseFloat(precioEspecial)) && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#0284c7' }}>
+                    <span>Precio especial oferta:</span>
+                    <span style={{ fontWeight: 600 }}>{cantidadEntradas} × Bs. {parseFloat(precioEspecial).toFixed(2)}</span>
+                  </div>
+                )}
+
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginTop: '6px',
+                  paddingTop: '8px',
+                  borderTop: '1px solid #e2e8f0',
+                  fontSize: '1.2rem',
+                  fontWeight: 800,
+                  color: '#0f172a'
+                }}>
+                  <span>Total a Pagar:</span>
+                  <span style={{ color: '#0d6efd', fontSize: '1.35rem' }}>
+                    {esRegaloAdmin ? 'Gratis' : `Bs. ${(esOfertaAdmin && precioEspecial && !isNaN(parseFloat(precioEspecial)) ? parseFloat(precioEspecial) * cantidadEntradas : totalConDescuento).toFixed(2)}`}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Botones de Acción */}
+            <div style={{
+              padding: '16px 24px',
+              background: '#f8fafc',
+              borderTop: '1px solid #e2e8f0',
+              display: 'flex',
+              gap: '12px',
+              justifyContent: 'flex-end'
+            }}>
+              <button
+                type="button"
+                onClick={() => { if (!enviando) setShowModalResumen(false); }}
+                disabled={enviando}
+                style={{
+                  padding: '10px 20px',
+                  borderRadius: '10px',
+                  border: '1px solid #cbd5e1',
+                  background: '#ffffff',
+                  color: '#475569',
+                  fontWeight: 600,
+                  fontSize: '0.95rem',
+                  cursor: enviando ? 'not-allowed' : 'pointer',
+                  transition: 'background 0.15s'
+                }}
+              >
+                ✕ Cancelar / Modificar
+              </button>
+
+              <button
+                type="button"
+                onClick={ejecutarCompraFinal}
+                disabled={enviando || cantidadEntradas === 0}
+                style={{
+                  padding: '10px 24px',
+                  borderRadius: '10px',
+                  border: 'none',
+                  background: (enviando || cantidadEntradas === 0) ? '#94a3b8' : 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                  color: '#ffffff',
+                  fontWeight: 700,
+                  fontSize: '1rem',
+                  cursor: (enviando || cantidadEntradas === 0) ? 'not-allowed' : 'pointer',
+                  boxShadow: (enviando || cantidadEntradas === 0) ? 'none' : '0 4px 12px rgba(16, 185, 129, 0.3)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  transition: 'all 0.15s'
+                }}
+              >
+                {enviando ? (
+                  <span>Procesando...</span>
+                ) : (
+                  <>
+                    <span>✓ Proseguir con la compra</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
