@@ -146,41 +146,105 @@ const Reportes = () => {
     return compra.cantidad || 0;
   };
 
-  const construirDetalle = (compra) => {
-    if (!compra) return '-';
-    if (compra.detalle_compra) return compra.detalle_compra;
+  // Renderizador visual elegante y sombreado para el Detalle de compra
+  const renderDetalleVisual = (compra) => {
+    if (!compra) return <span className="detalle-empty">-</span>;
 
-    if (reporte?.evento?.tipo_evento === 'especial') {
-      const partes = [];
-      if (compra.mesas?.length) {
-        const listaMesas = compra.mesas
-          .map((m) => `M${m.numero_mesa || m.mesa_id || m.id || ''}`)
-          .join(', ');
-        const totalSillas = compra.mesas.reduce(
-          (acc, mesa) => acc + (mesa.cantidad_sillas || 0),
-          0
+    const items = [];
+
+    // 1. Mesas completas
+    if (compra.mesas?.length > 0) {
+      compra.mesas.forEach((m, idx) => {
+        const mesaCod = m.codigo_mesa || m.numero_mesa || m.mesa_id;
+        items.push(
+          <div key={`mesa-${idx}`} className="detalle-pill detalle-pill-mesa">
+            <span className="detalle-pill-icon">🍽️</span>
+            <span className="detalle-pill-title">Mesa <strong>{mesaCod}</strong></span>
+            {m.area_nombre && (
+              <span className="detalle-pill-area">📍 {m.area_nombre}</span>
+            )}
+            {m.cantidad_sillas && (
+              <span className="detalle-pill-badge">{m.cantidad_sillas} sillas</span>
+            )}
+          </div>
         );
-        partes.push(`Mesa(s) ${listaMesas} (${totalSillas} sillas)`);
-      }
-      if (compra.asientos?.length) {
-        const listaAsientos = compra.asientos
-          .map((a) => {
-            const mesa = a.numero_mesa || a.mesa_id;
-            return `${mesa ? `M${mesa}-` : ''}S${a.numero_asiento || a.asiento_id || ''}`;
-          })
-          .join(', ');
-        partes.push(`Sillas: ${listaAsientos}`);
-      }
-      if (compra.areas_personas?.length) {
-        const zonasLista = compra.areas_personas
-          .map((ap) => `${ap.area_nombre || `Área ${ap.area_id}`}: ${ap.cantidad} p.`)
-          .join(', ');
-        partes.push(`Zonas generales: ${zonasLista}`);
-      }
-      return partes.join(' | ') || `${obtenerTotalEntradas(compra)} entrada(s)`;
+      });
     }
 
-    return `${obtenerTotalEntradas(compra)} entrada(s) general`;
+    // 2. Sillas individuales
+    if (compra.asientos?.length > 0) {
+      const porMesa = {};
+      const sinMesa = [];
+
+      compra.asientos.forEach((a) => {
+        const codMesa = a.codigo_mesa || (a.numero_mesa ? `M${a.numero_mesa}` : null);
+        if (codMesa) {
+          if (!porMesa[codMesa]) porMesa[codMesa] = { mesa: codMesa, area: a.area_nombre, sillas: [] };
+          porMesa[codMesa].sillas.push(a.numero_asiento || a.asiento_id);
+        } else {
+          sinMesa.push(a);
+        }
+      });
+
+      Object.values(porMesa).forEach((g, idx) => {
+        items.push(
+          <div key={`asiento-grp-${idx}`} className="detalle-pill detalle-pill-silla">
+            <span className="detalle-pill-icon">🪑</span>
+            <span className="detalle-pill-title">Sillas: <strong>{g.sillas.join(', ')}</strong></span>
+            <span className="detalle-pill-context">(Mesa {g.mesa})</span>
+            {g.area && <span className="detalle-pill-area">📍 {g.area}</span>}
+          </div>
+        );
+      });
+
+      if (sinMesa.length > 0) {
+        items.push(
+          <div key="asientos-sin-mesa" className="detalle-pill detalle-pill-silla">
+            <span className="detalle-pill-icon">🪑</span>
+            <span className="detalle-pill-title">Sillas: <strong>{sinMesa.map(a => a.numero_asiento || a.asiento_id).join(', ')}</strong></span>
+            {sinMesa[0]?.area_nombre && <span className="detalle-pill-area">📍 {sinMesa[0].area_nombre}</span>}
+          </div>
+        );
+      }
+    }
+
+    // 3. Áreas generales (personas de pie)
+    if (compra.areas_personas?.length > 0) {
+      compra.areas_personas.forEach((ap, idx) => {
+        items.push(
+          <div key={`area-${idx}`} className="detalle-pill detalle-pill-general">
+            <span className="detalle-pill-icon">🚶</span>
+            <span className="detalle-pill-title"><strong>{ap.area_nombre || `Área ${ap.area_id}`}</strong></span>
+            <span className="detalle-pill-badge">{ap.cantidad} pers.</span>
+          </div>
+        );
+      });
+    }
+
+    // 4. Si no tiene estructuras (evento general o string fallback)
+    if (items.length === 0) {
+      if (compra.detalle_compra) {
+        const parts = compra.detalle_compra.split(/[|,]/).map(p => p.trim()).filter(Boolean);
+        return (
+          <div className="detalle-items-container">
+            {parts.map((p, idx) => (
+              <div key={`det-p-${idx}`} className="detalle-pill detalle-pill-default">
+                <span className="detalle-pill-icon">🎫</span>
+                <span className="detalle-pill-title">{p}</span>
+              </div>
+            ))}
+          </div>
+        );
+      }
+      return (
+        <div className="detalle-pill detalle-pill-default">
+          <span className="detalle-pill-icon">🎫</span>
+          <span className="detalle-pill-title">{obtenerTotalEntradas(compra)} entrada(s)</span>
+        </div>
+      );
+    }
+
+    return <div className="detalle-items-container">{items}</div>;
   };
 
   const resumenEntradas = useMemo(() => {
@@ -212,8 +276,21 @@ const Reportes = () => {
     if (!reporte?.compras?.length) return [];
     const tipos = new Set();
     reporte.compras.forEach((compra) => {
+      // De áreas generales
+      if (compra.areas_personas?.length) {
+        compra.areas_personas.forEach(ap => {
+          if (ap.area_nombre) tipos.add(ap.area_nombre.toUpperCase());
+        });
+      }
+      // De mesas
+      if (compra.mesas?.length) {
+        compra.mesas.forEach(m => {
+          if (m.area_nombre) tipos.add(m.area_nombre.toUpperCase());
+          if (m.tipo_precio_nombre) tipos.add(m.tipo_precio_nombre.toUpperCase());
+        });
+      }
+      // De detalle_compra
       const detalle = compra.detalle_compra || '';
-      // Extraer tipos como "5 GENERAL", "3 VIP", etc.
       const matches = detalle.match(/\d+\s+([A-Za-zÁÉÍÓÚáéíóúñÑ\s]+)/g);
       if (matches) {
         matches.forEach((match) => {
@@ -227,41 +304,110 @@ const Reportes = () => {
     return Array.from(tipos).sort();
   }, [reporte]);
 
+  // Función para normalizar texto (sin tildes, minúsculas, espacios limpios)
+  const normalizarTexto = (str) =>
+    (str || '')
+      .toString()
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim();
+
   // Filtrar compras según los filtros seleccionados
   const comprasFiltradas = useMemo(() => {
     if (!reporte?.compras?.length) return [];
-    
+
+    const termBusqueda = normalizarTexto(filtroCliente);
+    const busqNum = (filtroCliente || '').replace(/[^\d]/g, '');
+
     return reporte.compras.filter((compra) => {
-      // Filtro por tipo de pago
+      // 1. Filtro por tipo de pago
       if (filtroTipoPago !== 'todos') {
-        if (filtroTipoPago === 'QR' && compra.tipo_pago !== 'QR') return false;
-        if (filtroTipoPago === 'EFECTIVO' && compra.tipo_pago !== 'EFECTIVO') return false;
-        if (filtroTipoPago === 'PASARELA_QR' && compra.tipo_pago !== 'PASARELA_QR') return false;
-        if (filtroTipoPago === 'SIN_PAGO' && compra.tipo_pago) return false;
+        const tp = (compra.tipo_pago || '').toUpperCase();
+        if (filtroTipoPago === 'PASARELA_QR') {
+          if (!tp.includes('PASARELA') && tp !== 'PASARELA_QR') return false;
+        } else if (filtroTipoPago === 'EFECTIVO') {
+          if (!tp.includes('EFECTIVO')) return false;
+        } else if (filtroTipoPago === 'QR') {
+          if (tp !== 'QR' && tp !== 'QR_MANUAL' && tp !== 'MANUAL') return false;
+        } else if (filtroTipoPago === 'SIN_PAGO') {
+          if (tp && tp !== 'SIN_PAGO') return false;
+        }
       }
 
-      // Filtro por estado
-      if (filtroEstado !== 'todos' && compra.estado !== filtroEstado) return false;
+      // 2. Filtro por estado
+      if (filtroEstado !== 'todos') {
+        if (filtroEstado === 'PAGO_REALIZADO') {
+          // Si eligen pago realizado, incluir también ENTRADA_USADA ya que son ventas pagadas y confirmadas
+          if (compra.estado !== 'PAGO_REALIZADO' && compra.estado !== 'ENTRADA_USADA') return false;
+        } else if (compra.estado !== filtroEstado) {
+          return false;
+        }
+      }
 
-      // Filtro por tipo de entrada
+      // 3. Filtro por tipo de entrada / zona
       if (filtroTipoEntrada !== 'todos') {
-        const detalle = (compra.detalle_compra || '').toUpperCase();
-        if (!detalle.includes(filtroTipoEntrada.toUpperCase())) return false;
+        const zonaBuscada = normalizarTexto(filtroTipoEntrada);
+        const detalle = normalizarTexto(compra.detalle_compra);
+
+        const tieneMesaZona = (compra.mesas || []).some(m => 
+          normalizarTexto(m.area_nombre).includes(zonaBuscada) ||
+          normalizarTexto(m.tipo_precio_nombre).includes(zonaBuscada)
+        );
+        const tieneAsientoZona = (compra.asientos || []).some(a => 
+          normalizarTexto(a.area_nombre).includes(zonaBuscada)
+        );
+        const tieneAreaPersonaZona = (compra.areas_personas || []).some(ap => 
+          normalizarTexto(ap.area_nombre).includes(zonaBuscada)
+        );
+
+        if (!detalle.includes(zonaBuscada) && !tieneMesaZona && !tieneAsientoZona && !tieneAreaPersonaZona) {
+          return false;
+        }
       }
 
-      // Filtro por cliente (nombre o teléfono)
-      if (filtroCliente.trim()) {
-        const busqueda = filtroCliente.trim().toLowerCase();
-        const busqNum = busqueda.replace(/[^\d]/g, '');
-        const nombre = (compra.cliente_nombre || '').toLowerCase();
+      // 4. Búsqueda por cliente / ubicación / mesa / código / teléfono / zona
+      if (termBusqueda) {
+        const nombre = normalizarTexto(compra.cliente_nombre);
         const telefono = (compra.cliente_telefono || '').replace(/[^\d]/g, '');
-        const email = (compra.cliente_email || '').toLowerCase();
-        const codigo = (compra.codigo_unico || '').toLowerCase();
-        
-        const coincide = nombre.includes(busqueda) || 
-                        (busqNum.length > 0 && telefono.includes(busqNum)) ||
-                        email.includes(busqueda) ||
-                        codigo.includes(busqueda);
+        const email = normalizarTexto(compra.cliente_email);
+        const codigo = normalizarTexto(compra.codigo_unico);
+        const detalle = normalizarTexto(compra.detalle_compra);
+        const idCompra = String(compra.id || '');
+
+        // Buscar en mesas
+        const tieneMesa = (compra.mesas || []).some(m => 
+          normalizarTexto(m.codigo_mesa).includes(termBusqueda) ||
+          normalizarTexto(`mesa ${m.codigo_mesa}`).includes(termBusqueda) ||
+          String(m.numero_mesa || '').includes(termBusqueda) ||
+          normalizarTexto(`mesa ${m.numero_mesa}`).includes(termBusqueda) ||
+          normalizarTexto(m.area_nombre).includes(termBusqueda) ||
+          normalizarTexto(m.tipo_precio_nombre).includes(termBusqueda)
+        );
+
+        // Buscar en asientos
+        const tieneAsiento = (compra.asientos || []).some(a => 
+          normalizarTexto(a.numero_asiento).includes(termBusqueda) ||
+          normalizarTexto(`silla ${a.numero_asiento}`).includes(termBusqueda) ||
+          normalizarTexto(a.codigo_mesa).includes(termBusqueda) ||
+          String(a.numero_mesa || '').includes(termBusqueda) ||
+          normalizarTexto(a.area_nombre).includes(termBusqueda)
+        );
+
+        // Buscar en áreas generales de personas
+        const tieneArea = (compra.areas_personas || []).some(ap => 
+          normalizarTexto(ap.area_nombre).includes(termBusqueda) ||
+          normalizarTexto(`area ${ap.area_nombre}`).includes(termBusqueda)
+        );
+
+        const coincide = nombre.includes(termBusqueda) ||
+                        (busqNum.length >= 3 && telefono.includes(busqNum)) ||
+                        email.includes(termBusqueda) ||
+                        codigo.includes(termBusqueda) ||
+                        idCompra.includes(termBusqueda) ||
+                        detalle.includes(termBusqueda) ||
+                        tieneMesa || tieneAsiento || tieneArea;
+
         if (!coincide) return false;
       }
 
@@ -298,10 +444,14 @@ const Reportes = () => {
     }
 
     try {
-      const response = await api.get(`/reportes/exportar/${eventoSeleccionado}?formato=${formato}`);
+      // Enviar los IDs exactos de las compras filtradas en pantalla
+      const compraIds = (comprasFiltradas || []).map((c) => c.id);
+      const response = await api.post(`/reportes/exportar/${eventoSeleccionado}`, {
+        formato,
+        compra_ids: compraIds
+      });
       
       if (response.data.success && response.data.data?.url) {
-        // El backend devuelve una URL relativa, construir la URL completa
         const urlRelativa = response.data.data.url;
         const serverBase = getServerBase();
         const urlCompleta = serverBase ? `${serverBase}${urlRelativa}` : urlRelativa;
@@ -330,7 +480,7 @@ const Reportes = () => {
       <div className="admin-content">
         <div className="reportes-header">
           <div>
-        <h1>Reportes</h1>
+            <h1>Reportes de Ventas</h1>
             <p>Selecciona un evento para ver quién compró y el estado de sus entradas.</p>
           </div>
           <div className={`estado-evento ${reporte?.evento?.habilitado ? 'habilitado' : 'finalizado'}`}>
@@ -416,32 +566,25 @@ const Reportes = () => {
 
         {loadingReporte && <div className="loading">Cargando reporte...</div>}
 
-        {/* Filtros de la tabla */}
+        {/* Barra de Búsqueda y Filtros de Clientes para Eventos Especiales y Generales */}
         {!loadingReporte && reporte && (
-          <div className="reportes-filtros-tabla">
-            <div className="campo campo-busqueda">
-              <label>🔍 Buscar cliente</label>
-              <div style={{ display: 'flex', gap: '6px' }}>
+          <div className="reportes-toolbar-busqueda">
+            <div className="toolbar-campo-input">
+              <label>🔍 Buscar cliente / ubicación</label>
+              <div className="input-busqueda-wrapper">
                 <input
                   type="text"
                   value={filtroCliente}
                   onChange={(e) => setFiltroCliente(e.target.value)}
-                  placeholder="Nombre, teléfono, email o código..."
-                  style={{ flex: 1 }}
+                  placeholder="Nombre, teléfono, código, mesa (ej: A56), zona..."
+                  className="input-buscar-cliente"
                 />
                 {filtroCliente && (
                   <button
                     type="button"
                     onClick={() => setFiltroCliente('')}
-                    style={{
-                      padding: '0 10px',
-                      background: '#e2e8f0',
-                      border: 'none',
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                      fontSize: '0.9rem'
-                    }}
-                    title="Limpiar búsqueda"
+                    className="btn-clear-input"
+                    title="Limpiar texto"
                   >
                     ✕
                   </button>
@@ -449,42 +592,42 @@ const Reportes = () => {
               </div>
             </div>
 
-            <div className="campo">
+            <div className="toolbar-campo-select">
               <label>Tipo de pago</label>
               <select
                 value={filtroTipoPago}
                 onChange={(e) => setFiltroTipoPago(e.target.value)}
               >
-                <option value="todos">Todos</option>
+                <option value="todos">Todos los pagos</option>
+                <option value="PASARELA_QR">💳 Pasarela QR</option>
+                <option value="EFECTIVO">💵 Efectivo</option>
                 <option value="QR">📱 QR (Manual)</option>
-                <option value="EFECTIVO">Solo Efectivo</option>
-                <option value="PASARELA_QR">Solo Pasarela QR</option>
                 <option value="SIN_PAGO">Sin pago</option>
               </select>
             </div>
 
-            <div className="campo">
+            <div className="toolbar-campo-select">
               <label>Estado</label>
               <select
                 value={filtroEstado}
                 onChange={(e) => setFiltroEstado(e.target.value)}
               >
-                <option value="todos">Todos</option>
-                <option value="PAGO_REALIZADO">Pago realizado</option>
-                <option value="PAGO_PENDIENTE">Pago pendiente</option>
-                <option value="ENTRADA_USADA">Entrada usada</option>
-                <option value="CANCELADO">Cancelado</option>
+                <option value="todos">Todos los estados</option>
+                <option value="PAGO_REALIZADO">✅ Pago realizado</option>
+                <option value="PAGO_PENDIENTE">⏳ Pago pendiente</option>
+                <option value="ENTRADA_USADA">🎟️ Entrada usada</option>
+                <option value="CANCELADO">❌ Cancelado</option>
               </select>
             </div>
 
             {tiposEntradaDisponibles.length > 0 && (
-              <div className="campo">
-                <label>Tipo de entrada</label>
+              <div className="toolbar-campo-select">
+                <label>Zona / Tipo de entrada</label>
                 <select
                   value={filtroTipoEntrada}
                   onChange={(e) => setFiltroTipoEntrada(e.target.value)}
                 >
-                  <option value="todos">Todos</option>
+                  <option value="todos">Todas las zonas / tipos</option>
                   {tiposEntradaDisponibles.map((tipo) => (
                     <option key={tipo} value={tipo}>
                       {tipo}
@@ -494,38 +637,38 @@ const Reportes = () => {
               </div>
             )}
 
-            <button
-              className="btn-limpiar-filtros"
-              onClick={() => {
-                setFiltroTipoPago('todos');
-                setFiltroTipoEntrada('todos');
-                setFiltroEstado('todos');
-                setFiltroCliente('');
-              }}
-              title="Limpiar filtros"
-            >
-              Limpiar filtros
-            </button>
+            <div className="toolbar-acciones">
+              <button
+                className="btn-aplicar-filtros"
+                onClick={() => setPaginaActual(1)}
+                title="Aplicar filtros de búsqueda"
+              >
+                🔍 Buscar cliente
+              </button>
+              {(filtroCliente || filtroTipoPago !== 'todos' || filtroEstado !== 'todos' || filtroTipoEntrada !== 'todos') && (
+                <button
+                  className="btn-limpiar-filtros"
+                  onClick={() => {
+                    setFiltroTipoPago('todos');
+                    setFiltroTipoEntrada('todos');
+                    setFiltroEstado('todos');
+                    setFiltroCliente('');
+                  }}
+                  title="Limpiar todos los filtros"
+                >
+                  Limpiar filtros
+                </button>
+              )}
+            </div>
           </div>
         )}
 
         {!loadingReporte && reporte && (
           <>
+            {/* Tarjetas de Resumen Limpias (Sin "Compradores" ni "Ventas Realizadas" redundantes) */}
             <div className="resumen-cards">
-              <div className="card-resumen">
-                <span className="card-label">Compradores</span>
-                <strong className="card-value">{reporte.resumen?.total_compras || 0}</strong>
-                <span className="card-sub">Registros en el evento</span>
-              </div>
-              <div className="card-resumen">
-                <span className="card-label">Ventas Realizadas</span>
-                <strong className="card-value">
-                  {reporte.resumen?.pagos_realizados || 0}
-                </strong>
-                <span className="card-sub">Entradas confirmadas</span>
-              </div>
               <div className="card-resumen card-entradas-total">
-                <span className="card-label">Entradas totales</span>
+                <span className="card-label">🎟️ Entradas totales</span>
                 <strong className="card-value">{resumenEntradas.total}</strong>
                 {estadisticas?.desglose_tipos?.length > 0 ? (
                   <div className="desglose-mini">
@@ -542,21 +685,13 @@ const Reportes = () => {
                 ) : (
                   <span className="card-sub">
                     {reporte.evento?.tipo_evento === 'especial'
-                      ? 'Mesas / sillas asignadas'
+                      ? 'Mesas, sillas y zonas generales'
                       : 'Entradas generales'}
                   </span>
                 )}
               </div>
-              <div className="card-resumen card-qr">
-                <span className="card-label">📱 Pagos QR</span>
-                <strong className="card-value">
-                  Bs. {parseFloat(reporte.resumen?.total_qr || 0).toFixed(2)}
-                </strong>
-                <span className="card-sub">
-                  {reporte.resumen?.pagos_qr || 0} venta(s)
-                </span>
-              </div>
-              <div className="card-resumen card-qr">
+
+              <div className="card-resumen card-pasarela">
                 <span className="card-label">💳 Pasarela QR</span>
                 <strong className="card-value">
                   Bs. {parseFloat(reporte.resumen?.total_pasarela_qr || 0).toFixed(2)}
@@ -565,6 +700,7 @@ const Reportes = () => {
                   {reporte.resumen?.pagos_pasarela_qr || 0} venta(s)
                 </span>
               </div>
+
               <div className="card-resumen card-efectivo">
                 <span className="card-label">💵 Pagos Efectivo</span>
                 <strong className="card-value">
@@ -574,15 +710,27 @@ const Reportes = () => {
                   {reporte.resumen?.pagos_efectivo || 0} venta(s)
                 </span>
               </div>
+
+              {parseFloat(reporte.resumen?.total_qr || 0) > 0 && (
+                <div className="card-resumen card-qr">
+                  <span className="card-label">📱 Pagos QR (Manual)</span>
+                  <strong className="card-value">
+                    Bs. {parseFloat(reporte.resumen?.total_qr || 0).toFixed(2)}
+                  </strong>
+                  <span className="card-sub">
+                    {reporte.resumen?.pagos_qr || 0} venta(s)
+                  </span>
+                </div>
+              )}
+
               {(reporte.resumen?.entradas_zonas_generales || 0) > 0 && (
                 <div className="card-resumen card-zonas-generales">
-                  <span className="card-label">🚶 Zonas generales (personas de pie)</span>
+                  <span className="card-label">🚶 Zonas generales (personas)</span>
                   <strong className="card-value">
                     {reporte.resumen.entradas_zonas_generales}
                   </strong>
                   <span className="card-sub">
-                    {reporte.resumen.entradas_zonas_generales_confirmadas || 0} confirmadas,{' '}
-                    {reporte.resumen.entradas_zonas_generales_pendientes || 0} pendientes
+                    {reporte.resumen.entradas_zonas_generales_confirmadas || 0} confirmadas
                   </span>
                 </div>
               )}
@@ -813,7 +961,7 @@ const Reportes = () => {
                             <strong>{obtenerTotalEntradas(compra)}</strong>
                           </td>
                           <td className="detalle">
-                            <span>{construirDetalle(compra)}</span>
+                            {renderDetalleVisual(compra)}
                           </td>
                           <td>{formatearFecha(compra.fecha_compra)}</td>
                           <td>{formatearFecha(compra.fecha_confirmacion || compra.fecha_pago)}</td>

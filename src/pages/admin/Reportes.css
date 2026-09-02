@@ -712,3 +712,213 @@
     flex-wrap: wrap;
   }
 }
+
+/* ==========================================================================
+   TOOLBAR DE BÚSQUEDA Y FILTROS MODERNO (REPORTES)
+   ========================================================================== */
+.reportes-toolbar-busqueda {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
+}
+
+.toolbar-campo-input {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1 1 280px;
+  min-width: 240px;
+}
+
+.toolbar-campo-select {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 0 1 180px;
+  min-width: 150px;
+}
+
+.reportes-toolbar-busqueda label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #475569;
+}
+
+.input-busqueda-wrapper {
+  display: flex;
+  align-items: center;
+  position: relative;
+  background: #f8fafc;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.input-busqueda-wrapper:focus-within {
+  border-color: #3b82f6;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.input-buscar-cliente {
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  background: transparent;
+  font-size: 0.95rem;
+  color: #1e293b;
+  outline: none;
+}
+
+.btn-clear-input {
+  padding: 0 10px;
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+
+.btn-clear-input:hover {
+  color: #ef4444;
+}
+
+.toolbar-campo-select select {
+  padding: 10px 12px;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 8px;
+  background: #f8fafc;
+  font-size: 0.9rem;
+  color: #1e293b;
+  font-weight: 500;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.toolbar-campo-select select:focus {
+  border-color: #3b82f6;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.toolbar-acciones {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.btn-aplicar-filtros {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #ffffff;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.btn-aplicar-filtros:hover {
+  background: linear-gradient(135deg, #1d4ed8, #1e40af);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(37, 99, 235, 0.3);
+}
+
+.card-resumen.card-pasarela {
+  border-left: 4px solid #3b82f6;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), transparent);
+}
+
+/* ==========================================================================
+   DETALLE VISUAL CON SOMBREADO Y BADGES ELEGANTES (TABLA REPORTES)
+   ========================================================================== */
+.detalle-items-container {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.detalle-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.04);
+  flex-wrap: wrap;
+  line-height: 1.3;
+}
+
+/* Mesa Completa - Dorado/Ámbar sombreado */
+.detalle-pill-mesa {
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+  border: 1px solid #fde68a;
+  color: #92400e;
+}
+
+/* Sillas individuales - Azul brillante sombreado */
+.detalle-pill-silla {
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  border: 1px solid #bfdbfe;
+  color: #1e40af;
+}
+
+/* Zonas Generales / De Pie - Esmeralda/Verde sombreado */
+.detalle-pill-general {
+  background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+  border: 1px solid #a7f3d0;
+  color: #065f46;
+}
+
+/* Entrada General / Default - Índigo/Gris sombreado */
+.detalle-pill-default {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border: 1px solid #e2e8f0;
+  color: #334155;
+}
+
+.detalle-pill-icon {
+  font-size: 1rem;
+}
+
+.detalle-pill-title {
+  font-weight: 700;
+}
+
+.detalle-pill-area {
+  background: rgba(0, 0, 0, 0.06);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.detalle-pill-badge {
+  background: rgba(0, 0, 0, 0.08);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.detalle-pill-context {
+  font-size: 0.78rem;
+  opacity: 0.85;
+}
+
+.detalle-empty {
+  color: #94a3b8;
+  font-style: italic;
+}
+
