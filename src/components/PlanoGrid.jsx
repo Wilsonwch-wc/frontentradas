@@ -277,72 +277,63 @@ const PlanoGrid = ({
         const celda = celdas[key];
         const isHovered = hoveredKey === key;
 
-        let bg = 'transparent';
-        let border = 'none';
+        let bg = COLORES.vacio;
+        let border = '#e2e8f0';
         let label = '';
         let cursor = 'default';
         let textColor = '#475569';
         let icon = '';
-        let borderRadius = 0;
-        let shadow = 'none';
 
         if (!celda) {
-          bg = 'transparent';
-          border = 'none';
+          bg = isHovered ? '#f1f5f9' : COLORES.vacio;
+          border = '#e2e8f0';
         } else if (celda.tipo === 'area') {
-          bg = celda.color + '25'; // fondo suave del área
-          border = 'none';
+          bg = celda.color + '1A';
+          border = celda.color + '60';
         } else if (celda.tipo === 'escenario') {
           bg = COLORES.escenario;
-          border = 'none';
+          border = '#000000';
           icon = '🎤';
           textColor = '#ffffff';
-          borderRadius = 2;
         } else if (celda.tipo === 'mesa') {
           const ocupada = mesasOcupadas.includes(celda.id);
           const seleccionada = seleccionadosIds.has(`mesa_${celda.id}`);
-          borderRadius = 4;
           if (ocupada) {
             bg = COLORES.mesa.ocupada;
-            border = '1px solid #cbd5e1';
+            border = '#d1d5db';
             textColor = COLORES.textOcupada;
             cursor = 'not-allowed';
           } else if (seleccionada) {
             bg = COLORES.mesa.seleccionada;
-            border = '1.5px solid #b45309';
+            border = '#b45309';
             textColor = '#fff';
             cursor = 'pointer';
-            shadow = '0 0 6px rgba(245, 158, 11, 0.6)';
           } else {
             bg = isHovered ? '#fbbf24' : COLORES.mesa.libre;
-            border = '1.5px solid #000000';
+            border = '#000000';
             textColor = COLORES.textLibre;
             cursor = 'pointer';
-            shadow = '0 1px 3px rgba(0,0,0,0.1)';
           }
           icon = '';
           label = celda.label;
         } else if (celda.tipo === 'silla') {
           const ocupada = asientosOcupados.includes(celda.id);
           const seleccionada = seleccionadosIds.has(`silla_${celda.id}`);
-          borderRadius = 4;
           if (ocupada) {
             bg = COLORES.silla.ocupada;
-            border = '1px solid #cbd5e1';
+            border = '#d1d5db';
             textColor = COLORES.textOcupada;
             cursor = 'not-allowed';
           } else if (seleccionada) {
             bg = COLORES.silla.seleccionada;
-            border = '1.5px solid #1d4ed8';
+            border = '#1d4ed8';
             textColor = '#fff';
             cursor = 'pointer';
-            shadow = '0 0 6px rgba(59, 130, 246, 0.6)';
           } else {
             bg = isHovered ? '#60a5fa' : COLORES.silla.libre;
-            border = '1.5px solid #1d4ed8';
+            border = '#1d4ed8';
             textColor = '#1e3a5f';
             cursor = 'pointer';
-            shadow = '0 1px 3px rgba(0,0,0,0.1)';
           }
           icon = '';
           label = celda.label;
@@ -362,16 +353,13 @@ const PlanoGrid = ({
               width: cellPx,
               height: cellPx,
               backgroundColor: bg,
-              border: border,
-              borderRadius: borderRadius,
-              boxShadow: shadow,
+              border: `1px solid ${border}`,
               boxSizing: 'border-box',
               cursor,
               position: 'relative',
               flexShrink: 0,
               userSelect: 'none',
-              transition: 'background-color 0.15s, transform 0.1s',
-              zIndex: (celda?.tipo === 'mesa' || celda?.tipo === 'silla') ? 2 : 1,
+              transition: 'background-color 0.1s',
             }}
             onMouseEnter={() => setHoveredKey(key)}
             onMouseLeave={() => setHoveredKey(null)}
@@ -382,13 +370,25 @@ const PlanoGrid = ({
                 position: 'absolute', inset: 0,
                 display: 'flex', flexDirection: 'column',
                 alignItems: 'center', justifyContent: 'center',
-                fontSize: Math.max(6, Math.round(13 * zoom)),
+                fontSize: (() => {
+                  const len = String(label).length;
+                  let base = 12;
+                  if (len <= 2) base = 13;
+                  else if (len <= 3) base = 11;
+                  else if (len <= 4) base = 9.5;
+                  else if (len <= 5) base = 8;
+                  else if (len <= 6) base = 7;
+                  else base = 6.2;
+                  return Math.max(5.5, Math.round(base * zoom * 10) / 10);
+                })(),
                 fontWeight: 800, color: textColor,
-                lineHeight: 1, textAlign: 'center', padding: 1,
+                lineHeight: 1.05, textAlign: 'center', padding: '1px',
+                letterSpacing: String(label).length >= 5 ? '-0.4px' : 'normal',
                 overflow: 'hidden', pointerEvents: 'none',
+                wordBreak: 'break-word',
               }}>
-                {zoom > 0.55 && icon && <span style={{ fontSize: Math.max(7, Math.round(13 * zoom)) }}>{icon}</span>}
-                {zoom >= 0.35 && <span>{label.length > 5 ? label.slice(0, 5) : label}</span>}
+                {zoom > 0.65 && icon && <span>{icon}</span>}
+                {zoom >= 0.3 && <span>{label}</span>}
               </span>
             )}
           </div>
@@ -403,10 +403,9 @@ const PlanoGrid = ({
           display: 'grid',
           gridTemplateColumns: `repeat(${maxCol - minCol + 1}, ${cellPx}px)`,
           gridTemplateRows: `repeat(${maxRow - minRow + 1}, ${cellPx}px)`,
-          gap: '0px',
-          backgroundColor: '#ffffff',
-          padding: '8px',
-          borderRadius: '8px',
+          gap: '1px',
+          backgroundColor: '#e2e8f0',
+          padding: '1px',
           boxSizing: 'border-box',
           width: 'max-content',
           margin: '0 auto', // Centrar horizontalmente el plano en su contenedor
