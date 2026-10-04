@@ -169,7 +169,7 @@ export default function JuegoRuleta() {
 
     const newSocket = io(backendUrl, {
       path: '/socket.io',
-      transports: ['websocket', 'polling']
+      transports: ['polling', 'websocket']
     });
 
     newSocket.on('connect', () => {

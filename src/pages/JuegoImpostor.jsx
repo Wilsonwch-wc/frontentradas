@@ -52,7 +52,7 @@ export default function JuegoImpostor({ onSwitchToRuleta }) {
 
     const newSocket = io(backendUrl, {
       path: '/socket.io',
-      transports: ['websocket', 'polling']
+      transports: ['polling', 'websocket']
     });
 
     newSocket.on('connect', () => {
