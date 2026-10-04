@@ -26,6 +26,7 @@ import PanelEnVivo from './pages/admin/PanelEnVivo';
 import Cupones from './pages/admin/Cupones';
 import MiPanelVentas from './pages/admin/MiPanelVentas';
 import CargarDocumentos from './pages/admin/CargarDocumentos';
+import JuegoRuleta from './pages/JuegoRuleta';
 import './App.css';
 
 function AdminIndexRedirect() {
@@ -72,6 +73,9 @@ function App() {
           <Route path="/mis-compras" element={<PublicLayout><MisCompras /></PublicLayout>} />
           <Route path="/compra/:id" element={<PublicLayout><Compra /></PublicLayout>} />
           <Route path="/pago-qr/:id" element={<PublicLayout><PagoQR /></PublicLayout>} />
+          
+          {/* Ruta del Juego de Ruleta Rusa / Buckshot */}
+          <Route path="/juegoruleta" element={<JuegoRuleta />} />
         </Routes>
       </Router>
       </AuthProvider>

@@ -1,0 +1,1612 @@
+/* ===================================================
+   ESTILOS DE TERROR PARA EL JUEGO DE RULETA RUSA 2D (BUCKSHOT)
+   Mesa Circular, Escopeta Vectorial Realista, Mira Láser y Controles Móviles
+   =================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800;900&display=swap');
+
+.ruleta-container {
+  min-height: 100vh;
+  background: radial-gradient(circle at 50% 25%, #180909 0%, #0d0608 50%, #050203 100%);
+  color: #f1f5f9;
+  font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow-x: hidden;
+  user-select: none;
+}
+
+/* ===================================================
+   EFECTOS DE PANTALLA: DESTELLO, SACUDIDA Y SANGRE
+   =================================================== */
+
+.ruleta-container.screen-flash-red {
+  animation: flashRedTerror 0.38s ease-out;
+}
+.ruleta-container.screen-flash-blank {
+  animation: flashBlankCold 0.25s ease-out;
+}
+
+@keyframes flashRedTerror {
+  0% {
+    box-shadow: inset 0 0 200px rgba(220, 38, 38, 0.95);
+    background-color: #450a0a;
+  }
+  100% {
+    box-shadow: inset 0 0 0 transparent;
+    background-color: transparent;
+  }
+}
+
+@keyframes flashBlankCold {
+  0% { box-shadow: inset 0 0 100px rgba(56, 189, 248, 0.6); }
+  100% { box-shadow: inset 0 0 0 transparent; }
+}
+
+.ruleta-container.screen-shake-violent {
+  animation: screenShakeAnim 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+@keyframes screenShakeAnim {
+  10%, 90% { transform: translate3d(-5px, 2px, 0); }
+  20%, 80% { transform: translate3d(7px, -5px, 0); }
+  30%, 50%, 70% { transform: translate3d(-9px, 7px, 0); }
+  40%, 60% { transform: translate3d(9px, -7px, 0); }
+}
+
+.blood-splatter-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 100;
+  animation: bloodSplatterFade 1.4s ease-out forwards;
+}
+
+.blood-drip {
+  position: absolute;
+  top: 0;
+  width: 140px;
+  height: 250px;
+  background: radial-gradient(circle at 50% 0%, rgba(185, 28, 28, 0.9) 0%, rgba(127, 29, 29, 0.4) 60%, transparent 100%);
+  filter: blur(1px);
+}
+.blood-drip.drip-left { left: 5%; }
+.blood-drip.drip-right { right: 8%; }
+
+.blood-splat.splat-center {
+  position: absolute;
+  top: 40%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 320px;
+  height: 320px;
+  background: radial-gradient(ellipse at center, rgba(220, 38, 38, 0.45) 0%, rgba(153, 27, 27, 0.25) 45%, transparent 70%);
+  filter: blur(8px);
+}
+
+@keyframes bloodSplatterFade {
+  0% { opacity: 0; transform: scale(0.9); }
+  15% { opacity: 1; transform: scale(1); }
+  75% { opacity: 0.9; }
+  100% { opacity: 0; }
+}
+
+/* ===================================================
+   HEADER MACABRO CON CONTROLES INDEPENDIENTES
+   =================================================== */
+
+.ruleta-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 20px;
+  background: rgba(13, 6, 8, 0.94);
+  backdrop-filter: blur(14px);
+  border-bottom: 2px solid rgba(220, 38, 38, 0.35);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8);
+  z-index: 50;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.ruleta-logo-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.ruleta-logo-icon {
+  font-size: 26px;
+  filter: drop-shadow(0 0 10px rgba(239, 68, 68, 0.8));
+  animation: pulseSkull 2.5s infinite;
+}
+
+@keyframes pulseSkull {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); filter: drop-shadow(0 0 16px rgba(239, 68, 68, 1)); }
+}
+
+.ruleta-title-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.ruleta-logo-title {
+  font-size: 19px;
+  font-weight: 900;
+  letter-spacing: 1.5px;
+  background: linear-gradient(135deg, #f87171, #ef4444, #991b1b);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 0 12px rgba(220, 38, 38, 0.5);
+}
+
+.ruleta-logo-sub {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  color: #71717a;
+}
+
+.ruleta-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn-audio-toggle {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #a1a1aa;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.btn-audio-toggle.active-audio {
+  background: rgba(34, 197, 94, 0.2);
+  border-color: #22c55e;
+  color: #4ade80;
+  box-shadow: 0 0 10px rgba(34, 197, 94, 0.3);
+}
+.btn-audio-toggle.inactive-audio {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #f87171;
+}
+
+.btn-leave-table {
+  color: #f87171 !important;
+  border-color: rgba(248, 113, 113, 0.4) !important;
+}
+
+.btn-switch-game-mode {
+  background: linear-gradient(135deg, #1e1b4b, #312e81) !important;
+  color: #c7d2fe !important;
+  border: 1px solid #6366f1 !important;
+  box-shadow: 0 0 12px rgba(99, 102, 241, 0.35) !important;
+}
+.btn-switch-game-mode:hover {
+  background: #4338ca !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 18px rgba(99, 102, 241, 0.6) !important;
+  transform: translateY(-2px);
+}
+
+/* ===================================================
+   FASE 1: LOBBY & SELECCIÓN DE PERSONAJES DE TERROR
+   =================================================== */
+
+.ruleta-lobby-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  max-width: 660px;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.ruleta-hero {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.horror-skull-badge {
+  font-size: 40px;
+  margin-bottom: 4px;
+  filter: drop-shadow(0 0 16px rgba(220, 38, 38, 0.6));
+}
+
+.ruleta-hero h1 {
+  font-size: 34px;
+  font-weight: 900;
+  margin: 0 0 8px 0;
+  letter-spacing: 1px;
+  background: linear-gradient(to right, #fecaca, #ef4444, #7f1d1d);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 0 25px rgba(239, 68, 68, 0.4);
+}
+
+.ruleta-hero p {
+  color: #a1a1aa;
+  font-size: 14px;
+  margin: 0;
+}
+
+.horror-card {
+  width: 100%;
+  background: rgba(24, 11, 14, 0.88);
+  border: 1px solid rgba(220, 38, 38, 0.3);
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8), 0 0 20px rgba(185, 28, 28, 0.15);
+  backdrop-filter: blur(12px);
+  box-sizing: border-box;
+}
+
+.error-horror-box {
+  background: rgba(127, 29, 29, 0.6);
+  border: 1px solid #ef4444;
+  color: #fecaca;
+  padding: 10px 14px;
+  border-radius: 10px;
+  margin-bottom: 16px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.input-group {
+  margin-bottom: 18px;
+}
+
+.input-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 800;
+  color: #f87171;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.ruleta-input {
+  width: 100%;
+  background: rgba(10, 4, 6, 0.8);
+  border: 1px solid rgba(220, 38, 38, 0.4);
+  border-radius: 10px;
+  padding: 12px 16px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #f1f5f9;
+  box-sizing: border-box;
+  transition: all 0.2s;
+}
+.ruleta-input:focus {
+  outline: none;
+  border-color: #ef4444;
+  box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+}
+.code-input-huge {
+  font-size: 26px;
+  letter-spacing: 8px;
+  text-align: center;
+  font-weight: 900;
+  text-transform: uppercase;
+  color: #f87171;
+}
+
+/* Grilla de personajes de terror */
+.personajes-horror-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 10px;
+}
+
+.personaje-horror-card {
+  background: rgba(15, 6, 8, 0.85);
+  border: 2px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 10px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  text-align: center;
+}
+
+.personaje-horror-card:hover {
+  background: rgba(30, 10, 14, 0.9);
+  border-color: var(--pj-color, #dc2626);
+  transform: translateY(-2px);
+}
+
+.personaje-horror-card.selected {
+  border-color: var(--pj-color, #dc2626);
+  background: rgba(45, 12, 18, 0.95);
+  box-shadow: 0 0 16px var(--pj-color, #dc2626);
+  transform: scale(1.03);
+}
+
+.pj-emoji {
+  font-size: 28px;
+  margin-bottom: 4px;
+}
+
+.pj-nombre {
+  font-size: 13px;
+  font-weight: 800;
+  color: #f1f5f9;
+}
+
+.pj-titulo {
+  font-size: 10px;
+  font-weight: 600;
+  color: #a1a1aa;
+  margin-top: 2px;
+}
+
+.pj-check {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  font-size: 12px;
+  color: #4ade80;
+  font-weight: 900;
+}
+
+/* Tabs */
+.lobby-tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  background: rgba(10, 4, 6, 0.7);
+  padding: 4px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.tab-btn {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: #a1a1aa;
+  font-weight: 700;
+  font-size: 14px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.tab-btn.active {
+  background: #b91c1c;
+  color: #fff;
+  box-shadow: 0 2px 10px rgba(185, 28, 28, 0.5);
+}
+
+.vida-selector {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.vida-option {
+  background: rgba(15, 6, 8, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 10px 6px;
+  border-radius: 8px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  color: #cbd5e1;
+  transition: all 0.2s;
+}
+.vida-option.selected {
+  background: rgba(185, 28, 28, 0.3);
+  border-color: #ef4444;
+  color: #fecaca;
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
+}
+
+.horror-btn {
+  width: 100%;
+  background: linear-gradient(135deg, #dc2626, #991b1b);
+  border: none;
+  color: #fff;
+  font-weight: 900;
+  font-size: 16px;
+  letter-spacing: 1px;
+  padding: 15px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 6px 20px rgba(220, 38, 38, 0.4);
+  text-transform: uppercase;
+}
+.horror-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #ef4444, #b91c1c);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(239, 68, 68, 0.6);
+}
+.horror-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* ===================================================
+   FASE 2: LOBBY DE ESPERA
+   =================================================== */
+
+.horror-box {
+  background: rgba(24, 11, 14, 0.88);
+  border: 1px solid rgba(220, 38, 38, 0.3);
+  border-radius: 16px;
+  padding: 20px;
+  text-align: center;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+  margin-bottom: 18px;
+}
+
+.horror-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  background: rgba(10, 4, 6, 0.9);
+  border: 2px solid #ef4444;
+  padding: 8px 20px;
+  border-radius: 14px;
+  margin-top: 12px;
+  cursor: pointer;
+  box-shadow: 0 0 18px rgba(239, 68, 68, 0.35);
+  transition: all 0.2s;
+}
+.horror-badge:hover {
+  transform: scale(1.04);
+  box-shadow: 0 0 25px rgba(239, 68, 68, 0.6);
+}
+
+.room-code-text {
+  font-size: 30px;
+  font-weight: 900;
+  letter-spacing: 5px;
+  color: #f87171;
+  font-family: monospace;
+}
+
+.btn-copy-code {
+  background: #b91c1c;
+  color: #fff;
+  border: none;
+  font-weight: 800;
+  font-size: 12px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.players-grid-lobby {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.horror-player-card {
+  background: rgba(20, 8, 11, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.player-avatar-horror {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #110507;
+  border: 2px solid #dc2626;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  box-shadow: 0 0 10px rgba(220, 38, 38, 0.3);
+}
+
+.player-meta-box {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.player-name-text {
+  font-size: 14px;
+  font-weight: 800;
+  color: #f1f5f9;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.player-character-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: #f87171;
+}
+
+.badge-host {
+  font-size: 10px;
+  font-weight: 900;
+  background: #f59e0b;
+  color: #000;
+  padding: 2px 6px;
+  border-radius: 6px;
+  margin-left: auto;
+}
+
+.waiting-host-box {
+  text-align: center;
+  color: #a1a1aa;
+  padding: 16px;
+  background: rgba(20, 8, 11, 0.7);
+  border: 1px dashed rgba(220, 38, 38, 0.4);
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+/* ===================================================
+   FASE 3: PANTALLA DE JUEGO (GAMEPLAY)
+   =================================================== */
+
+.ruleta-game-screen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 10px 14px;
+  max-width: 1150px;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.horror-status-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(18, 7, 10, 0.88);
+  border: 1px solid rgba(220, 38, 38, 0.25);
+  border-radius: 12px;
+  padding: 8px 16px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.horror-shells {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 4px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.shells-breakdown {
+  color: #a1a1aa;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.doble-dano-indicator {
+  background: #b91c1c;
+  color: #fee2e2;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.pulse-blood {
+  animation: pulseBloodAnim 1s infinite;
+}
+@keyframes pulseBloodAnim {
+  0%, 100% { box-shadow: 0 0 10px rgba(220, 38, 38, 0.6); }
+  50% { box-shadow: 0 0 20px rgba(220, 38, 38, 1); transform: scale(1.03); }
+}
+
+/* ===================================================
+   🔥 MEGA BANNER DE TURNO EN LETRAS GRANDES
+   =================================================== */
+
+.giant-horror-turn-banner {
+  width: 100%;
+  border-radius: 14px;
+  padding: 12px 18px;
+  margin-bottom: 10px;
+  text-align: center;
+  box-sizing: border-box;
+  transition: all 0.3s ease;
+}
+
+.giant-horror-turn-banner.my-turn-active {
+  background: linear-gradient(135deg, rgba(185, 28, 28, 0.95), rgba(127, 29, 29, 0.95));
+  border: 2px solid #ef4444;
+  box-shadow: 0 0 30px rgba(239, 68, 68, 0.6), inset 0 0 15px rgba(239, 68, 68, 0.3);
+  animation: myTurnGlowPulse 1.8s infinite;
+}
+
+@keyframes myTurnGlowPulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 25px rgba(239, 68, 68, 0.6);
+  }
+  50% {
+    transform: scale(1.015);
+    box-shadow: 0 0 40px rgba(239, 68, 68, 0.95);
+  }
+}
+
+.giant-horror-turn-banner.rival-turn-active {
+  background: rgba(18, 8, 11, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+}
+
+.turn-banner-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.turn-banner-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.giant-turn-title {
+  font-size: 26px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.my-turn-active .giant-turn-title {
+  color: #fff;
+  text-shadow: 0 0 15px rgba(255, 255, 255, 0.8), 0 0 25px rgba(239, 68, 68, 1);
+}
+
+.rival-turn-active .giant-turn-title {
+  color: #cbd5e1;
+}
+
+.rival-highlight-name {
+  color: #f87171;
+  font-weight: 900;
+  text-shadow: 0 0 10px rgba(248, 113, 113, 0.6);
+}
+
+.turn-rival-emoji {
+  font-size: 24px;
+}
+
+.flame-icon {
+  font-size: 22px;
+}
+
+.giant-turn-subtitle {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+.my-turn-active .giant-turn-subtitle {
+  color: #fecaca;
+}
+.rival-turn-active .giant-turn-subtitle {
+  color: #94a3b8;
+}
+
+/* ===================================================
+   MESA CIRCULAR CLANDESTINA (HORROR CIRCULAR TABLE)
+   =================================================== */
+
+.horror-circular-table {
+  flex: 1;
+  background: radial-gradient(ellipse at center, #1a0a00 0%, #0d0403 60%, #030101 100%);
+  border: 3px solid rgba(220, 38, 38, 0.3);
+  border-radius: 36px;
+  box-shadow: inset 0 0 100px rgba(0, 0, 0, 0.98), 0 20px 40px rgba(0, 0, 0, 0.9);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 12px;
+  position: relative;
+  min-height: 520px;
+  margin-bottom: 12px;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.horror-table-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, transparent 35%, rgba(0, 0, 0, 0.85) 100%);
+  pointer-events: none;
+}
+
+.hanging-lamp {
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 180px;
+  height: 220px;
+  background: radial-gradient(circle at 50% 10%, rgba(254, 240, 138, 0.16) 0%, transparent 70%);
+  pointer-events: none;
+  filter: blur(12px);
+}
+
+/* AVISO FLOTANTE DE RESULTADO DE DISPARO (VACÍO O CARGADO) */
+.aviso-disparo-banner {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 80;
+  padding: 10px 24px;
+  border-radius: 14px;
+  text-align: center;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.9);
+  animation: avisoPopIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.aviso-disparo-banner.cargado {
+  background: linear-gradient(135deg, #b91c1c, #7f1d1d);
+  border: 2px solid #ef4444;
+  color: #fff;
+  box-shadow: 0 0 30px rgba(239, 68, 68, 0.8);
+}
+
+.aviso-disparo-banner.vacio {
+  background: linear-gradient(135deg, #0284c7, #075985);
+  border: 2px solid #38bdf8;
+  color: #fff;
+  box-shadow: 0 0 30px rgba(56, 189, 248, 0.8);
+}
+
+.aviso-disparo-title {
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: 1px;
+}
+
+.aviso-disparo-sub {
+  font-size: 12px;
+  font-weight: 700;
+  opacity: 0.95;
+  margin-top: 2px;
+}
+
+@keyframes avisoPopIn {
+  0% { transform: translateX(-50%) scale(0.6); opacity: 0; }
+  100% { transform: translateX(-50%) scale(1); opacity: 1; }
+}
+
+/* ===================================================
+   ESCENARIO CIRCULAR: MESA REDONDA CLANDESTINA
+   =================================================== */
+
+/* Contenedor raz del escenario: todo relativo a este */
+.poker-scene-container {
+  position: relative;
+  width: 100%;
+  /* Altura = width para mantener ratio cuadrado donde radio funciona */
+  aspect-ratio: 1 / 1;
+  max-width: 560px;
+  max-height: 560px;
+  margin: 0 auto;
+  z-index: 1;
+}
+
+/* === JUGADOR POSICIONADO EN EL CÍRCULO === */
+.player-scene-seat {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  z-index: 12;
+  transition: transform 0.3s ease;
+  /* cada asiento ocupa aproximadamente 90px x 100px */
+  width: 88px;
+}
+
+/* SILLA DETRÁS DEL JUGADOR */
+.player-chair {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  pointer-events: none;
+}
+
+.chair-back {
+  width: 58px;
+  height: 28px;
+  background: linear-gradient(180deg, #2a1a12 0%, #1a0e08 100%);
+  border: 2px solid #3d2415;
+  border-radius: 8px 8px 2px 2px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.7), inset 0 1px 4px rgba(255,200,100,0.06);
+  position: relative;
+}
+.chair-back::before {
+  content: '';
+  position: absolute;
+  left: 10px; right: 10px;
+  top: 6px; bottom: 6px;
+  background: linear-gradient(135deg, rgba(255,190,80,0.08), transparent);
+  border-radius: 4px;
+  border: 1px solid rgba(255,150,50,0.12);
+}
+
+.chair-seat-pad {
+  width: 64px;
+  height: 16px;
+  background: linear-gradient(180deg, #3d2010 0%, #200e05 100%);
+  border: 2px solid #4a2a18;
+  border-radius: 4px;
+  margin-top: 2px;
+  box-shadow: 0 6px 14px rgba(0,0,0,0.8), inset 0 2px 5px rgba(0,0,0,0.5);
+}
+
+/* === AVATAR DEL PERSONAJE === */
+.scene-avatar-ring {
+  position: relative;
+  z-index: 13;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle, #1c0a0c 60%, #0d0305 100%);
+  border: 2.5px solid var(--seat-color, #dc2626);
+  box-shadow: 0 0 14px rgba(0,0,0,0.9), 0 0 8px var(--seat-color, #dc2626);
+  margin-top: 28px; /* espacio debajo de la silla */
+}
+
+.scene-avatar-emoji {
+  font-size: 26px;
+  line-height: 1;
+  user-select: none;
+}
+
+/* ANILLO DE LLAMAS EN EL TURNO ACTIVO */
+.active-flame-ring {
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 2.5px dashed #ef4444;
+  animation: rotateRing 5s linear infinite;
+  box-shadow: 0 0 14px rgba(239, 68, 68, 0.7), inset 0 0 8px rgba(239, 68, 68, 0.3);
+}
+
+/* ESCUDO */
+.scene-shield-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: #1e3a8a;
+  border: 1px solid #60a5fa;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  box-shadow: 0 0 8px #3b82f6;
+  z-index: 15;
+}
+
+/* === INFO DEL JUGADOR === */
+.scene-player-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  z-index: 13;
+  gap: 1px;
+}
+
+.scene-player-name {
+  font-size: 10px;
+  font-weight: 800;
+  color: #f1f5f9;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 86px;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.9);
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.scene-player-title {
+  font-size: 8px;
+  font-weight: 600;
+  color: #f87171;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 86px;
+}
+
+.scene-lives-row {
+  display: flex;
+  gap: 1px;
+  font-size: 11px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* ESTADO DE TURNO ACTIVO: Silla brilla */
+.seat-active-turn .chair-back {
+  border-color: #ef4444;
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.6), 0 0 20px rgba(239, 68, 68, 0.4);
+}
+.seat-active-turn .chair-seat-pad {
+  border-color: #ef4444;
+}
+
+/* SOY YO: Borde azul */
+.seat-is-me .scene-avatar-ring {
+  border-color: #3b82f6;
+  box-shadow: 0 0 14px rgba(59,130,246,0.7);
+}
+.seat-is-me.seat-active-turn .scene-avatar-ring {
+  border-color: #ef4444;
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.9);
+}
+
+/* ELIMINADO */
+.seat-dead {
+  opacity: 0.3;
+  filter: grayscale(1);
+}
+
+/* APUNTADO: SACUDE Y ROJO */
+.seat-targeted .scene-avatar-ring {
+  border-color: #ef4444;
+  box-shadow: 0 0 30px rgba(239, 68, 68, 1);
+  animation: targetShake 0.3s infinite;
+}
+
+/* === MESA CIRCULAR CENTRAL === */
+.central-table-circle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 46%;
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  z-index: 10;
+  /* Mesa de póker: borde de madera oscura */
+  background:
+    radial-gradient(circle at 30% 30%, rgba(255,255,255,0.03) 0%, transparent 60%),
+    radial-gradient(circle, #1a3a0a 0%, #0f2204 50%, #060e02 100%);
+  border: 8px solid #2a1a08;
+  box-shadow:
+    0 0 0 4px #4a2e12,
+    0 0 0 6px #200e04,
+    0 30px 60px rgba(0,0,0,0.95),
+    inset 0 0 30px rgba(0,0,0,0.7),
+    0 0 40px rgba(0,0,0,0.9);
+}
+
+.table-felt-inner {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  /* Textura de fieltro verde oscuro */
+  background:
+    radial-gradient(circle at 40% 35%, rgba(100,200,100,0.04) 0%, transparent 55%),
+    radial-gradient(circle at 60% 65%, rgba(255,255,255,0.02) 0%, transparent 40%),
+    radial-gradient(circle, #1a3a0a 0%, #0f2204 60%, #060e02 100%);
+}
+
+/* Ancla de la escopeta: cero tamaño en el centro de la mesa */
+.shotgun-table-anchor {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  z-index: 13;
+}
+
+/* La escopeta se centra en el origen y rota desde ahí */
+.shotgun-on-table-wrap {
+  position: absolute;
+  left: -62px;
+  top: -16px;
+  transform-origin: 62px 16px; /* punto de pivote = centro del arma */
+  transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.escopeta-svg-render {
+  width: 124px;
+  height: 32px;
+  filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.95));
+  overflow: visible;
+}
+
+.escopeta-svg-render.recoil-fire {
+  animation: shotgunKickback 0.5s ease-out;
+}
+
+@keyframes shotgunKickback {
+  0%   { transform: scale(1.25) translateX(-18px) rotate(-4deg); }
+  30%  { transform: scale(0.92) translateX(10px) rotate(2deg); }
+  65%  { transform: scale(1.04) translateX(-5px); }
+  100% { transform: scale(1) translateX(0); }
+}
+
+/* === BOTELLA INDICADOR DE TURNO === */
+.bottle-turn-indicator {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  /* Botella: pivote en su cuello (parte superior) */
+  margin-left: -9px;
+  margin-top: 0px;
+  width: 18px;
+  transform-origin: 9px 4px; /* pivote = cuello de la botella */
+  transform: rotate(var(--bottle-rot, 0deg));
+  transition: transform 0.75s cubic-bezier(0.34, 1.56, 0.64, 1);
+  z-index: 14;
+  filter: drop-shadow(0 0 6px rgba(74,222,128,0.4));
+}
+
+.bottle-svg {
+  width: 18px;
+  height: 54px;
+  display: block;
+}
+
+.bottle-arrow-tip {
+  width: 0; height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 7px solid #4ade80;
+  margin: 0 auto;
+  margin-top: -2px;
+  opacity: 0.8;
+  filter: drop-shadow(0 0 4px #16a34a);
+}
+
+/* Casquillos en la mesa */
+.table-spent-shells {
+  position: absolute;
+  bottom: 14%;
+  display: flex;
+  gap: 6px;
+  font-size: 11px;
+  opacity: 0.5;
+}
+
+.spent-shell { font-size: 12px; }
+
+/* === LASER RETICLE (apuntado) === */
+.laser-target-reticle {
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  border: 2px solid #ef4444;
+  pointer-events: none;
+  z-index: 22;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 20px #ef4444, inset 0 0 15px rgba(239, 68, 68, 0.5);
+  animation: reticlePulse 0.4s infinite alternate;
+}
+
+.reticle-circle {
+  width: 30px;
+  height: 30px;
+  border: 2px dashed #ef4444;
+  border-radius: 50%;
+  position: absolute;
+  animation: rotateRing 4s linear infinite;
+}
+
+.reticle-line-h {
+  position: absolute;
+  width: 44px;
+  height: 2px;
+  background: #ef4444;
+  box-shadow: 0 0 6px #ef4444;
+}
+
+.reticle-line-v {
+  position: absolute;
+  width: 2px;
+  height: 44px;
+  background: #ef4444;
+  box-shadow: 0 0 6px #ef4444;
+}
+
+.reticle-text {
+  position: absolute;
+  bottom: -16px;
+  font-size: 8px;
+  font-weight: 900;
+  color: #fff;
+  background: #dc2626;
+  padding: 1px 5px;
+  border-radius: 4px;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+@keyframes reticlePulse {
+  0% { opacity: 0.7; }
+  100% { opacity: 1; }
+}
+
+@keyframes targetShake {
+  0%, 100% { transform: translate(-50%, -50%) scale(1.06); }
+  50% { transform: translate(-50%, -50%) scale(1.09) rotate(1.5deg); }
+}
+
+/* === SHARED UTILITIES === */
+.tag-me {
+  background: #3b82f6;
+  color: #fff;
+  font-size: 8px;
+  font-weight: 900;
+  padding: 1px 3px;
+  border-radius: 3px;
+}
+
+.heart-drop.dead {
+  opacity: 0.25;
+  filter: grayscale(1);
+}
+
+.badge-eliminated {
+  font-size: 8px;
+  font-weight: 900;
+  color: #ef4444;
+  text-transform: uppercase;
+  margin-top: 1px;
+  letter-spacing: 0.5px;
+}
+
+/* ===================================================
+   PANEL DE CONTROL INFERIOR
+   =================================================== */
+
+.horror-actions-panel {
+  background: rgba(18, 7, 10, 0.95);
+  border: 1px solid rgba(220, 38, 38, 0.35);
+  border-radius: 20px;
+  padding: 14px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+}
+
+/* Cuando NO es tu turno: Panel de espera tenebroso */
+.waiting-turn-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 16px;
+  background: rgba(12, 4, 6, 0.8);
+  border: 1px dashed rgba(220, 38, 38, 0.3);
+  border-radius: 14px;
+  text-align: left;
+}
+
+.waiting-pulse-orb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #ef4444;
+  box-shadow: 0 0 12px #ef4444;
+  animation: pulseOrb 1.5s infinite;
+  flex-shrink: 0;
+}
+
+@keyframes pulseOrb {
+  0%, 100% { opacity: 0.4; transform: scale(0.9); }
+  50% { opacity: 1; transform: scale(1.2); }
+}
+
+.waiting-text-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.waiting-title {
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  color: #f87171;
+}
+
+.waiting-desc {
+  font-size: 12px;
+  color: #94a3b8;
+  margin-top: 2px;
+}
+
+/* Cuando ES tu turno: Botones de disparo */
+.action-buttons-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.btn-game-shoot {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  text-align: left;
+}
+
+.shoot-btn-icon {
+  font-size: 26px;
+}
+
+.shoot-btn-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.btn-main-label {
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+}
+
+.btn-sub-label {
+  font-size: 11px;
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+.btn-game-shoot.shoot-rival {
+  background: linear-gradient(135deg, #991b1b, #7f1d1d);
+  color: #fff;
+  border-color: #ef4444;
+  box-shadow: 0 4px 15px rgba(220, 38, 38, 0.35);
+}
+.btn-game-shoot.shoot-rival:hover {
+  background: linear-gradient(135deg, #dc2626, #991b1b);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(239, 68, 68, 0.6);
+}
+
+.btn-game-shoot.shoot-self {
+  background: linear-gradient(135deg, #854d0e, #713f12);
+  color: #fff;
+  border-color: #f59e0b;
+  box-shadow: 0 4px 15px rgba(245, 158, 11, 0.35);
+}
+.btn-game-shoot.shoot-self:hover {
+  background: linear-gradient(135deg, #d97706, #92400e);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(245, 158, 11, 0.6);
+}
+
+/* Inventario de objetos */
+.horror-inventory {
+  background: rgba(10, 4, 6, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 12px;
+}
+
+.items-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.items-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 10px;
+}
+
+.horror-item-btn {
+  background: rgba(24, 10, 14, 0.85);
+  border: 1px solid rgba(220, 38, 38, 0.3);
+  border-radius: 10px;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: #f1f5f9;
+  text-align: left;
+}
+.horror-item-btn:hover {
+  background: rgba(45, 15, 22, 0.95);
+  border-color: #ef4444;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
+}
+
+.item-btn-emoji {
+  font-size: 22px;
+}
+
+.item-btn-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.item-btn-name {
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.item-btn-desc {
+  font-size: 10px;
+  color: #a1a1aa;
+}
+
+.no-items-text {
+  color: #71717a;
+  font-size: 12px;
+  font-style: italic;
+  padding: 6px;
+  grid-column: 1 / -1;
+}
+
+/* ===================================================
+   MODALES DE TERROR
+   =================================================== */
+
+.ruleta-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.horror-modal {
+  background: #18090d;
+  border: 2px solid #ef4444;
+  box-shadow: 0 0 35px rgba(239, 68, 68, 0.5);
+  border-radius: 20px;
+  padding: 24px;
+  max-width: 480px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.modal-horror-title {
+  margin: 0 0 6px 0;
+  font-size: 19px;
+  font-weight: 900;
+  color: #f87171;
+  letter-spacing: 0.5px;
+}
+
+.rivals-list-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.horror-rival-btn {
+  background: rgba(25, 10, 14, 0.9);
+  border: 1px solid rgba(220, 38, 38, 0.4);
+  border-radius: 12px;
+  padding: 12px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: #f1f5f9;
+}
+.horror-rival-btn:hover {
+  background: rgba(50, 15, 22, 0.95);
+  border-color: #ef4444;
+  transform: translateX(4px);
+  box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+}
+
+.rival-btn-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.rival-btn-emoji {
+  font-size: 24px;
+}
+
+.rival-btn-lives {
+  font-size: 16px;
+}
+
+.btn-cancel-modal {
+  width: 100%;
+  background: #27272a;
+  border: none;
+  color: #cbd5e1;
+  font-weight: 700;
+  padding: 12px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.btn-cancel-modal:hover {
+  background: #3f3f46;
+}
+
+/* Pantalla de Victoria */
+.horror-victory {
+  text-align: center;
+  padding: 30px;
+}
+
+.crown-icon-horror {
+  font-size: 56px;
+  margin-bottom: 8px;
+  animation: pulseSkull 2s infinite;
+}
+
+.victory-title {
+  font-size: 32px;
+  font-weight: 900;
+  margin: 10px 0;
+  color: #fbbf24;
+  text-shadow: 0 0 25px rgba(251, 191, 36, 0.7);
+  letter-spacing: 1px;
+}
+
+.victory-desc {
+  color: #cbd5e1;
+  font-size: 14px;
+  margin: 0 0 24px 0;
+}
+
+/* ===================================================
+   OPTIMIZACIONES MÓVILES (SMARTPHONES Y TABLETS)
+   =================================================== */
+
+@media (max-width: 640px) {
+  .ruleta-header {
+    padding: 8px 12px;
+  }
+  .ruleta-logo-title {
+    font-size: 16px;
+  }
+  .btn-audio-toggle {
+    font-size: 11px;
+    padding: 5px 8px;
+  }
+  .giant-turn-title {
+    font-size: 19px;
+    letter-spacing: 1px;
+  }
+  .giant-turn-subtitle {
+    font-size: 10px;
+  }
+  .horror-circular-table {
+    min-height: 380px;
+    padding: 8px;
+    border-radius: 24px;
+  }
+  .poker-scene-container {
+    max-width: 340px;
+    max-height: 340px;
+  }
+  .escopeta-svg-render {
+    width: 90px;
+    height: 24px;
+  }
+  .shotgun-on-table-wrap {
+    left: -45px;
+    top: -12px;
+    transform-origin: 45px 12px;
+  }
+  .player-scene-seat {
+    width: 68px;
+  }
+  .scene-avatar-ring {
+    width: 42px;
+    height: 42px;
+    margin-top: 22px;
+  }
+  .scene-avatar-emoji {
+    font-size: 20px;
+  }
+  .chair-back {
+    width: 44px;
+    height: 22px;
+  }
+  .chair-seat-pad {
+    width: 50px;
+    height: 12px;
+  }
+  .scene-player-name {
+    font-size: 9px;
+    max-width: 68px;
+  }
+  .scene-player-title {
+    font-size: 7px;
+    max-width: 68px;
+  }
+  .action-buttons-row {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .btn-game-shoot {
+    padding: 12px 14px;
+  }
+  .ruleta-hero h1 {
+    font-size: 26px;
+  }
+  .personajes-horror-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
