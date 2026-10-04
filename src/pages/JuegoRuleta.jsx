@@ -177,8 +177,12 @@ export default function JuegoRuleta() {
       setConectado(true);
     });
 
-    newSocket.on('disconnect', () => {
-      console.log('🔌 Desconectado de Ruleta');
+    newSocket.on('connect_error', (err) => {
+      console.warn('⚠️ Error de conexión Socket.IO:', err.message);
+    });
+
+    newSocket.on('disconnect', (reason) => {
+      console.log('🔌 Desconectado de Ruleta:', reason);
       setConectado(false);
     });
 

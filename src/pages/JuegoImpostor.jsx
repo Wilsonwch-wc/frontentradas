@@ -71,8 +71,12 @@ export default function JuegoImpostor({ onSwitchToRuleta }) {
       });
     });
 
-    newSocket.on('disconnect', () => {
-      console.log('🔌 Desconectado de El Impostor');
+    newSocket.on('connect_error', (err) => {
+      console.warn('⚠️ Error de conexión Socket.IO Impostor:', err.message);
+    });
+
+    newSocket.on('disconnect', (reason) => {
+      console.log('🔌 Desconectado de El Impostor:', reason);
       setConectado(false);
     });
 
