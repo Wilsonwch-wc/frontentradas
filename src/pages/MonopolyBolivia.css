@@ -1,0 +1,1031 @@
+/* ===================================================
+   MONOPOLIO BOLIVIA - ESTILOS PREMIUM DEL TABLERO
+   Diseño de tablero clásico 11x11 con identidad boliviana
+   =================================================== */
+
+:root {
+  --board-bg: #e9f0e1;
+  --board-border: #143521;
+  --board-cell-bg: #f8faf5;
+  --gold-accent: #f59e0b;
+}
+
+.monopoly-page-wrapper {
+  min-height: 100vh;
+  background: radial-gradient(circle at 50% 10%, #0d2818 0%, #05160d 50%, #020905 100%);
+  color: #f8fafc;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  padding: 16px 12px 60px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* ===================================================
+   HEADER & ESTADÍSTICAS DEL JUGADOR
+   =================================================== */
+.monopoly-header {
+  width: 100%;
+  max-width: 1280px;
+  background: rgba(13, 40, 24, 0.85);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(74, 222, 128, 0.25);
+  border-radius: 18px;
+  padding: 14px 22px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.header-brand-box {
+  display: flex;
+  flex-direction: column;
+}
+
+.flag-badge-bolivia {
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 1.5px;
+  color: #4ade80;
+  display: inline-block;
+  margin-bottom: 2px;
+}
+
+.header-game-title {
+  font-size: 26px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  margin: 0;
+  color: #ffffff;
+}
+
+.title-highlight {
+  background: linear-gradient(135deg, #ef4444, #eab308, #22c55e);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.header-game-tagline {
+  font-size: 12px;
+  color: #94a3b8;
+  margin-top: 2px;
+}
+
+.header-player-stats {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.stat-pill-token,
+.stat-pill-money,
+.stat-pill-properties {
+  background: rgba(5, 22, 13, 0.85);
+  border: 1px solid rgba(74, 222, 128, 0.3);
+  padding: 8px 14px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.token-emoji-large {
+  font-size: 26px;
+}
+
+.token-meta {
+  display: flex;
+  flex-direction: column;
+}
+
+.token-label {
+  font-size: 9px;
+  font-weight: 800;
+  color: #94a3b8;
+  letter-spacing: 1px;
+}
+
+.token-name {
+  font-size: 13px;
+  color: #f1f5f9;
+}
+
+.stat-pill-money {
+  border-color: #22c55e;
+  box-shadow: 0 0 16px rgba(34, 197, 94, 0.2);
+}
+
+.money-currency-tag {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: #86efac;
+}
+
+.money-amount {
+  font-size: 18px;
+  font-weight: 900;
+  color: #4ade80;
+}
+
+.prop-count-badge {
+  font-size: 14px;
+  font-weight: 800;
+  color: #f59e0b;
+}
+
+.prop-label {
+  font-size: 11px;
+  color: #cbd5e1;
+}
+
+/* ===================================================
+   BANNER DE EVENTOS (TICKER)
+   =================================================== */
+.monopoly-event-ticker {
+  width: 100%;
+  max-width: 1280px;
+  background: linear-gradient(90deg, rgba(234, 179, 8, 0.2), rgba(34, 197, 94, 0.2));
+  border: 1px solid rgba(234, 179, 8, 0.4);
+  border-radius: 10px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #fef08a;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+/* ===================================================
+   LAYOUT PRINCIPAL: TABLERO + SIDEBAR
+   =================================================== */
+.monopoly-main-layout {
+  width: 100%;
+  max-width: 1300px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+@media (min-width: 1080px) {
+  .monopoly-main-layout {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    align-items: start;
+  }
+}
+
+/* ===================================================
+   TOOLBAR (ZOOM Y SELECCIÓN DE FICHAS)
+   =================================================== */
+.board-toolbar {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(13, 40, 24, 0.6);
+  border: 1px solid rgba(74, 222, 128, 0.15);
+  border-radius: 12px;
+  padding: 8px 16px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.tokens-selector-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toolbar-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #94a3b8;
+}
+
+.btn-token-choice {
+  background: rgba(5, 22, 13, 0.8);
+  border: 1px solid rgba(74, 222, 128, 0.25);
+  border-radius: 8px;
+  font-size: 18px;
+  padding: 4px 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-token-choice:hover {
+  transform: translateY(-2px);
+  background: rgba(34, 197, 94, 0.2);
+}
+
+.btn-token-choice.active {
+  border-color: #f59e0b;
+  background: rgba(245, 158, 11, 0.25);
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.4);
+}
+
+.zoom-controls-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-zoom,
+.btn-zoom-reset {
+  background: rgba(5, 22, 13, 0.8);
+  border: 1px solid rgba(74, 222, 128, 0.3);
+  color: #e2e8f0;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 5px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-zoom:hover,
+.btn-zoom-reset:hover {
+  background: rgba(34, 197, 94, 0.2);
+}
+
+.zoom-indicator {
+  font-size: 12px;
+  font-weight: 700;
+  color: #94a3b8;
+  min-width: 40px;
+  text-align: center;
+}
+
+/* ===================================================
+   VIEWPORT Y TABLERO MONOPOLIO (GRID 11x11)
+   =================================================== */
+.monopoly-board-viewport {
+  overflow-x: auto;
+  overflow-y: visible;
+  padding: 8px;
+  display: flex;
+  justify-content: center;
+  transition: transform 0.2s ease-out;
+  transform-origin: top center;
+}
+
+.monopoly-board-grid {
+  width: 780px;
+  height: 780px;
+  min-width: 780px;
+  min-height: 780px;
+  background-color: var(--board-bg);
+  border: 8px solid var(--board-border);
+  border-radius: 12px;
+  display: grid;
+  grid-template-columns: 13.5% repeat(9, 8.11%) 13.5%;
+  grid-template-rows: 13.5% repeat(9, 8.11%) 13.5%;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), 0 0 40px rgba(20, 53, 33, 0.5);
+  position: relative;
+  user-select: none;
+}
+
+/* ===================================================
+   CASILLAS DEL TABLERO (CÉLULAS)
+   =================================================== */
+.board-cell {
+  background-color: var(--board-cell-bg);
+  border: 1px solid #143521;
+  position: relative;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: all 0.15s ease;
+  box-sizing: border-box;
+}
+
+.board-cell:hover {
+  background-color: #fefce8;
+  z-index: 10;
+  box-shadow: inset 0 0 10px rgba(234, 179, 8, 0.5);
+}
+
+.board-cell.cell-selected {
+  outline: 3px solid #f59e0b;
+  z-index: 15;
+  box-shadow: 0 0 16px rgba(245, 158, 11, 0.7);
+}
+
+/* Franja de Color del Grupo (Propiedades) */
+.cell-color-band {
+  width: 100%;
+  height: 18px;
+  border-bottom: 1.5px solid #143521;
+}
+
+.cell-side-top .cell-color-band {
+  order: 2;
+  border-bottom: none;
+  border-top: 1.5px solid #143521;
+}
+
+.cell-side-left .cell-color-band {
+  order: 2;
+  width: 18px;
+  height: 100%;
+  border-bottom: none;
+  border-left: 1.5px solid #143521;
+}
+
+.cell-side-right .cell-color-band {
+  width: 18px;
+  height: 100%;
+  border-bottom: none;
+  border-right: 1.5px solid #143521;
+}
+
+/* Franja de Teleférico */
+.cell-teleferico-band {
+  width: 100%;
+  height: 8px;
+}
+
+/* Contenido de la Casilla */
+.cell-content-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 3px 2px;
+  text-align: center;
+  color: #0f172a;
+}
+
+.cell-icon-badge {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.cell-title-text {
+  font-size: 8px;
+  font-weight: 800;
+  line-height: 1.1;
+  text-transform: uppercase;
+  max-width: 100%;
+  word-break: break-word;
+}
+
+.cell-city-tag {
+  font-size: 6.5px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+}
+
+.cell-subtitle-tag {
+  font-size: 6.5px;
+  color: #475569;
+}
+
+.cell-price-tag {
+  font-size: 7.5px;
+  font-weight: 800;
+  color: #15803d;
+}
+
+/* Sello de Propiedad Adquirida */
+.cell-sold-stamp {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-25deg);
+  background: rgba(220, 38, 38, 0.9);
+  color: #ffffff;
+  font-size: 9px;
+  font-weight: 900;
+  padding: 1px 6px;
+  border-radius: 4px;
+  border: 1px solid #ffffff;
+  pointer-events: none;
+}
+
+/* ===================================================
+   CASILLAS ESPECIALES (ESQUINAS)
+   =================================================== */
+.board-cell.salida {
+  background: radial-gradient(circle, #f0fdf4 0%, #dcfce7 100%);
+}
+.board-cell.salida .cell-title-text {
+  font-size: 12px;
+  color: #16a34a;
+  letter-spacing: 1px;
+}
+
+.board-cell.carcel {
+  background: radial-gradient(circle, #fff7ed 0%, #ffedd5 100%);
+}
+.board-cell.carcel .cell-title-text {
+  font-size: 9px;
+  color: #c2410c;
+}
+
+.board-cell.parada {
+  background: radial-gradient(circle, #f8fafc 0%, #e2e8f0 100%);
+}
+
+.board-cell.policia {
+  background: radial-gradient(circle, #fef2f2 0%, #fee2e2 100%);
+}
+.board-cell.policia .cell-title-text {
+  font-size: 9px;
+  color: #dc2626;
+}
+
+/* ===================================================
+   FICHA VOLADORA DEL JUGADOR
+   =================================================== */
+.board-player-token-avatar {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 25;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.token-emoji-flying {
+  font-size: 28px;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.5));
+  animation: hopToken 0.6s infinite alternate ease-in-out;
+}
+
+.token-shadow {
+  width: 18px;
+  height: 6px;
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 50%;
+  filter: blur(1px);
+}
+
+@keyframes hopToken {
+  from { transform: translateY(0); }
+  to { transform: translateY(-8px); }
+}
+
+/* ===================================================
+   CENTRO DEL TABLERO
+   =================================================== */
+.board-center-court {
+  grid-column: 2 / 11;
+  grid-row: 2 / 11;
+  background: radial-gradient(circle at 50% 50%, #f4faee 0%, #dcead0 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-around;
+  padding: 16px;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(20, 53, 33, 0.2);
+}
+
+/* Fondo de Montañas y Teleférico */
+.center-scenic-backdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 120px;
+  pointer-events: none;
+}
+
+.cable-car-hanging {
+  display: flex;
+  justify-content: space-around;
+  padding-top: 10px;
+  border-top: 1px dashed rgba(20, 53, 33, 0.3);
+  margin: 0 40px;
+}
+
+.mini-teleferico-cabin {
+  font-size: 22px;
+  animation: swayCabin 2.5s infinite alternate ease-in-out;
+}
+.mini-teleferico-cabin.red { animation-delay: 0s; }
+.mini-teleferico-cabin.yellow { animation-delay: 0.5s; }
+.mini-teleferico-cabin.green { animation-delay: 1s; }
+
+@keyframes swayCabin {
+  from { transform: rotate(-5deg); }
+  to { transform: rotate(5deg); }
+}
+
+/* Logo Central */
+.center-monopoly-logo-box {
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transform: rotate(-12deg);
+}
+
+.logo-red-banner {
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+  padding: 8px 38px;
+  border-radius: 8px;
+  border: 3px solid #ffffff;
+  box-shadow: 0 8px 24px rgba(220, 38, 38, 0.5);
+}
+
+.monopoly-center-title {
+  font-size: 34px;
+  font-weight: 900;
+  letter-spacing: 5px;
+  color: #ffffff;
+  margin: 0;
+  text-shadow: 2px 2px 0px #7f1d1d;
+}
+
+.logo-bolivia-ribbon {
+  background: #f59e0b;
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 3px;
+  padding: 3px 20px;
+  border-radius: 9999px;
+  margin-top: -6px;
+  border: 2px solid #ffffff;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+}
+
+/* Estación de Dados */
+.center-dice-station {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  z-index: 5;
+}
+
+.dice-pair-display {
+  display: flex;
+  gap: 14px;
+}
+
+.monopoly-die {
+  width: 46px;
+  height: 46px;
+  background: #ffffff;
+  border: 2px solid #0f172a;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  font-weight: 900;
+  color: #0f172a;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.25), inset 0 -3px 0 #cbd5e1;
+  transition: transform 0.2s;
+}
+
+.monopoly-die.rolling {
+  animation: diceShake 0.2s infinite;
+}
+
+@keyframes diceShake {
+  0% { transform: translate(0, 0) rotate(0deg); }
+  25% { transform: translate(-4px, 4px) rotate(-15deg); }
+  50% { transform: translate(4px, -4px) rotate(15deg); }
+  75% { transform: translate(-2px, -2px) rotate(-8deg); }
+  100% { transform: translate(2px, 2px) rotate(8deg); }
+}
+
+.btn-roll-dice {
+  background: linear-gradient(135deg, #16a34a, #15803d);
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+  padding: 12px 28px;
+  border: none;
+  border-radius: 9999px;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(22, 163, 74, 0.45);
+  transition: all 0.2s ease;
+}
+
+.btn-roll-dice:hover:not(.disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 26px rgba(22, 163, 74, 0.65);
+}
+
+.btn-roll-dice.disabled {
+  background: #64748b;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Mazos de Cartas Centrales */
+.center-cards-deck-row {
+  display: flex;
+  gap: 24px;
+  z-index: 5;
+}
+
+.deck-card {
+  width: 90px;
+  height: 60px;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  border: 2px dashed rgba(255, 255, 255, 0.8);
+}
+
+.deck-card:hover {
+  transform: scale(1.06);
+}
+
+.deck-chance {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #ffffff;
+}
+
+.deck-community {
+  background: linear-gradient(135deg, #0284c7, #0369a1);
+  color: #ffffff;
+}
+
+.deck-name {
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+  margin-top: 2px;
+}
+
+/* ===================================================
+   PANEL LATERAL DERECHO (INSPECTOR DE PROPIEDADES)
+   ================================================== */
+.monopoly-sidebar-inspector {
+  background: rgba(13, 40, 24, 0.85);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(74, 222, 128, 0.25);
+  border-radius: 18px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.inspector-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(74, 222, 128, 0.15);
+  padding-bottom: 10px;
+}
+
+.inspector-card-header h3 {
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  color: #86efac;
+  margin: 0;
+}
+
+.inspector-pos-badge {
+  font-size: 11px;
+  font-weight: 700;
+  color: #cbd5e1;
+  background: rgba(5, 22, 13, 0.6);
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+/* Tarjeta Tradicional de Título de Propiedad */
+.title-deed-card {
+  background: #fdfbf7;
+  border: 2px solid #0f172a;
+  border-radius: 10px;
+  padding: 12px;
+  color: #0f172a;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.deed-color-header {
+  border: 2px solid #0f172a;
+  border-radius: 6px;
+  padding: 10px 8px;
+  text-align: center;
+  color: #ffffff;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.deed-title-tiny {
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 1.5px;
+  display: block;
+  opacity: 0.9;
+}
+
+.deed-property-name {
+  font-size: 16px;
+  font-weight: 900;
+  margin: 2px 0;
+  text-transform: uppercase;
+}
+
+.deed-city-name {
+  font-size: 10px;
+  opacity: 0.95;
+}
+
+.deed-body-costs {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 11px;
+}
+
+.deed-cost-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.deed-cost-row.base-rent {
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.deed-cost-row.hotel-row {
+  color: #dc2626;
+  font-weight: 800;
+}
+
+.deed-divider {
+  height: 1px;
+  background: #e2e8f0;
+  margin: 4px 0;
+}
+
+.deed-meta-sub {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: #64748b;
+}
+
+.deed-action-footer {
+  margin-top: 14px;
+}
+
+.btn-buy-property {
+  width: 100%;
+  background: linear-gradient(135deg, #16a34a, #15803d);
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 10px;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(22, 163, 74, 0.35);
+  transition: all 0.2s;
+}
+
+.btn-buy-property:hover:not(:disabled) {
+  background: #15803d;
+  transform: translateY(-2px);
+}
+
+.btn-buy-property:disabled {
+  background: #94a3b8;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.badge-already-owned {
+  background: rgba(34, 197, 94, 0.15);
+  color: #15803d;
+  border: 1px solid #16a34a;
+  padding: 8px;
+  border-radius: 8px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* Tarjeta General (Esquinas, Servicios) */
+.general-square-card {
+  background: rgba(5, 22, 13, 0.7);
+  border: 1px solid rgba(74, 222, 128, 0.25);
+  border-radius: 12px;
+  padding: 20px 14px;
+  text-align: center;
+}
+
+.square-big-icon {
+  font-size: 42px;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.square-big-title {
+  font-size: 18px;
+  font-weight: 900;
+  color: #ffffff;
+  margin: 0 0 6px;
+}
+
+.square-big-desc {
+  font-size: 12px;
+  color: #cbd5e1;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.square-cost-badge {
+  display: inline-block;
+  background: rgba(220, 38, 38, 0.2);
+  color: #f87171;
+  border: 1px solid #dc2626;
+  padding: 4px 12px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 800;
+  margin-top: 10px;
+}
+
+/* Portafolio de Propiedades */
+.portfolio-summary-box {
+  background: rgba(5, 22, 13, 0.6);
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.portfolio-summary-box h4 {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  color: #86efac;
+  margin: 0 0 8px;
+}
+
+.empty-portfolio-hint {
+  font-size: 11px;
+  color: #64748b;
+  display: block;
+}
+
+.portfolio-tags-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.portfolio-tag-pill {
+  background: rgba(15, 23, 42, 0.8);
+  border-left: 4px solid #3b82f6;
+  color: #f8fafc;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.portfolio-tag-pill:hover {
+  background: rgba(30, 41, 59, 1);
+  transform: translateY(-1px);
+}
+
+/* ===================================================
+   MODAL DE CARTA ROBADA
+   =================================================== */
+.monopoly-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+}
+
+.monopoly-modal-card {
+  width: 100%;
+  max-width: 360px;
+  background: #ffffff;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+  border: 3px solid var(--modal-accent, #f59e0b);
+  animation: modalPopIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes modalPopIn {
+  from { transform: scale(0.85); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.modal-header-band {
+  padding: 16px;
+  text-align: center;
+  color: #ffffff;
+}
+
+.modal-card-icon {
+  font-size: 32px;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.modal-header-band h3 {
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  margin: 0;
+}
+
+.modal-body-content {
+  padding: 24px 20px;
+  text-align: center;
+  color: #0f172a;
+}
+
+.modal-event-text {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.5;
+  margin: 0 0 16px;
+}
+
+.modal-money-impact {
+  display: inline-block;
+  font-size: 20px;
+  font-weight: 900;
+  color: #16a34a;
+  background: #dcfce7;
+  padding: 6px 16px;
+  border-radius: 9999px;
+}
+
+.btn-modal-close {
+  width: 100%;
+  background: #0f172a;
+  color: #ffffff;
+  border: none;
+  padding: 14px;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-modal-close:hover {
+  background: #1e293b;
+}
+
+/* ===================================================
+   RESPONSIVE DESIGN (MÓVILES)
+   =================================================== */
+@media (max-width: 768px) {
+  .monopoly-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding: 12px 14px;
+  }
+  .header-game-title {
+    font-size: 22px;
+  }
+  .header-player-stats {
+    justify-content: space-between;
+  }
+  .monopoly-board-grid {
+    width: 680px;
+    height: 680px;
+    min-width: 680px;
+    min-height: 680px;
+  }
+}

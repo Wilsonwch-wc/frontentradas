@@ -1,0 +1,4319 @@
+/* ====================================================
+   AnunciosYA — Portal de Clasificados Bolivia
+   Estructura: Header | Hero | Categorías | Cards | Footer
+   ==================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
+
+/* ── Variables ─────────────────────────────────────── */
+:root {
+  --ya-bg:        #f5f6fa;
+  --ya-white:     #ffffff;
+  --ya-card:      #ffffff;
+  --ya-border:    #e4e6ee;
+  --ya-primary:   #1a56db;
+  --ya-primary-h: #1649c2;
+  --ya-orange:    #f97316;
+  --ya-orange-h:  #ea6a0a;
+  --ya-green:     #16a34a;
+  --ya-gold:      #f59e0b;
+  --ya-red:       #ef4444;
+  --ya-text:      #111827;
+  --ya-text2:     #374151;
+  --ya-muted:     #6b7280;
+  --ya-muted2:    #9ca3af;
+  --ya-dark:      #111827;
+  --ya-dark2:     #1f2937;
+  --ya-radius:    12px;
+  --ya-shadow:    0 2px 12px rgba(0,0,0,.09);
+  --ya-shadow-lg: 0 6px 28px rgba(0,0,0,.13);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body { font-family: 'Outfit', sans-serif; }
+
+.aya-page {
+  font-family: 'Outfit', sans-serif;
+  background: var(--ya-bg);
+  color: var(--ya-text);
+  min-height: 100vh;
+}
+
+/* ══════════════════════════════════════════════════════
+   HEADER
+══════════════════════════════════════════════════════ */
+.aya-header {
+  background: var(--ya-white);
+  border-bottom: 1px solid var(--ya-border);
+  position: sticky;
+  top: 0;
+  z-index: 500;
+}
+
+.aya-header-top {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 24px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  gap: 32px;
+}
+
+/* Logo */
+.aya-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+.aya-logo-icon {
+  width: 38px; height: 38px;
+  background: linear-gradient(135deg, var(--ya-primary), #3b82f6);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.2rem;
+}
+
+.aya-logo-text strong {
+  display: block;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--ya-text);
+  line-height: 1;
+}
+
+.aya-logo-text span {
+  font-size: .7rem;
+  color: var(--ya-muted);
+  letter-spacing: .3px;
+}
+
+/* Search bar en header */
+.aya-header-search {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  background: #f3f4f6;
+  border: 1.5px solid var(--ya-border);
+  border-radius: 999px;
+  padding: 6px 6px 6px 16px;
+  gap: 8px;
+  max-width: 520px;
+  transition: border-color .2s, box-shadow .2s;
+}
+
+.aya-header-search:focus-within {
+  border-color: var(--ya-primary);
+  box-shadow: 0 0 0 3px rgba(26,86,219,.1);
+  background: #fff;
+}
+
+.aya-header-search input {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  font-family: 'Outfit', sans-serif;
+  font-size: .92rem;
+  color: var(--ya-text);
+}
+
+.aya-header-search input::placeholder { color: var(--ya-muted2); }
+
+.aya-header-search-btn {
+  background: var(--ya-primary);
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  font-size: .95rem;
+  transition: background .2s;
+}
+
+.aya-header-search-btn:hover { background: var(--ya-primary-h); }
+
+/* Nav derecha */
+.aya-header-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.aya-nav-link {
+  background: none;
+  border: none;
+  font-family: 'Outfit', sans-serif;
+  font-size: .88rem;
+  font-weight: 500;
+  color: var(--ya-text2);
+  cursor: pointer;
+  padding: 7px 12px;
+  border-radius: 8px;
+  transition: background .18s, color .18s;
+  white-space: nowrap;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.aya-nav-link:hover { background: #f3f4f6; color: var(--ya-text); }
+
+.aya-btn-registrar {
+  background: none;
+  border: 1.5px solid var(--ya-primary);
+  border-radius: 8px;
+  padding: 7px 16px;
+  font-family: 'Outfit', sans-serif;
+  font-size: .88rem;
+  font-weight: 600;
+  color: var(--ya-primary);
+  cursor: pointer;
+  transition: background .18s;
+  white-space: nowrap;
+}
+
+.aya-btn-registrar:hover { background: rgba(26,86,219,.06); }
+
+.aya-btn-publicar-nav {
+  background: var(--ya-orange);
+  border: none;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-family: 'Outfit', sans-serif;
+  font-size: .88rem;
+  font-weight: 700;
+  color: #fff;
+  cursor: pointer;
+  transition: background .18s, transform .18s;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.aya-btn-publicar-nav:hover {
+  background: var(--ya-orange-h);
+  transform: scale(1.03);
+}
+
+/* Barra de categorías debajo del header */
+.aya-header-cats {
+  border-top: 1px solid var(--ya-border);
+  background: var(--ya-white);
+}
+
+.aya-header-cats-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.aya-header-cats-inner::-webkit-scrollbar { display: none; }
+
+.aya-hcat-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 11px 16px;
+  font-family: 'Outfit', sans-serif;
+  font-size: .85rem;
+  font-weight: 500;
+  color: var(--ya-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color .18s, border-color .18s;
+  white-space: nowrap;
+}
+
+.aya-hcat-btn:hover { color: var(--ya-text); }
+
+.aya-hcat-btn.active {
+  color: var(--ya-primary);
+  border-bottom-color: var(--ya-primary);
+  font-weight: 700;
+}
+
+/* ══════════════════════════════════════════════════════
+   HERO — Banner con imagen de fondo
+══════════════════════════════════════════════════════ */
+.aya-hero {
+  position: relative;
+  min-height: 320px;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+
+.aya-hero-bg {
+  position: absolute;
+  inset: 0;
+  object-fit: cover;
+  width: 100%;
+  height: 100%;
+}
+
+.aya-hero-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(0,0,0,.72) 0%, rgba(0,0,0,.35) 60%, transparent 100%);
+}
+
+.aya-hero-content {
+  position: relative;
+  z-index: 2;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 48px 24px;
+  width: 100%;
+}
+
+.aya-hero-content h1 {
+  font-size: clamp(1.6rem, 4vw, 2.8rem);
+  font-weight: 900;
+  color: #fff;
+  line-height: 1.18;
+  margin-bottom: 10px;
+  max-width: 520px;
+}
+
+.aya-hero-content p {
+  font-size: 1rem;
+  color: rgba(255,255,255,.85);
+  margin-bottom: 24px;
+  max-width: 420px;
+}
+
+/* Buscador hero */
+.aya-hero-search {
+  display: flex;
+  align-items: center;
+  background: #fff;
+  border-radius: 12px;
+  max-width: 700px;
+  box-shadow: 0 6px 28px rgba(0,0,0,.25);
+  overflow: hidden;
+}
+
+.aya-hero-search-input {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  padding: 0 18px;
+  gap: 10px;
+  border-right: 1px solid var(--ya-border);
+}
+
+.aya-hero-search-input input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-family: 'Outfit', sans-serif;
+  font-size: .95rem;
+  color: var(--ya-text);
+  height: 52px;
+}
+
+.aya-hero-search-input input::placeholder { color: var(--ya-muted2); }
+
+.aya-hero-search-select {
+  border: none;
+  border-right: 1px solid var(--ya-border);
+  outline: none;
+  font-family: 'Outfit', sans-serif;
+  font-size: .88rem;
+  color: var(--ya-text2);
+  padding: 0 16px;
+  height: 52px;
+  cursor: pointer;
+  background: #fff;
+  min-width: 160px;
+}
+
+.aya-hero-search-btn {
+  background: var(--ya-primary);
+  color: #fff;
+  border: none;
+  padding: 0 28px;
+  height: 52px;
+  font-family: 'Outfit', sans-serif;
+  font-size: .97rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .2s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.aya-hero-search-btn:hover { background: var(--ya-primary-h); }
+
+/* Populares */
+.aya-hero-popular {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+
+.aya-hero-popular span {
+  font-size: .82rem;
+  color: rgba(255,255,255,.7);
+}
+
+.aya-popular-tag {
+  background: rgba(255,255,255,.18);
+  border: 1px solid rgba(255,255,255,.28);
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: .8rem;
+  color: #fff;
+  cursor: pointer;
+  transition: background .18s;
+}
+
+.aya-popular-tag:hover { background: rgba(255,255,255,.28); }
+
+/* ══════════════════════════════════════════════════════
+   CATEGORÍAS ICONOS
+══════════════════════════════════════════════════════ */
+.aya-section {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 32px 24px;
+}
+
+.aya-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.aya-section-title {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: var(--ya-text);
+}
+
+.aya-section-link {
+  font-size: .85rem;
+  font-weight: 600;
+  color: var(--ya-primary);
+  cursor: pointer;
+  background: none;
+  border: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: gap .18s;
+}
+
+.aya-section-link:hover { gap: 8px; }
+
+/* Grid iconos categorías */
+.aya-icon-cats {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 12px;
+}
+
+.aya-icon-cat {
+  background: var(--ya-white);
+  border: 1.5px solid var(--ya-border);
+  border-radius: var(--ya-radius);
+  padding: 18px 10px 14px;
+  text-align: center;
+  cursor: pointer;
+  transition: transform .2s, border-color .2s, box-shadow .2s;
+  text-decoration: none;
+}
+
+.aya-icon-cat:hover {
+  transform: translateY(-3px);
+  border-color: var(--ya-primary);
+  box-shadow: 0 6px 20px rgba(26,86,219,.12);
+}
+
+.aya-icon-cat-img {
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin: 0 auto 10px;
+  display: block;
+  background: #e8eaf0;
+}
+
+.aya-icon-cat-emoji {
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #e8eaf0, #dce1f0);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.6rem;
+  margin: 0 auto 10px;
+}
+
+.aya-icon-cat-name {
+  font-size: .82rem;
+  font-weight: 700;
+  color: var(--ya-text2);
+  display: block;
+  margin-bottom: 3px;
+}
+
+.aya-icon-cat-count {
+  font-size: .73rem;
+  color: var(--ya-muted);
+}
+
+/* ══════════════════════════════════════════════════════
+   CARDS GRID — Anuncios destacados
+══════════════════════════════════════════════════════ */
+.aya-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 16px;
+}
+
+.aya-card {
+  background: var(--ya-card);
+  border: 1.5px solid var(--ya-border);
+  border-radius: var(--ya-radius);
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform .22s, box-shadow .22s, border-color .22s;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.aya-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--ya-shadow-lg);
+  border-color: #c5c8d8;
+}
+
+/* Badge */
+.aya-card-badge {
+  font-size: .7rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+  letter-spacing: .3px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.aya-card-badge.dest {
+  background: var(--ya-orange);
+  color: #fff;
+}
+
+.aya-card-badge.nuevo {
+  background: var(--ya-primary);
+  color: #fff;
+}
+
+/* Contenedor flexible de badges para evitar choque entre Destacado y Nuevo */
+.aya-card-badges-wrapper {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 6px;
+  z-index: 3;
+  pointer-events: none;
+  max-width: calc(100% - 55px);
+}
+
+.aya-card-badges-wrapper .aya-card-badge {
+  box-shadow: 0 2px 6px rgba(0,0,0,.25);
+}
+
+/* Tarjeta sin imagen: adaptación elegante sin espacio vacío */
+.aya-card.aya-card-no-img {
+  background: var(--ya-surface);
+  border-top: 4px solid var(--ya-primary);
+  min-height: 180px;
+}
+
+.aya-card.aya-card-no-img.is-destacado {
+  border-top-color: var(--ya-orange);
+}
+
+.aya-card-no-img-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 14px 4px;
+}
+
+.aya-card-no-img-top .aya-card-badges-wrapper {
+  position: static;
+  max-width: none;
+}
+
+.aya-card-no-img-top .aya-card-fav-btn {
+  position: static;
+  width: 32px;
+  height: 32px;
+  font-size: 0.95rem;
+}
+
+.aya-card-cat-badge {
+  font-size: .68rem;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.08);
+  color: var(--ya-primary);
+  border: 1px solid rgba(37, 99, 235, 0.15);
+  display: inline-flex;
+  align-items: center;
+}
+
+/* Favorito */
+.aya-card-fav-btn {
+  position: absolute;
+  top: 10px; right: 10px;
+  background: rgba(255,255,255,.9);
+  border: none;
+  border-radius: 50%;
+  width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  font-size: 1rem;
+  z-index: 2;
+  transition: transform .18s, background .18s;
+  box-shadow: 0 2px 6px rgba(0,0,0,.12);
+}
+
+.aya-card-fav-btn:hover { transform: scale(1.15); background: #fff; }
+.aya-card-fav-btn.faved { color: var(--ya-red); }
+
+/* Imagen */
+.aya-card-img {
+  width: 100%;
+  aspect-ratio: 4/3;
+  object-fit: cover;
+  display: block;
+  background: #f0f2f5;
+}
+
+.aya-card-img-ph {
+  display: none !important;
+}
+
+/* Body */
+.aya-card-body { padding: 14px; flex: 1; display: flex; flex-direction: column; }
+
+.aya-card-title {
+  font-size: .92rem;
+  font-weight: 700;
+  color: var(--ya-text);
+  margin-bottom: 6px;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.aya-card-price {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--ya-primary);
+  margin-bottom: 8px;
+}
+
+.aya-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: .77rem;
+  color: var(--ya-muted);
+  margin-bottom: 4px;
+}
+
+.aya-card-desc {
+  font-size: .8rem;
+  color: var(--ya-muted);
+  line-height: 1.5;
+  margin-top: 6px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ══════════════════════════════════════════════════════
+   ÚLTIMOS ANUNCIOS — Lista horizontal
+══════════════════════════════════════════════════════ */
+.aya-list-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.aya-list-card {
+  background: var(--ya-white);
+  border: 1.5px solid var(--ya-border);
+  border-radius: var(--ya-radius);
+  display: flex;
+  gap: 12px;
+  padding: 12px;
+  cursor: pointer;
+  transition: box-shadow .2s, border-color .2s;
+  align-items: center;
+}
+
+.aya-list-card:hover {
+  box-shadow: var(--ya-shadow);
+  border-color: #c5c8d8;
+}
+
+.aya-list-card-img {
+  width: 80px;
+  height: 70px;
+  border-radius: 8px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: #e8eaf0;
+}
+
+.aya-list-card-img-ph {
+  width: 80px;
+  height: 70px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #e8eaf0, #f0f2f5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: .75rem;
+  color: var(--ya-muted2);
+}
+
+.aya-list-card-info { flex: 1; min-width: 0; }
+
+.aya-list-card-title {
+  font-size: .88rem;
+  font-weight: 700;
+  color: var(--ya-text);
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.aya-list-card-price {
+  font-size: .95rem;
+  font-weight: 800;
+  color: var(--ya-primary);
+  margin-bottom: 4px;
+}
+
+.aya-list-card-meta {
+  font-size: .74rem;
+  color: var(--ya-muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ══════════════════════════════════════════════════════
+   BANNER CONFIANZA
+══════════════════════════════════════════════════════ */
+.aya-trust-banner {
+  background: #eff6ff;
+  border: 1.5px solid #bfdbfe;
+  border-radius: var(--ya-radius);
+  padding: 18px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  max-width: 1280px;
+  margin: 0 auto 32px;
+  padding-left: 24px;
+  padding-right: 24px;
+}
+
+.aya-trust-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.aya-trust-icon {
+  font-size: 2rem;
+  flex-shrink: 0;
+}
+
+.aya-trust-text strong {
+  display: block;
+  font-size: .97rem;
+  font-weight: 700;
+  color: var(--ya-primary);
+  margin-bottom: 2px;
+}
+
+.aya-trust-text span {
+  font-size: .84rem;
+  color: var(--ya-muted);
+}
+
+.aya-trust-btn {
+  background: var(--ya-primary);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-family: 'Outfit', sans-serif;
+  font-size: .88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .2s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.aya-trust-btn:hover { background: var(--ya-primary-h); }
+
+/* ══════════════════════════════════════════════════════
+   FAB MÓVIL
+══════════════════════════════════════════════════════ */
+.aya-fab {
+  position: fixed;
+  bottom: 24px; right: 20px;
+  background: var(--ya-orange);
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  padding: 14px 22px;
+  font-family: 'Outfit', sans-serif;
+  font-size: .92rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 6px 24px rgba(249,115,22,.45);
+  display: none;
+  align-items: center;
+  gap: 8px;
+  z-index: 300;
+  transition: transform .2s;
+}
+
+.aya-fab:hover { transform: scale(1.05); }
+
+/* ══════════════════════════════════════════════════════
+   MODAL PUBLICAR / DETALLE
+══════════════════════════════════════════════════════ */
+.aya-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.5);
+  backdrop-filter: blur(5px);
+  z-index: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: fade-in .18s ease;
+}
+
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+.aya-modal {
+  background: #fff;
+  border-radius: 20px;
+  width: 100%;
+  max-width: 540px;
+  max-height: 92vh;
+  overflow-y: auto;
+  padding: 32px;
+  box-shadow: 0 24px 80px rgba(0,0,0,.2);
+  animation: slide-up .26s cubic-bezier(.175,.885,.32,1.275);
+}
+
+.aya-modal.wide { max-width: 640px; }
+
+@keyframes slide-up {
+  from { transform: translateY(28px); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+
+.aya-modal-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.aya-modal-head h2 {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--ya-text);
+}
+
+.aya-modal-close {
+  background: #f3f4f6;
+  border: none;
+  border-radius: 50%;
+  width: 34px; height: 34px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  color: var(--ya-muted);
+  font-size: 1.1rem;
+  flex-shrink: 0;
+  transition: background .18s;
+}
+
+.aya-modal-close:hover { background: #fee2e2; color: var(--ya-red); }
+
+/* Formulario */
+.aya-form-group { margin-bottom: 16px; }
+
+.aya-form-group label {
+  display: block;
+  font-size: .82rem;
+  font-weight: 600;
+  color: var(--ya-muted);
+  margin-bottom: 7px;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+}
+
+.aya-form-group input,
+.aya-form-group textarea,
+.aya-form-group select {
+  width: 100%;
+  background: #f9fafb;
+  border: 1.5px solid var(--ya-border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-family: 'Outfit', sans-serif;
+  font-size: .93rem;
+  color: var(--ya-text);
+  outline: none;
+  transition: border-color .2s, box-shadow .2s;
+}
+
+.aya-form-group input:focus,
+.aya-form-group textarea:focus,
+.aya-form-group select:focus {
+  border-color: var(--ya-primary);
+  box-shadow: 0 0 0 3px rgba(26,86,219,.1);
+  background: #fff;
+}
+
+.aya-form-group textarea { resize: vertical; min-height: 90px; }
+
+.aya-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.aya-upload-zone {
+  border: 2px dashed var(--ya-border);
+  border-radius: 10px;
+  padding: 24px;
+  text-align: center;
+  cursor: pointer;
+  background: #f9fafb;
+  transition: border-color .2s, background .2s;
+}
+
+.aya-upload-zone:hover { border-color: var(--ya-primary); background: #eff6ff; }
+
+.aya-upload-zone-icon { font-size: 1.8rem; margin-bottom: 6px; }
+.aya-upload-zone p { font-size: .82rem; color: var(--ya-muted); margin-top: 4px; }
+
+.aya-modal-actions { display: flex; gap: 10px; margin-top: 22px; }
+
+.aya-btn-cancel {
+  flex: 1;
+  background: #f3f4f6;
+  border: 1.5px solid var(--ya-border);
+  border-radius: 10px;
+  padding: 12px;
+  font-family: 'Outfit', sans-serif;
+  font-size: .92rem;
+  font-weight: 600;
+  color: var(--ya-muted);
+  cursor: pointer;
+  transition: background .18s;
+}
+
+.aya-btn-cancel:hover { background: #e5e7eb; }
+
+.aya-btn-publish {
+  flex: 2;
+  background: var(--ya-orange);
+  border: none;
+  border-radius: 10px;
+  padding: 12px;
+  font-family: 'Outfit', sans-serif;
+  font-size: .92rem;
+  font-weight: 700;
+  color: #fff;
+  cursor: pointer;
+  transition: background .18s, transform .18s;
+}
+
+.aya-btn-publish:hover { background: var(--ya-orange-h); transform: scale(1.02); }
+
+/* ── WIZARD DE 3 PASOS ── */
+.aya-wizard-steps {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 22px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--ya-border);
+  gap: 8px;
+}
+
+.aya-wizard-step-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: .83rem;
+  font-weight: 700;
+  color: var(--ya-muted2);
+}
+
+.aya-wizard-step-item.active {
+  color: var(--ya-primary);
+}
+
+.aya-wizard-step-item.completed {
+  color: var(--ya-green);
+}
+
+.aya-step-circle {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #f3f4f6;
+  color: var(--ya-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: .82rem;
+  font-weight: 800;
+}
+
+.aya-wizard-step-item.active .aya-step-circle {
+  background: var(--ya-primary);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(26,86,219,.3);
+}
+
+.aya-wizard-step-item.completed .aya-step-circle {
+  background: #dcfce7;
+  color: var(--ya-green);
+}
+
+.aya-wizard-divider {
+  flex: 1;
+  height: 2px;
+  background: #e5e7eb;
+}
+
+/* ── OPCIONES Y DESGLOSE DE COSTO ── */
+.aya-cost-breakdown {
+  background: #f8fafc;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 18px;
+  margin: 18px 0;
+}
+
+.aya-cost-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: .88rem;
+  color: var(--ya-text2);
+  margin-bottom: 8px;
+}
+
+.aya-cost-row.total {
+  border-top: 1.5px dashed #cbd5e1;
+  padding-top: 10px;
+  margin-top: 10px;
+  font-size: 1.15rem;
+  font-weight: 900;
+  color: var(--ya-primary);
+}
+
+/* Selector de color llamativo */
+.aya-color-options {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.aya-color-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: transform .18s, border-color .18s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: .8rem;
+}
+
+.aya-color-btn:hover {
+  transform: scale(1.15);
+}
+
+.aya-color-btn.selected {
+  border-color: #111827;
+  transform: scale(1.15);
+}
+
+/* Tarjeta QR Bolivia */
+.aya-qr-card {
+  background: #ffffff;
+  border: 2px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 20px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 4px 16px rgba(0,0,0,.06);
+}
+
+.aya-qr-img {
+  width: 190px;
+  height: 190px;
+  object-fit: contain;
+  border-radius: 12px;
+  border: 1px solid var(--ya-border);
+  padding: 6px;
+  background: #fff;
+}
+
+.aya-qr-badge {
+  background: #dcfce7;
+  color: #15803d;
+  font-size: .78rem;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 4px 14px;
+}
+
+/* ══════════════════════════════════════════════════════
+   VISTA DE DETALLE COMPLETO DEL ANUNCIO (Página completa)
+══════════════════════════════════════════════════════ */
+.aya-detalle-page {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 24px 24px 60px;
+  animation: fadeIn .25s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Barra superior de navegación del anuncio */
+.aya-detalle-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.aya-btn-volver {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #fff;
+  border: 1.5px solid var(--ya-border);
+  padding: 10px 18px;
+  border-radius: 10px;
+  font-family: 'Outfit', sans-serif;
+  font-size: .92rem;
+  font-weight: 600;
+  color: var(--ya-text2);
+  cursor: pointer;
+  transition: all .2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,.05);
+}
+
+.aya-btn-volver:hover {
+  background: #eff6ff;
+  border-color: var(--ya-primary);
+  color: var(--ya-primary);
+  transform: translateX(-2px);
+}
+
+.aya-breadcrumbs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: .88rem;
+  color: var(--ya-muted);
+}
+
+.aya-breadcrumb-link {
+  color: var(--ya-primary);
+  cursor: pointer;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.aya-breadcrumb-link:hover { text-decoration: underline; }
+.aya-breadcrumb-curr {
+  color: var(--ya-text);
+  font-weight: 600;
+  max-width: 280px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Layout del Detalle: Columna Izquierda (Contenido) y Derecha (Vendedor/Precio) */
+.aya-detalle-layout {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 28px;
+  align-items: start;
+}
+
+.aya-detalle-main {
+  background: #fff;
+  border: 1px solid var(--ya-border);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: var(--ya-shadow);
+}
+
+/* Imagen principal del anuncio */
+.aya-detalle-img-wrap {
+  position: relative;
+  width: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #f3f4f6;
+  margin-bottom: 22px;
+}
+
+.aya-detalle-img {
+  width: 100%;
+  height: 480px;
+  object-fit: cover;
+  display: block;
+  transition: transform .3s ease;
+}
+
+.aya-detalle-img:hover {
+  transform: scale(1.02);
+}
+
+.aya-detalle-img-ph {
+  width: 100%;
+  height: 400px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--ya-muted2);
+  font-size: 1.1rem;
+  gap: 10px;
+}
+
+.aya-detalle-badges {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  display: flex;
+  gap: 8px;
+  z-index: 3;
+  flex-wrap: wrap;
+}
+
+.aya-detalle-badges .aya-card-badge {
+  position: static !important;
+}
+
+/* Banner superior cuando el anuncio NO tiene imágenes */
+.aya-detalle-no-img-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 18px;
+  background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+  border: 1px solid #e2e8f0;
+  border-left: 5px solid var(--ya-primary);
+  border-radius: 12px;
+  margin-bottom: 22px;
+}
+
+.aya-detalle-no-img-banner.is-destacado {
+  border-left-color: var(--ya-orange);
+}
+
+.aya-detalle-no-img-badges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.aya-detalle-no-img-badges .aya-card-badge {
+  position: static !important;
+}
+
+.aya-detalle-fav-btn {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #fff;
+  border: 1px solid var(--ya-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0,0,0,.15);
+  transition: transform .2s, background .2s;
+  z-index: 2;
+}
+
+.aya-detalle-fav-btn.inline {
+  position: static !important;
+  width: auto;
+  height: 38px;
+  padding: 0 16px;
+  border-radius: 20px;
+  font-size: .88rem;
+  font-weight: 600;
+  gap: 6px;
+}
+
+.aya-detalle-fav-btn:hover {
+  transform: scale(1.1);
+  background: #fff1f2;
+}
+
+/* Header del anuncio */
+.aya-detalle-header {
+  margin-bottom: 20px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--ya-border);
+}
+
+.aya-detalle-cat-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: #eff6ff;
+  color: var(--ya-primary);
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  font-size: .8rem;
+  font-weight: 700;
+  padding: 4px 14px;
+  letter-spacing: .3px;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+.aya-detalle-title {
+  font-size: 1.85rem;
+  font-weight: 800;
+  color: var(--ya-text);
+  line-height: 1.25;
+  margin-bottom: 12px;
+}
+
+.aya-detalle-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  color: var(--ya-muted);
+  font-size: .88rem;
+}
+
+.aya-detalle-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Bloque de descripción */
+.aya-detalle-section-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--ya-text);
+  margin: 24px 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.aya-detalle-desc {
+  font-size: 1rem;
+  color: var(--ya-text2);
+  line-height: 1.8;
+  white-space: pre-line;
+  background: #fbfcfe;
+  border: 1px solid #f1f3f8;
+  border-radius: 12px;
+  padding: 18px 20px;
+}
+
+/* Tabla de características */
+.aya-detalle-specs {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.aya-spec-item {
+  background: #f9fafb;
+  border: 1px solid var(--ya-border);
+  border-radius: 10px;
+  padding: 12px 16px;
+  display: flex;
+  justify-content: space-between;
+  font-size: .88rem;
+}
+
+.aya-spec-label {
+  color: var(--ya-muted);
+  font-weight: 500;
+}
+
+.aya-spec-val {
+  color: var(--ya-text);
+  font-weight: 700;
+}
+
+/* ── COLUMNA LATERAL (Sidebar) ── */
+.aya-detalle-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  position: sticky;
+  top: 80px;
+}
+
+/* Tarjeta de Precio */
+.aya-price-card {
+  background: #fff;
+  border: 1px solid var(--ya-border);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: var(--ya-shadow);
+}
+
+.aya-price-label {
+  font-size: .8rem;
+  color: var(--ya-muted);
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: .5px;
+  margin-bottom: 4px;
+}
+
+.aya-price-amount {
+  font-size: 2.3rem;
+  font-weight: 900;
+  color: var(--ya-primary);
+  line-height: 1.1;
+  margin-bottom: 6px;
+}
+
+.aya-price-sub {
+  font-size: .82rem;
+  color: var(--ya-green);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 18px;
+}
+
+/* Tarjeta de Vendedor — SOLO NOMBRE */
+.aya-seller-card {
+  background: #fff;
+  border: 1px solid var(--ya-border);
+  border-radius: 16px;
+  padding: 22px;
+  box-shadow: var(--ya-shadow);
+}
+
+.aya-seller-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--ya-border);
+}
+
+.aya-seller-avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #fff;
+  font-size: 1.45rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 4px 10px rgba(37,99,235,.25);
+}
+
+.aya-seller-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.aya-seller-role {
+  font-size: .75rem;
+  color: var(--ya-muted);
+  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: .4px;
+}
+
+/* Solo se muestra el nombre de pila */
+.aya-seller-name {
+  font-size: 1.18rem;
+  font-weight: 800;
+  color: var(--ya-text);
+  line-height: 1.2;
+}
+
+.aya-seller-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: .75rem;
+  color: var(--ya-green);
+  font-weight: 600;
+  margin-top: 3px;
+}
+
+.aya-seller-features {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: .82rem;
+  color: var(--ya-text2);
+  margin-bottom: 18px;
+}
+
+.aya-seller-feature-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Botones de contacto */
+.aya-actions-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.aya-btn-whatsapp {
+  width: 100%;
+  background: #25d366;
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 14px;
+  font-family: 'Outfit', sans-serif;
+  font-size: .98rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  text-decoration: none;
+  transition: all .2s;
+  box-shadow: 0 4px 14px rgba(37,211,102,.3);
+}
+
+.aya-btn-whatsapp:hover {
+  background: #20ba59;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(37,211,102,.4);
+  color: #fff;
+}
+
+.aya-btn-llamar {
+  width: 100%;
+  background: #f3f4f6;
+  color: var(--ya-text);
+  border: 1.5px solid var(--ya-border);
+  border-radius: 12px;
+  padding: 13px;
+  font-family: 'Outfit', sans-serif;
+  font-size: .93rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all .18s;
+}
+
+.aya-btn-llamar:hover {
+  background: #e5e7eb;
+  border-color: #d1d5db;
+}
+
+/* Caja de Seguridad */
+.aya-safety-card {
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 14px;
+  padding: 18px;
+  font-size: .82rem;
+  color: var(--ya-text2);
+}
+
+.aya-safety-title {
+  font-weight: 700;
+  color: var(--ya-dark);
+  font-size: .86rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.aya-safety-list {
+  padding-left: 18px;
+  margin: 0;
+  line-height: 1.6;
+}
+
+.aya-safety-list li {
+  margin-bottom: 4px;
+}
+
+/* Sección de Anuncios Similares */
+.aya-similares-section {
+  margin-top: 40px;
+  padding-top: 32px;
+  border-top: 1px solid var(--ya-border);
+}
+
+/* ══════════════════════════════════════════════════════
+   MODAL DE AUTENTICACIÓN (LOGIN / REGISTRO / GOOGLE)
+══════════════════════════════════════════════════════ */
+.aya-auth-modal {
+  max-width: 520px;
+  width: 95%;
+  background: #fff;
+  border-radius: 18px;
+  padding: 28px;
+  box-shadow: var(--ya-shadow-lg);
+  position: relative;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+/* Pestañas Login vs Registro */
+.aya-auth-tabs {
+  display: flex;
+  background: #f3f4f6;
+  border-radius: 10px;
+  padding: 4px;
+  margin-bottom: 22px;
+}
+
+.aya-auth-tab {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-family: 'Outfit', sans-serif;
+  font-size: .92rem;
+  font-weight: 600;
+  color: var(--ya-muted);
+  cursor: pointer;
+  transition: all .2s;
+  text-align: center;
+}
+
+.aya-auth-tab.active {
+  background: #fff;
+  color: var(--ya-primary);
+  box-shadow: 0 2px 8px rgba(0,0,0,.08);
+}
+
+.aya-auth-title {
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: var(--ya-text);
+  margin-bottom: 6px;
+  text-align: center;
+}
+
+.aya-auth-sub {
+  font-size: .88rem;
+  color: var(--ya-muted);
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+/* Botón Google Oficial */
+.aya-btn-google {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: #ffffff;
+  border: 1.5px solid #dadce0;
+  border-radius: 10px;
+  padding: 12px 18px;
+  font-family: 'Outfit', sans-serif;
+  font-size: .95rem;
+  font-weight: 600;
+  color: #3c4043;
+  cursor: pointer;
+  transition: all .2s;
+  box-shadow: 0 1px 3px rgba(60,64,67,.08);
+}
+
+.aya-btn-google:hover {
+  background: #f8fafc;
+  border-color: #c1c7d0;
+  box-shadow: 0 2px 8px rgba(60,64,67,.15);
+  transform: translateY(-1px);
+}
+
+.aya-google-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+/* Separador "o con correo" */
+.aya-auth-divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 20px 0;
+  color: var(--ya-muted2);
+  font-size: .8rem;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+}
+
+.aya-auth-divider::before,
+.aya-auth-divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid var(--ya-border);
+}
+
+.aya-auth-divider span {
+  padding: 0 12px;
+}
+
+/* Switch links */
+.aya-auth-footer-switch {
+  text-align: center;
+  margin-top: 18px;
+  font-size: .87rem;
+  color: var(--ya-muted);
+}
+
+.aya-auth-footer-switch button {
+  background: none;
+  border: none;
+  color: var(--ya-primary);
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.aya-auth-footer-switch button:hover {
+  text-decoration: underline;
+}
+
+/* Badge de usuario logueado en Header */
+.aya-user-profile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #f3f4f6;
+  border: 1px solid var(--ya-border);
+  border-radius: 999px;
+  padding: 4px 14px 4px 6px;
+  margin-left: 6px;
+}
+
+.aya-user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--ya-primary), #3b82f6);
+  color: #fff;
+  font-size: .88rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.aya-user-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.aya-user-info {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+
+.aya-user-name {
+  font-size: .86rem;
+  font-weight: 700;
+  color: var(--ya-text);
+}
+
+.aya-user-city {
+  font-size: .72rem;
+  color: var(--ya-muted);
+}
+
+.aya-btn-logout {
+  background: none;
+  border: none;
+  color: var(--ya-muted);
+  cursor: pointer;
+  font-size: .88rem;
+  padding: 4px 6px;
+  border-radius: 6px;
+  transition: all .18s;
+  display: flex;
+  align-items: center;
+}
+
+.aya-btn-logout:hover {
+  color: var(--ya-red);
+  background: #fee2e2;
+}
+
+/* Toast */
+.aya-toast {
+  position: fixed;
+  bottom: 24px; left: 50%; transform: translateX(-50%);
+  background: var(--ya-dark);
+  color: #fff;
+  border-radius: 10px;
+  padding: 12px 24px;
+  font-size: .9rem;
+  font-weight: 600;
+  z-index: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: toast-in .3s ease;
+  box-shadow: 0 6px 24px rgba(0,0,0,.25);
+  white-space: nowrap;
+}
+
+@keyframes toast-in {
+  from { transform: translateX(-50%) translateY(20px); opacity: 0; }
+  to   { transform: translateX(-50%) translateY(0); opacity: 1; }
+}
+
+/* ══════════════════════════════════════════════════════
+   FOOTER
+══════════════════════════════════════════════════════ */
+.aya-footer {
+  background: var(--ya-dark);
+  color: #d1d5db;
+  margin-top: 16px;
+}
+
+.aya-footer-main {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 48px 24px 32px;
+  display: grid;
+  grid-template-columns: 1.8fr 1fr 1fr 1fr 1.4fr;
+  gap: 40px;
+}
+
+.aya-footer-brand .aya-logo-text strong { color: #fff; }
+.aya-footer-brand .aya-logo-text span { color: #9ca3af; }
+
+.aya-footer-desc {
+  font-size: .85rem;
+  color: #9ca3af;
+  line-height: 1.7;
+  margin: 14px 0;
+}
+
+.aya-footer-socials {
+  display: flex;
+  gap: 10px;
+}
+
+.aya-social-btn {
+  width: 34px; height: 34px;
+  border-radius: 8px;
+  background: var(--ya-dark2);
+  border: 1px solid #374151;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background .18s;
+  color: #d1d5db;
+}
+
+.aya-social-btn:hover { background: var(--ya-primary); color: #fff; }
+
+.aya-footer-col h4 {
+  font-size: .88rem;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 16px;
+  letter-spacing: .3px;
+}
+
+.aya-footer-col ul { list-style: none; }
+
+.aya-footer-col ul li {
+  margin-bottom: 10px;
+}
+
+.aya-footer-col ul li a,
+.aya-footer-col ul li button {
+  font-size: .84rem;
+  color: #9ca3af;
+  text-decoration: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: 'Outfit', sans-serif;
+  transition: color .18s;
+  padding: 0;
+}
+
+.aya-footer-col ul li a:hover,
+.aya-footer-col ul li button:hover { color: #fff; }
+
+/* Newsletter + App */
+.aya-footer-newsletter {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.aya-newsletter-input {
+  flex: 1;
+  background: var(--ya-dark2);
+  border: 1px solid #374151;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-family: 'Outfit', sans-serif;
+  font-size: .85rem;
+  color: #fff;
+  outline: none;
+}
+
+.aya-newsletter-input::placeholder { color: #6b7280; }
+
+.aya-newsletter-btn {
+  background: var(--ya-primary);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  width: 38px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background .18s;
+}
+
+.aya-newsletter-btn:hover { background: var(--ya-primary-h); }
+
+.aya-app-title {
+  font-size: .82rem;
+  font-weight: 600;
+  color: #9ca3af;
+  margin-bottom: 10px;
+}
+
+.aya-app-badges {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.aya-app-badge {
+  background: var(--ya-dark2);
+  border: 1px solid #374151;
+  border-radius: 8px;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: border-color .18s;
+}
+
+.aya-app-badge:hover { border-color: #6b7280; }
+
+.aya-app-badge-icon { font-size: 1.4rem; }
+
+.aya-app-badge-text span {
+  display: block;
+  font-size: .65rem;
+  color: #9ca3af;
+  line-height: 1;
+}
+
+.aya-app-badge-text strong {
+  font-size: .82rem;
+  color: #fff;
+  font-weight: 700;
+}
+
+/* Footer bottom bar */
+.aya-footer-bottom {
+  border-top: 1px solid #1f2937;
+}
+
+.aya-footer-bottom-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.aya-footer-copy {
+  font-size: .8rem;
+  color: #6b7280;
+}
+
+.aya-footer-bottom-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.aya-footer-bottom-right span {
+  font-size: .8rem;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* ══════════════════════════════════════════════════════
+   PÁGINA DE PERFIL DE USUARIO
+══════════════════════════════════════════════════════ */
+.aya-perfil-page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 30px 20px 70px;
+  animation: fadeIn .25s ease;
+}
+
+.aya-perfil-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.aya-perfil-layout {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 26px;
+  align-items: start;
+}
+
+/* Sidebar de Perfil */
+.aya-perfil-card-sidebar {
+  background: #fff;
+  border: 1px solid var(--ya-border);
+  border-radius: 16px;
+  padding: 28px 22px;
+  box-shadow: var(--ya-shadow);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.aya-perfil-avatar-big {
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--ya-primary), #3b82f6);
+  color: #fff;
+  font-size: 2.4rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 18px rgba(26,86,219,.25);
+  margin-bottom: 16px;
+  overflow: hidden;
+  border: 3px solid #eff6ff;
+}
+
+.aya-perfil-avatar-big img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.aya-perfil-user-name {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--ya-text);
+  margin-bottom: 4px;
+}
+
+.aya-perfil-user-email {
+  font-size: .88rem;
+  color: var(--ya-muted);
+  margin-bottom: 14px;
+  word-break: break-all;
+}
+
+.aya-perfil-auth-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #eff6ff;
+  color: var(--ya-primary);
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  font-size: .78rem;
+  font-weight: 700;
+  padding: 4px 12px;
+  margin-bottom: 20px;
+}
+
+.aya-perfil-stats-box {
+  width: 100%;
+  border-top: 1px solid var(--ya-border);
+  border-bottom: 1px solid var(--ya-border);
+  padding: 16px 0;
+  margin-bottom: 20px;
+  display: flex;
+  justify-content: space-around;
+  font-size: .84rem;
+}
+
+.aya-perfil-stat-item strong {
+  display: block;
+  font-size: 1.25rem;
+  color: var(--ya-text);
+  font-weight: 800;
+}
+
+.aya-perfil-stat-item span {
+  color: var(--ya-muted);
+  font-size: .76rem;
+}
+
+.aya-btn-logout-big {
+  width: 100%;
+  background: #fee2e2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  padding: 11px;
+  font-family: 'Outfit', sans-serif;
+  font-size: .9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.aya-btn-logout-big:hover {
+  background: #fecaca;
+  color: #b91c1c;
+}
+
+/* Tarjeta Principal de Edición */
+.aya-perfil-card-main {
+  background: #fff;
+  border: 1px solid var(--ya-border);
+  border-radius: 16px;
+  padding: 30px;
+  box-shadow: var(--ya-shadow);
+}
+
+.aya-perfil-main-head {
+  margin-bottom: 24px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--ya-border);
+}
+
+.aya-perfil-main-head h2 {
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: var(--ya-text);
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.aya-perfil-main-head p {
+  font-size: .88rem;
+  color: var(--ya-muted);
+}
+
+.aya-perfil-form-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 26px;
+  padding-top: 20px;
+  border-top: 1px solid var(--ya-border);
+}
+
+.aya-btn-guardar-perfil {
+  background: var(--ya-primary);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 12px 28px;
+  font-family: 'Outfit', sans-serif;
+  font-size: .95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .2s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 14px rgba(26,86,219,.25);
+}
+
+.aya-btn-guardar-perfil:hover {
+  background: var(--ya-primary-h);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(26,86,219,.35);
+}
+
+.aya-btn-guardar-perfil:disabled {
+  opacity: .6;
+  cursor: not-allowed;
+}
+
+@media (max-width: 800px) {
+  .aya-perfil-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ══════════════════════════════════════════════════════
+   RESPONSIVE
+══════════════════════════════════════════════════════ */
+@media (max-width: 900px) {
+  .aya-footer-main {
+    grid-template-columns: 1fr 1fr;
+    gap: 28px;
+  }
+}
+
+@media (max-width: 640px) {
+  .aya-header-top { gap: 12px; padding: 0 14px; }
+  .aya-header-search { display: none; }
+  .aya-hero { min-height: 260px; }
+  .aya-hero-content h1 { font-size: 1.5rem; }
+  .aya-hero-search { flex-direction: column; border-radius: 12px; }
+  .aya-hero-search-input,
+  .aya-hero-search-select { border-right: none; border-bottom: 1px solid var(--ya-border); }
+  .aya-hero-search-btn { width: 100%; justify-content: center; }
+  .aya-icon-cats { grid-template-columns: repeat(4, 1fr); }
+  .aya-cards-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
+  .aya-list-cards { grid-template-columns: 1fr; }
+  .aya-fab { display: flex; }
+  .aya-footer-main { grid-template-columns: 1fr; gap: 24px; }
+  .aya-trust-banner { flex-direction: column; text-align: center; }
+  .aya-trust-left { flex-direction: column; text-align: center; }
+  .aya-btn-publicar-nav span { display: none; }
+}
+
+/* ══════════════════════════════════════════════════════
+   WIZARD DE PUBLICACIÓN EN 3 PASOS
+   Paso 1: Validación de Datos de Usuario (Nombre, Apellidos, Teléfono, Ubicación)
+   Paso 2: Detalles del Anuncio (Título, Categoría, Precio, Descripción, Dirección)
+   Paso 3: Duración (6 días base + 0.50 Bs/día extra), Color (+1 Bs) y Pago QR Rápido (5 Bs base)
+   ══════════════════════════════════════════════════════ */
+.aya-wizard-modal {
+  background: #fff;
+  border-radius: 18px;
+  max-width: 680px;
+  width: 95%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 50px rgba(0,0,0,.22);
+  display: flex;
+  flex-direction: column;
+  animation: modalPop .2s ease;
+}
+
+.aya-wizard-header {
+  padding: 22px 26px 14px;
+  border-bottom: 1px solid var(--ya-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  background: #fff;
+  z-index: 10;
+}
+
+.aya-wizard-header h2 {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--ya-text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.aya-wizard-nav-steps {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 26px;
+  background: #f9fafb;
+  border-bottom: 1px solid var(--ya-border);
+  gap: 8px;
+}
+
+.aya-wizard-step-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: .84rem;
+  font-weight: 600;
+  color: var(--ya-muted);
+  cursor: default;
+}
+
+.aya-wizard-step-item.active {
+  color: var(--ya-primary);
+  font-weight: 700;
+}
+
+.aya-wizard-step-item.completed {
+  color: var(--ya-green);
+}
+
+.aya-wizard-circle {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #e5e7eb;
+  color: #4b5563;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: .85rem;
+  font-weight: 800;
+  transition: all .2s;
+}
+
+.aya-wizard-step-item.active .aya-wizard-circle {
+  background: var(--ya-primary);
+  color: #fff;
+  box-shadow: 0 0 0 4px rgba(26,86,219,.18);
+}
+
+.aya-wizard-step-item.completed .aya-wizard-circle {
+  background: var(--ya-green);
+  color: #fff;
+}
+
+.aya-wizard-divider-line {
+  flex: 1;
+  height: 2px;
+  background: #e5e7eb;
+  margin: 0 6px;
+}
+
+.aya-wizard-divider-line.active {
+  background: var(--ya-primary);
+}
+
+.aya-wizard-body {
+  padding: 24px 26px;
+  flex: 1;
+}
+
+.aya-step-instruction {
+  background: #eff6ff;
+  border-left: 4px solid var(--ya-primary);
+  padding: 12px 16px;
+  border-radius: 0 10px 10px 0;
+  margin-bottom: 22px;
+  font-size: .88rem;
+  color: #1e40af;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Duración y controles de precio */
+.aya-duration-selector-box {
+  background: #fafafa;
+  border: 1.5px solid var(--ya-border);
+  border-radius: 12px;
+  padding: 18px;
+  margin-bottom: 20px;
+}
+
+.aya-duration-selector-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 12px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.aya-duration-counter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.aya-counter-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  border: 1px solid var(--ya-border);
+  background: #fff;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--ya-text);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all .15s;
+}
+
+.aya-counter-btn:hover:not(:disabled) {
+  background: var(--ya-primary);
+  color: #fff;
+  border-color: var(--ya-primary);
+}
+
+.aya-counter-btn:disabled {
+  opacity: .4;
+  cursor: not-allowed;
+}
+
+.aya-counter-val {
+  font-size: 1.25rem;
+  font-weight: 800;
+  min-width: 70px;
+  text-align: center;
+  color: var(--ya-text);
+}
+
+.aya-duration-badge-extra {
+  background: #fef3c7;
+  color: #92400e;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: .78rem;
+  font-weight: 700;
+}
+
+/* Opciones de Color Llamativo */
+.aya-color-picker-box {
+  background: #fafafa;
+  border: 1.5px solid var(--ya-border);
+  border-radius: 12px;
+  padding: 18px;
+  margin-bottom: 20px;
+}
+
+.aya-color-palette {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.aya-color-circle-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  outline: 2px solid transparent;
+  cursor: pointer;
+  transition: transform .15s, outline .15s;
+  position: relative;
+}
+
+.aya-color-circle-btn:hover {
+  transform: scale(1.12);
+}
+
+.aya-color-circle-btn.selected {
+  outline: 2.5px solid var(--ya-text);
+  transform: scale(1.15);
+}
+
+.aya-title-preview {
+  margin-top: 14px;
+  padding: 12px 14px;
+  background: #fff;
+  border-radius: 8px;
+  border: 1px dashed var(--ya-border);
+  font-size: .95rem;
+}
+
+/* Desglose de Costos */
+.aya-cost-breakdown {
+  background: linear-gradient(135deg, #f8fafc, #edf2f7);
+  border: 1.5px solid #cbd5e1;
+  border-radius: 14px;
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.aya-cost-breakdown h4 {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--ya-text);
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.aya-cost-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  font-size: .88rem;
+  color: var(--ya-text2);
+}
+
+.aya-cost-total-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 2px dashed #cbd5e1;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--ya-text);
+}
+
+.aya-total-price-tag {
+  color: var(--ya-primary);
+  font-size: 1.35rem;
+  font-weight: 900;
+}
+
+/* Tarjeta QR */
+.aya-qr-payment-card {
+  background: #fff;
+  border: 2px solid #1a56db;
+  border-radius: 14px;
+  padding: 20px;
+  text-align: center;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 18px rgba(26,86,219,.08);
+}
+
+.aya-qr-wrapper {
+  margin: 14px auto;
+  width: 170px;
+  height: 170px;
+  background: #fff;
+  padding: 8px;
+  border-radius: 12px;
+  border: 1.5px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.aya-qr-wrapper img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.aya-qr-badge-bo {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: .78rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.aya-wizard-footer-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 1px solid var(--ya-border);
+}
+
+.aya-btn-step-back {
+  background: #f3f4f6;
+  color: var(--ya-text);
+  border: 1px solid var(--ya-border);
+  padding: 10px 18px;
+  border-radius: 10px;
+  font-family: 'Outfit', sans-serif;
+  font-weight: 600;
+  font-size: .9rem;
+  cursor: pointer;
+  transition: all .15s;
+}
+
+.aya-btn-step-back:hover {
+  background: #e5e7eb;
+}
+
+.aya-btn-step-next {
+  background: var(--ya-primary);
+  color: #fff;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 10px;
+  font-family: 'Outfit', sans-serif;
+  font-weight: 700;
+  font-size: .95rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 12px rgba(26,86,219,.2);
+  transition: all .15s;
+}
+
+.aya-btn-step-next:hover {
+  background: var(--ya-primary-h);
+  transform: translateY(-1px);
+}
+
+.aya-btn-pay-qr-fast {
+  background: linear-gradient(135deg, #16a34a, #15803d);
+  color: #fff;
+  border: none;
+  padding: 13px 26px;
+  border-radius: 10px;
+  font-family: 'Outfit', sans-serif;
+  font-weight: 800;
+  font-size: 1rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 16px rgba(22,163,74,.3);
+  transition: all .2s;
+}
+
+.aya-btn-pay-qr-fast:hover {
+  background: linear-gradient(135deg, #15803d, #166534);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(22,163,74,.4);
+}
+
+/* ══════════════════════════════════════════════════════
+   GALERÍA DE FOTOS (HASTA 4 IMÁGENES OPCIONALES)
+   ══════════════════════════════════════════════════════ */
+.aya-gallery-thumbnails {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.aya-gallery-thumb {
+  width: 72px;
+  height: 56px;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all .15s;
+  background: #e5e7eb;
+}
+
+.aya-gallery-thumb:hover {
+  transform: translateY(-2px);
+  border-color: #93c5fd;
+}
+
+.aya-gallery-thumb.active {
+  border-color: var(--ya-primary);
+  box-shadow: 0 0 0 2px rgba(26,86,219,.3);
+  transform: scale(1.04);
+}
+
+/* Gestor de imágenes en el formulario de publicación */
+.aya-img-slots-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.aya-img-slot {
+  aspect-ratio: 4/3;
+  border: 1.5px dashed var(--ya-border);
+  border-radius: 10px;
+  background: #f9fafb;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.aya-img-slot.has-image {
+  border-style: solid;
+  border-color: var(--ya-primary);
+}
+
+.aya-img-slot img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.aya-slot-remove-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: rgba(220,38,38,.85);
+  color: #fff;
+  border: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font-size: .75rem;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background .15s;
+}
+
+.aya-slot-remove-btn:hover {
+  background: #dc2626;
+}
+
+.aya-slot-number {
+  position: absolute;
+  bottom: 4px;
+  left: 6px;
+  background: rgba(0,0,0,.6);
+  color: #fff;
+  font-size: .68rem;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-weight: 700;
+}
+
+/* Zona de subida de archivos (File dropzone) */
+.aya-upload-dropzone {
+  border: 2px dashed #93c5fd;
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 20px 16px;
+  text-align: center;
+  cursor: pointer;
+  transition: all .2s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.aya-upload-dropzone:hover {
+  background: #eff6ff;
+  border-color: var(--ya-primary);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.1);
+}
+
+.aya-upload-dropzone-icon {
+  font-size: 2.2rem;
+  line-height: 1;
+}
+
+.aya-upload-dropzone-title {
+  font-size: .95rem;
+  font-weight: 750;
+  color: #1e3a8a;
+}
+
+.aya-upload-dropzone-sub {
+  font-size: .78rem;
+  color: var(--ya-muted);
+}
+
+/* ══════════════════════════════════════════════════════
+   MODAL DE ADVERTENCIAS DE SEGURIDAD (ANTES DE WHATSAPP)
+   ══════════════════════════════════════════════════════ */
+.aya-security-modal {
+  background: #fff;
+  border-radius: 18px;
+  max-width: 540px;
+  width: 92%;
+  padding: 28px;
+  box-shadow: 0 20px 50px rgba(0,0,0,.22);
+  animation: modalPop .2s ease;
+}
+
+.aya-security-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.aya-security-badge-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: #fef2f2;
+  color: #dc2626;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.6rem;
+  flex-shrink: 0;
+  border: 1px solid #fecaca;
+}
+
+.aya-security-head h2 {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--ya-text);
+  line-height: 1.25;
+}
+
+.aya-security-head p {
+  font-size: .82rem;
+  color: var(--ya-muted);
+  margin-top: 2px;
+}
+
+.aya-security-items {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 18px 0 24px;
+}
+
+.aya-sec-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #f9fafb;
+  border: 1px solid #f3f4f6;
+  font-size: .86rem;
+  line-height: 1.45;
+}
+
+.aya-sec-item.critical {
+  background: #fff7ed;
+  border-color: #ffedd5;
+  color: #9a3412;
+}
+
+.aya-sec-icon {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.aya-sec-item strong {
+  display: block;
+  font-size: .88rem;
+  margin-bottom: 2px;
+}
+
+.aya-security-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.aya-btn-sec-cancel {
+  background: #f3f4f6;
+  color: var(--ya-text2);
+  border: 1px solid var(--ya-border);
+  padding: 11px 18px;
+  border-radius: 10px;
+  font-family: 'Outfit', sans-serif;
+  font-weight: 600;
+  font-size: .9rem;
+  cursor: pointer;
+}
+
+.aya-btn-sec-continue {
+  background: #16a34a;
+  color: #fff;
+  border: none;
+  padding: 11px 22px;
+  border-radius: 10px;
+  font-family: 'Outfit', sans-serif;
+  font-weight: 700;
+  font-size: .92rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 14px rgba(22,163,74,.25);
+  transition: all .15s;
+}
+
+.aya-btn-sec-continue:hover {
+  background: #15803d;
+  transform: translateY(-1px);
+}
+
+/* ══════════════════════════════════════════════════════
+   BOTÓN Y MODAL DE DENUNCIA DE ANUNCIO
+   ══════════════════════════════════════════════════════ */
+.aya-btn-denunciar {
+  background: none;
+  border: 1px dashed #f87171;
+  color: #dc2626;
+  padding: 9px 14px;
+  border-radius: 10px;
+  font-family: 'Outfit', sans-serif;
+  font-size: .82rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all .15s;
+  width: 100%;
+  justify-content: center;
+  margin-top: 12px;
+}
+
+.aya-btn-denunciar:hover {
+  background: #fee2e2;
+  border-style: solid;
+}
+
+.aya-denuncia-modal {
+  background: #fff;
+  border-radius: 18px;
+  max-width: 520px;
+  width: 92%;
+  padding: 26px;
+  box-shadow: 0 20px 50px rgba(0,0,0,.22);
+  animation: modalPop .2s ease;
+}
+
+.aya-denuncia-modal h2 {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--ya-text);
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ══════════════════════════════════════════════════════
+   MODAL LEGAL (TÉRMINOS, POLÍTICAS Y NORMAS)
+   ══════════════════════════════════════════════════════ */
+.aya-legal-modal {
+  background: #fff;
+  border-radius: 18px;
+  max-width: 680px;
+  width: 94%;
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 50px rgba(0,0,0,.22);
+  animation: modalPop .2s ease;
+}
+
+.aya-legal-head {
+  padding: 20px 24px 14px;
+  border-bottom: 1px solid var(--ya-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.aya-legal-head h2 {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--ya-text);
+}
+
+.aya-legal-tabs {
+  display: flex;
+  background: #f9fafb;
+  border-bottom: 1px solid var(--ya-border);
+  padding: 0 20px;
+  gap: 8px;
+  overflow-x: auto;
+}
+
+.aya-legal-tab-btn {
+  background: none;
+  border: none;
+  border-bottom: 2.5px solid transparent;
+  padding: 12px 14px;
+  font-family: 'Outfit', sans-serif;
+  font-size: .88rem;
+  font-weight: 600;
+  color: var(--ya-muted);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all .15s;
+}
+
+.aya-legal-tab-btn.active {
+  color: var(--ya-primary);
+  border-bottom-color: var(--ya-primary);
+  font-weight: 700;
+}
+
+.aya-legal-body {
+  padding: 24px;
+  overflow-y: auto;
+  font-size: .9rem;
+  color: var(--ya-text2);
+  line-height: 1.6;
+}
+
+.aya-legal-body h3 {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--ya-text);
+  margin: 16px 0 8px;
+}
+
+.aya-legal-body p {
+  margin-bottom: 12px;
+}
+
+.aya-legal-body ul {
+  padding-left: 20px;
+  margin-bottom: 14px;
+}
+
+.aya-legal-body li {
+  margin-bottom: 6px;
+}
+
+
+/* ══════════════════════════════════════════════════════════
+   MÓDULO DE TIENDAS
+══════════════════════════════════════════════════════════ */
+
+/* ── Hero de Tiendas ── */
+.aya-tiendas-page {
+  min-height: 100vh;
+  background: var(--ya-bg);
+}
+
+.aya-tiendas-hero {
+  background: linear-gradient(135deg, #1e1b4b 0%, #312e81 40%, #4338ca 70%, #6d28d9 100%);
+  padding: 64px 24px 48px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.aya-tiendas-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 30% 50%, rgba(99,102,241,0.3) 0%, transparent 70%),
+              radial-gradient(ellipse at 70% 30%, rgba(139,92,246,0.2) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.aya-tiendas-hero-content {
+  position: relative;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.aya-tiendas-hero h1 {
+  font-size: clamp(1.8rem, 4vw, 3rem);
+  font-weight: 800;
+  color: #fff;
+  margin: 0 0 12px;
+  text-shadow: 0 2px 12px rgba(0,0,0,0.3);
+}
+
+.aya-tiendas-hero p {
+  font-size: 1.05rem;
+  color: rgba(255,255,255,0.85);
+  margin: 0 0 28px;
+}
+
+.aya-tiendas-search-bar {
+  display: flex;
+  gap: 10px;
+  max-width: 620px;
+  margin: 0 auto 24px;
+  flex-wrap: wrap;
+}
+
+.aya-tiendas-search-input {
+  flex: 1;
+  min-width: 200px;
+  padding: 12px 18px;
+  border-radius: 12px;
+  border: none;
+  font-size: 0.95rem;
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+  backdrop-filter: blur(8px);
+  outline: none;
+  transition: background 0.2s;
+}
+
+.aya-tiendas-search-input::placeholder { color: rgba(255,255,255,0.6); }
+.aya-tiendas-search-input:focus { background: rgba(255,255,255,0.25); }
+
+.aya-tiendas-search-select {
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: none;
+  font-size: 0.9rem;
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+  backdrop-filter: blur(8px);
+  cursor: pointer;
+  outline: none;
+}
+
+.aya-tiendas-search-select option { background: #312e81; color: #fff; }
+
+.aya-tiendas-hero-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.aya-btn-crear-tienda,
+.aya-btn-gestionar-tienda {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 13px 28px;
+  border-radius: 12px;
+  border: none;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.aya-btn-crear-tienda {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #fff;
+  box-shadow: 0 4px 20px rgba(245,158,11,0.4);
+}
+
+.aya-btn-crear-tienda:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 28px rgba(245,158,11,0.5);
+}
+
+.aya-btn-gestionar-tienda {
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+  border: 2px solid rgba(255,255,255,0.4);
+  backdrop-filter: blur(6px);
+}
+
+.aya-btn-gestionar-tienda:hover {
+  background: rgba(255,255,255,0.25);
+  transform: translateY(-2px);
+}
+
+/* ── Grid de Tiendas ── */
+.aya-tiendas-grid-section {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 40px 24px;
+}
+
+.aya-tiendas-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 24px;
+}
+
+.aya-tienda-card {
+  background: var(--ya-card);
+  border: 1px solid var(--ya-border);
+  border-radius: 16px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.aya-tienda-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.15);
+  border-color: var(--ya-primary);
+}
+
+.aya-tienda-card-logo {
+  position: relative;
+  height: 120px;
+  background: linear-gradient(135deg, #312e81, #4338ca);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.aya-tienda-card-logo img {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 50%;
+  border: 3px solid rgba(255,255,255,0.3);
+}
+
+.aya-tienda-card-logo-default {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.15);
+  border: 3px solid rgba(255,255,255,0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  font-weight: 800;
+  color: #fff;
+  backdrop-filter: blur(4px);
+}
+
+.aya-tienda-badge-dest {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 20px;
+}
+
+.aya-tienda-card-body {
+  padding: 16px;
+  flex: 1;
+}
+
+.aya-tienda-card-nombre {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--ya-text);
+  margin: 0 0 4px;
+}
+
+.aya-tienda-card-propietario {
+  font-size: 0.8rem;
+  color: var(--ya-muted);
+  margin: 0 0 8px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.aya-tienda-card-desc {
+  font-size: 0.82rem;
+  color: var(--ya-muted);
+  margin: 0 0 10px;
+  line-height: 1.4;
+}
+
+.aya-tienda-card-meta {
+  display: flex;
+  gap: 12px;
+  font-size: 0.78rem;
+  color: var(--ya-muted);
+  flex-wrap: wrap;
+}
+
+.aya-tienda-card-meta span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.aya-tienda-card-footer {
+  padding: 10px 16px;
+  border-top: 1px solid var(--ya-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.aya-tienda-cat-tag {
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: rgba(99,102,241,0.12);
+  color: var(--ya-primary);
+  padding: 3px 10px;
+  border-radius: 20px;
+}
+
+.aya-tienda-ver-btn {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--ya-primary);
+  margin-left: auto;
+  transition: color 0.15s;
+}
+
+.aya-tienda-card:hover .aya-tienda-ver-btn {
+  color: var(--ya-secondary);
+}
+
+/* ── Empty State y Loading ── */
+.aya-tiendas-empty {
+  text-align: center;
+  padding: 64px 24px;
+  color: var(--ya-muted);
+}
+
+.aya-tiendas-empty i {
+  font-size: 3.5rem;
+  display: block;
+  margin-bottom: 16px;
+  opacity: 0.4;
+}
+
+.aya-tiendas-empty h3 {
+  font-size: 1.2rem;
+  color: var(--ya-text);
+  margin: 0 0 8px;
+}
+
+.aya-tiendas-empty p {
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.aya-cargando-tiendas {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 80px 24px;
+  color: var(--ya-muted);
+}
+
+/* ── Detalle de Tienda ── */
+.aya-tienda-detalle-page {
+  min-height: 100vh;
+  background: var(--ya-bg);
+}
+
+.aya-tienda-detalle-topbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 24px;
+  background: var(--ya-card);
+  border-bottom: 1px solid var(--ya-border);
+  flex-wrap: wrap;
+}
+
+.aya-tienda-banner-wrap {
+  position: relative;
+  background: linear-gradient(135deg, #1e1b4b, #4338ca);
+  height: 220px;
+  overflow: hidden;
+}
+
+.aya-tienda-banner-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.7;
+}
+
+.aya-tienda-banner-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 5rem;
+  color: rgba(255,255,255,0.2);
+}
+
+.aya-tienda-logo-over {
+  position: absolute;
+  bottom: -36px;
+  left: 32px;
+}
+
+.aya-tienda-logo-img {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 50%;
+  border: 4px solid var(--ya-bg);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+}
+
+.aya-tienda-logo-default {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #4338ca, #7c3aed);
+  border: 4px solid var(--ya-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  font-weight: 800;
+  color: #fff;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+}
+
+.aya-tienda-det-body {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 56px 24px 40px;
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 32px;
+  align-items: start;
+}
+
+@media (max-width: 768px) {
+  .aya-tienda-det-body { grid-template-columns: 1fr; padding-top: 48px; }
+}
+
+.aya-tienda-det-info {
+  background: var(--ya-card);
+  border: 1px solid var(--ya-border);
+  border-radius: 16px;
+  padding: 24px;
+  position: sticky;
+  top: 80px;
+}
+
+.aya-tienda-det-nombre {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--ya-text);
+  margin: 0 0 6px;
+}
+
+.aya-tienda-det-propietario {
+  font-size: 0.88rem;
+  color: var(--ya-muted);
+  margin: 0 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.aya-tienda-det-desc {
+  font-size: 0.9rem;
+  color: var(--ya-muted);
+  line-height: 1.55;
+  margin: 0 0 16px;
+}
+
+.aya-tienda-det-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.aya-tienda-det-meta span {
+  font-size: 0.85rem;
+  color: var(--ya-muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.aya-tienda-wsp-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px;
+  background: linear-gradient(135deg, #25d366, #128c7e);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.9rem;
+  border-radius: 10px;
+  text-decoration: none;
+  transition: all 0.2s;
+}
+
+.aya-tienda-wsp-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(37,211,102,0.35);
+}
+
+/* ── Sección de productos en detalle ── */
+.aya-tienda-productos-section {
+  background: var(--ya-card);
+  border: 1px solid var(--ya-border);
+  border-radius: 16px;
+  padding: 24px;
+}
+
+.aya-tienda-productos-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--ya-text);
+  margin: 0 0 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.aya-tienda-prod-count {
+  font-size: 0.8rem;
+  font-weight: 600;
+  background: rgba(99,102,241,0.12);
+  color: var(--ya-primary);
+  padding: 3px 10px;
+  border-radius: 20px;
+  margin-left: auto;
+}
+
+/* ── Grid de Productos ── */
+.aya-productos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.aya-prod-card {
+  background: var(--ya-bg);
+  border: 1px solid var(--ya-border);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: all 0.2s;
+}
+
+.aya-prod-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  border-color: var(--ya-primary);
+}
+
+.aya-prod-img-wrap {
+  position: relative;
+  height: 160px;
+  background: linear-gradient(135deg, #f3f4f6, #e5e7eb);
+  overflow: hidden;
+}
+
+.aya-prod-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s;
+}
+
+.aya-prod-card:hover .aya-prod-img { transform: scale(1.05); }
+
+.aya-prod-img-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.5rem;
+  color: #9ca3af;
+}
+
+.aya-prod-cat-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background: rgba(0,0,0,0.55);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 20px;
+  backdrop-filter: blur(4px);
+  text-transform: capitalize;
+}
+
+.aya-prod-info {
+  padding: 12px;
+}
+
+.aya-prod-nombre {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--ya-text);
+  margin: 0 0 4px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.aya-prod-desc {
+  font-size: 0.75rem;
+  color: var(--ya-muted);
+  margin: 0 0 8px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.4;
+}
+
+.aya-prod-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.aya-prod-precio {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--ya-primary);
+}
+
+.aya-prod-stock {
+  font-size: 0.7rem;
+  color: #22c55e;
+  font-weight: 600;
+}
+
+.aya-prod-agotado {
+  font-size: 0.7rem;
+  color: #ef4444;
+  font-weight: 600;
+}
+
+/* ── Panel de Gestión (Dueño) ── */
+.aya-gestion-page {
+  min-height: 100vh;
+  background: var(--ya-bg);
+}
+
+.aya-gestion-layout {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 32px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.aya-gestion-tienda-card {
+  background: var(--ya-card);
+  border: 1px solid var(--ya-border);
+  border-radius: 16px;
+  padding: 24px;
+}
+
+.aya-gestion-tienda-header {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 16px;
+}
+
+.aya-gestion-logo-wrap {
+  flex-shrink: 0;
+}
+
+.aya-gestion-tienda-nombre {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--ya-text);
+  margin: 0 0 4px;
+}
+
+.aya-gestion-tienda-meta {
+  font-size: 0.85rem;
+  color: var(--ya-muted);
+  margin: 0 0 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.aya-gestion-tienda-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.aya-btn-editar-tienda {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 20px;
+  background: var(--ya-primary);
+  color: #fff;
+  border: none;
+  border-radius: 9px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.aya-btn-editar-tienda:hover {
+  background: var(--ya-secondary);
+  transform: translateY(-1px);
+}
+
+.aya-gestion-productos-panel {
+  background: var(--ya-card);
+  border: 1px solid var(--ya-border);
+  border-radius: 16px;
+  padding: 24px;
+}
+
+.aya-gestion-prod-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.aya-gestion-prod-header h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--ya-text);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.aya-btn-agregar-prod {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 18px;
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  color: #fff;
+  border: none;
+  border-radius: 9px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 2px 10px rgba(34,197,94,0.3);
+}
+
+.aya-btn-agregar-prod:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(34,197,94,0.4);
+}
+
+.aya-gestion-prod-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.aya-gestion-prod-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  background: var(--ya-bg);
+  border: 1px solid var(--ya-border);
+  border-radius: 10px;
+  transition: border-color 0.2s;
+}
+
+.aya-gestion-prod-item:hover { border-color: var(--ya-primary); }
+
+.aya-gestion-prod-img {
+  width: 56px;
+  height: 56px;
+  border-radius: 8px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: var(--ya-border);
+}
+
+.aya-gestion-prod-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.aya-gestion-prod-img-ph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  color: var(--ya-muted);
+  font-size: 1.2rem;
+}
+
+.aya-gestion-prod-data {
+  flex: 1;
+  min-width: 0;
+}
+
+.aya-gestion-prod-data strong {
+  display: block;
+  font-size: 0.9rem;
+  color: var(--ya-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.aya-gestion-prod-data p {
+  font-size: 0.78rem;
+  color: var(--ya-muted);
+  margin: 4px 0 0;
+}
+
+.aya-gestion-prod-btns {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.aya-btn-edit-prod,
+.aya-btn-del-prod {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid var(--ya-border);
+  background: var(--ya-card);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  transition: all 0.15s;
+}
+
+.aya-btn-edit-prod { color: var(--ya-primary); }
+.aya-btn-edit-prod:hover { background: rgba(99,102,241,0.12); border-color: var(--ya-primary); }
+
+.aya-btn-del-prod { color: #ef4444; }
+.aya-btn-del-prod:hover { background: rgba(239,68,68,0.1); border-color: #ef4444; }
+
+/* ── Modal de Tienda / Producto ── */
+.aya-tienda-modal {
+  background: var(--ya-card);
+  border-radius: 20px;
+  width: 95%;
+  max-width: 680px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.4);
+  border: 1px solid var(--ya-border);
+  animation: ayaModalIn 0.25s ease;
+}
+
+.aya-tienda-form {
+  padding: 24px;
+}
+
+.aya-tienda-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 560px) {
+  .aya-tienda-form-grid { grid-template-columns: 1fr; }
+}
+
+.aya-form-full {
+  grid-column: 1 / -1;
+}
+
+.aya-input-file {
+  display: block;
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px dashed var(--ya-border);
+  border-radius: 8px;
+  background: var(--ya-bg);
+  color: var(--ya-muted);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.aya-input-file:hover { border-color: var(--ya-primary); }
+
+/* ── Responsive tiendas ── */
+@media (max-width: 640px) {
+  .aya-tiendas-hero { padding: 48px 16px 36px; }
+  .aya-tiendas-search-bar { flex-direction: column; }
+  .aya-tiendas-grid { grid-template-columns: 1fr 1fr; gap: 14px; }
+  .aya-productos-grid { grid-template-columns: repeat(2, 1fr); }
+  .aya-gestion-prod-item { flex-wrap: wrap; }
+}
+
+@media (max-width: 400px) {
+  .aya-tiendas-grid { grid-template-columns: 1fr; }
+  .aya-productos-grid { grid-template-columns: 1fr; }
+}
+
+
+/* ══════════════════════════════════════════════════════════
+   MÓDULO TIENDA EN PERFIL DE USUARIO
+══════════════════════════════════════════════════════════ */
+
+/* Sidebar: Card de Tienda */
+.aya-perfil-tienda-sidecard {
+  width: 100%;
+  margin: 16px 0 6px;
+  background: linear-gradient(145deg, #f8fafc, #f1f5f9);
+  border: 1.5px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 16px 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+}
+
+.aya-perfil-tienda-side-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #4f46e5;
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.aya-perfil-tienda-side-nombre {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 6px;
+  word-break: break-word;
+}
+
+.aya-perfil-tienda-side-info {
+  display: flex;
+  gap: 10px;
+  font-size: 0.78rem;
+  color: #64748b;
+  margin-bottom: 12px;
+}
+
+.aya-btn-perfil-tienda-primary {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 9px 12px;
+  background: linear-gradient(135deg, #4f46e5, #4338ca);
+  color: #fff;
+  border: none;
+  border-radius: 9px;
+  font-size: 0.83rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 3px 10px rgba(79, 70, 229, 0.25);
+  transition: transform 0.15s, box-shadow 0.15s;
+  margin-bottom: 6px;
+}
+.aya-btn-perfil-tienda-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 5px 14px rgba(79, 70, 229, 0.35);
+}
+
+.aya-btn-perfil-tienda-sec {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: #fff;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+  border-radius: 9px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.aya-btn-perfil-tienda-sec:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+}
+
+/* Callout en Sidebar si aún no tiene tienda */
+.aya-perfil-tienda-callout {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.aya-perfil-tienda-callout-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #e0e7ff, #ede9fe);
+  color: #4f46e5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+}
+
+.aya-perfil-tienda-callout-text strong {
+  font-size: 0.92rem;
+  color: #1e293b;
+  display: block;
+}
+
+.aya-perfil-tienda-callout-text p {
+  font-size: 0.77rem;
+  color: #64748b;
+  margin: 4px 0 0;
+  line-height: 1.3;
+}
+
+.aya-btn-perfil-crear-tienda {
+  width: 100%;
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 9px 12px;
+  background: linear-gradient(135deg, #16a34a, #15803d);
+  color: #fff;
+  border: none;
+  border-radius: 9px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 3px 10px rgba(22, 163, 74, 0.25);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.aya-btn-perfil-crear-tienda:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 5px 14px rgba(22, 163, 74, 0.35);
+}
+
+/* ── Banner Principal en la Vista de Perfil ── */
+.aya-perfil-tienda-banner {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 20px 24px;
+  border-radius: 16px;
+  margin-bottom: 24px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.04);
+}
+
+.aya-perfil-banner-create {
+  background: linear-gradient(135deg, #eff6ff 0%, #f5f3ff 100%);
+  border: 1.5px solid #c7d2fe;
+}
+
+.aya-perfil-banner-has-store {
+  background: linear-gradient(135deg, #f0fdf4 0%, #f0f9ff 100%);
+  border: 1.5px solid #bbf7d0;
+}
+
+.aya-perfil-banner-icon-circ {
+  width: 56px;
+  height: 56px;
+  min-width: 56px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.6rem;
+  box-shadow: 0 6px 16px rgba(79, 70, 229, 0.25);
+}
+
+.aya-perfil-tienda-banner-logo {
+  width: 60px;
+  height: 60px;
+  min-width: 60px;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 2px solid #fff;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+.aya-perfil-tienda-banner-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.aya-perfil-tienda-logo-ph {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+}
+
+.aya-perfil-tienda-banner-body {
+  flex: 1;
+}
+
+.aya-perfil-tienda-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 0.73rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 6px;
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #86efac;
+}
+
+.aya-perfil-tienda-pill.aya-pill-accent {
+  background: #ede9fe;
+  color: #6366f1;
+  border: 1px solid #c7d2fe;
+}
+
+.aya-perfil-tienda-banner-body h3 {
+  margin: 0 0 4px;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.aya-perfil-tienda-banner-body p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #475569;
+  line-height: 1.4;
+}
+
+.aya-perfil-tienda-banner-actions {
+  display: flex;
+  gap: 10px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.aya-btn-banner-crear {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 20px;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);
+  transition: transform 0.15s, box-shadow 0.15s;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.aya-btn-banner-crear:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(37, 99, 235, 0.4);
+}
+
+.aya-btn-banner-gestionar {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 16px;
+  background: linear-gradient(135deg, #4f46e5, #4338ca);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.86rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+  transition: transform 0.15s, box-shadow 0.15s;
+  white-space: nowrap;
+}
+.aya-btn-banner-gestionar:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(79, 70, 229, 0.35);
+}
+
+.aya-btn-banner-ver {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  background: #fff;
+  color: #334155;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 10px;
+  font-size: 0.86rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+.aya-btn-banner-ver:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+}
+
+@media (max-width: 768px) {
+  .aya-perfil-tienda-banner {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 18px;
+    gap: 14px;
+  }
+  .aya-perfil-tienda-banner-actions,
+  .aya-btn-banner-crear {
+    width: 100%;
+    justify-content: center;
+  }
+  .aya-btn-banner-gestionar,
+  .aya-btn-banner-ver {
+    flex: 1;
+    justify-content: center;
+  }
+}
+
