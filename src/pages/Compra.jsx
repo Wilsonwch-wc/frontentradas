@@ -2186,18 +2186,20 @@ const Compra = () => {
                             >
                               Bs. {parseFloat(area.precio || 0).toFixed(2)}
                             </text>
-                            <text
-                              x={0}
-                              y={18}
-                              textAnchor="middle"
-                              dominantBaseline="middle"
-                              fill="#666"
-                              fontSize="8"
-                              fontWeight="600"
-                              pointerEvents="none"
-                            >
-                              ({area.personas_disponibles !== undefined ? area.personas_disponibles : area.capacidad_personas} disp)
-                            </text>
+                            {esAdminOVendedor && (
+                              <text
+                                x={0}
+                                y={18}
+                                textAnchor="middle"
+                                dominantBaseline="middle"
+                                fill="#666"
+                                fontSize="8"
+                                fontWeight="600"
+                                pointerEvents="none"
+                              >
+                                ({area.personas_disponibles !== undefined ? area.personas_disponibles : area.capacidad_personas} disp)
+                              </text>
+                            )}
                           </g>
                         ) : (
                           <text
@@ -2541,10 +2543,16 @@ const Compra = () => {
                           <div key={area.id} className="tipo-precio-fila" style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem', flexWrap: 'wrap', padding: '10px 15px', background: '#f8f9fa', borderRadius: '8px', borderLeft: `5px solid ${area.color || '#4CAF50'}` }}>
                             <div style={{ flex: 1, minWidth: '150px' }}>
                               <span className="tipo-nombre" style={{ fontWeight: 700, fontSize: '1rem', color: '#2c3e50', display: 'block' }}>{area.nombre}</span>
-                              {canUseAdminSaleOptions && (
+                              {esAdminOVendedor ? (
                                 <span style={{ fontSize: '0.8rem', color: '#666' }}>
                                   Capacidad: {area.capacidad_personas} • Disponibles: <strong style={{ color: disponibles === 0 ? '#dc3545' : '#198754' }}>{disponibles}</strong>
                                 </span>
+                              ) : (
+                                disponibles === 0 && (
+                                  <span style={{ fontSize: '0.8rem', color: '#dc3545', fontWeight: 600 }}>
+                                    Agotado
+                                  </span>
+                                )
                               )}
                             </div>
                             <span className="tipo-precio precio-destacado" style={{ fontWeight: 700, color: '#0d6efd', fontSize: '1rem' }}>Bs. {precio.toFixed(2)}</span>
